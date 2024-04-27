@@ -33,7 +33,6 @@ namespace DOL.GS.Scripts
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
 
             Name = "Council Hord";
             Model = 918;
@@ -55,11 +54,7 @@ namespace DOL.GS.Scripts
         {
             get{return 100000;}
         }
-        public override int AttackRange
-        {
-            get{ return 450;}
-            set{}
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)

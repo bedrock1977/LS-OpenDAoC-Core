@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -76,7 +72,6 @@ namespace DOL.GS
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(8);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 
 			DebenSeGecyndeBrain sbrain = new DebenSeGecyndeBrain();
 			SetOwnBrain(sbrain);
@@ -203,11 +198,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 120;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 300;
@@ -239,7 +230,6 @@ namespace DOL.GS
 			MeleeDamageType = eDamageType.Slash;
 			VisibleActiveWeaponSlots = 34;
 			Faction = FactionMgr.GetFactionByID(8);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 
 			DebenFighterBrain sbrain = new DebenFighterBrain();
 			SetOwnBrain(sbrain);
@@ -290,11 +280,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 160;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 300;
@@ -330,7 +316,6 @@ namespace DOL.GS
 
 			VisibleActiveWeaponSlots = 16;
 			Faction = FactionMgr.GetFactionByID(8);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 
 			DebenMageBrain sbrain = new DebenMageBrain();
 			SetOwnBrain(sbrain);

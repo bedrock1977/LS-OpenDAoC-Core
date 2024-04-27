@@ -47,11 +47,7 @@ namespace DOL.GS
             get { return 100000; }
         }
 
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -103,7 +99,6 @@ namespace DOL.GS
             Empathy = npcTemplate.Empathy;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
 
             HurionthexBrain sbrain = new HurionthexBrain();
             SetOwnBrain(sbrain);
@@ -243,7 +238,6 @@ namespace DOL.AI.Brain
         {
             Body.Model = 946;
             Body.Size = 120;
-            Body.AttackRange = 450;
             Body.MeleeDamageType = eDamageType.Spirit;
             Body.BodyType = 10; // Plant
 
@@ -271,7 +265,6 @@ namespace DOL.AI.Brain
         {
             Body.Model = 844;
             Body.Size = 160;
-            Body.AttackRange = 450;
             Body.MeleeDamageType = eDamageType.Spirit;
             Body.BodyType = 1; // Animal
 
@@ -299,7 +292,6 @@ namespace DOL.AI.Brain
         {
             Body.Model = 925;
             Body.Size = 150;
-            Body.AttackRange = 450;
             Body.MeleeDamageType = eDamageType.Spirit;
 
             Body.Strength = 300;

@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 300;
@@ -61,7 +57,6 @@ namespace DOL.GS
 			Empathy = npcTemplate.Empathy;
 
 			Faction = FactionMgr.GetFactionByID(150);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(150));
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 			FostraOrmBrain sbrain = new FostraOrmBrain();
 			SetOwnBrain(sbrain);

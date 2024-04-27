@@ -77,11 +77,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 150;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (this.IsAlive && keyName == DOL.GS.Abilities.CCImmunity)
@@ -114,7 +110,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Humanoid;
 
             GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
@@ -168,7 +163,6 @@ namespace DOL.GS
                 HOC.Size = 50;
                 HOC.CurrentRegionID = 277; //hall of the corrupt
                 HOC.Faction = FactionMgr.GetFactionByID(187);
-                HOC.Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 
                 HOC.X = 31874;
                 HOC.Y = 34994;

@@ -140,7 +140,7 @@ namespace DOL.GS.Keeps
 		/// <returns>Whether or not we are responding</returns>
 		public virtual bool AssistLord(GuardLord lord)
 		{
-			Follow(lord, STICK_MINIMUM_RANGE, int.MaxValue);
+			Follow(lord, StickMinimumRange, int.MaxValue);
 			return true;
 		}
 
@@ -342,12 +342,12 @@ namespace DOL.GS.Keeps
 				if (ActiveWeaponSlot == eActiveWeaponSlot.Standard || ActiveWeaponSlot == eActiveWeaponSlot.TwoHanded)
 				{
 					//if we are targeting something, and the distance to the target object is greater than the attack range
-					if (TargetObject != null && !IsWithinRadius(TargetObject, AttackRange))
+					if (TargetObject != null && !IsWithinRadius(TargetObject, attackComponent.AttackRange))
 					{
 						//stop the attack
 						attackComponent.StopAttack();
 						//if the distance to the attacker is less than the attack range
-						if (IsWithinRadius(ad.Attacker, AttackRange))
+						if (IsWithinRadius(ad.Attacker, attackComponent.AttackRange))
 						{
 							//attack it
 							StartAttack(ad.Attacker);

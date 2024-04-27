@@ -29,11 +29,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override bool HasAbility(string keyName)
         {
@@ -87,7 +83,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
             SteinvorBrain.PlayerX = 0;
@@ -126,7 +121,6 @@ namespace DOL.GS
                     ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL *
                     60000; //1min is 60000 miliseconds
                 TG.Faction = FactionMgr.GetFactionByID(140);
-                TG.Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
                 TG.BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
 
                 TG.X = 25405;
@@ -362,11 +356,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override bool HasAbility(string keyName)
         {
@@ -405,7 +395,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             RespawnInterval =ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
 
@@ -439,7 +428,6 @@ namespace DOL.GS
                     ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL *
                     60000; //1min is 60000 miliseconds
                 TG.Faction = FactionMgr.GetFactionByID(140);
-                TG.Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
                 TG.BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
 
                 TG.X = 25405;
@@ -544,11 +532,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -579,7 +563,6 @@ namespace DOL.GS
             MaxSpeedBase = 270;
 
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
             Realm = eRealm.None;
             RespawnInterval = -1;
@@ -685,7 +668,6 @@ namespace DOL.GS
             Flags = GameNPC.eFlags.STATUE;
 
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             Realm = eRealm.None;
             RespawnInterval = -1;
 

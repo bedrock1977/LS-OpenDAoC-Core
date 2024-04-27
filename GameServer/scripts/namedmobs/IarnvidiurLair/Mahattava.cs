@@ -47,11 +47,7 @@ namespace DOL.GS
 		{
 			return base.AttackSpeed(mainWeapon, leftWeapon) * 2;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -73,7 +69,6 @@ namespace DOL.GS
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(159); //Servants of Iarnvidiur
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(159)); //Servants of Iarnvidiur
 			MahattavaBrain sbrain = new MahattavaBrain();
 			SetOwnBrain(sbrain);
 			LoadedFromScript = false;

@@ -27,11 +27,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override bool HasAbility(string keyName)
         {
@@ -68,7 +64,6 @@ namespace DOL.GS
             Empathy = npcTemplate.Empathy;
             IssordenBrain.BafMobs = false;
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
 
             IssordenBrain sbrain = new IssordenBrain();
             SetOwnBrain(sbrain);

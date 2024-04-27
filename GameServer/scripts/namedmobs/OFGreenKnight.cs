@@ -44,11 +44,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100; //more str more dmg will he deal, modify ingame for easier adjust
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -68,7 +64,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(236); // fellwoods
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(236));
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
 
             GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
@@ -132,7 +127,6 @@ namespace DOL.GS
                 OF.MeleeDamageType = eDamageType.Slash;
                 OF.RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
                 OF.Faction = FactionMgr.GetFactionByID(236);
-                OF.Faction.AddFriendFaction(FactionMgr.GetFactionByID(236));
                 OF.BodyType = (ushort) NpcTemplateMgr.eBodyType.Humanoid;
                 OF.MaxSpeedBase = 400;
 
@@ -714,7 +708,6 @@ namespace DOL.GS
             Level = (byte) Util.Random(47, 49); // Trees level
             Name = "rotting downy felwood";
             Faction = FactionMgr.GetFactionByID(236); // fellwoods
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(236));
             PackageID = "GreenKnightAdd";
             MaxSpeedBase = 225;
             GKTreesBrain treesbrain = new GKTreesBrain();

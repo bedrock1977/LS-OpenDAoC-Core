@@ -130,11 +130,7 @@ namespace DOL.GS
 		{
 			get { return 100000; }
 		}
-		public override int AttackRange
-		{
-			get { return 550; }
-			set { }
-		}
+		public override int MeleeAttackRange => 550;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -177,7 +173,6 @@ namespace DOL.GS
 			Heading = 492;
 
 			Faction = FactionMgr.GetFactionByID(105);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(82));
 
 			CanSpawnHeads = false;
 			if(CanSpawnHeads == false)
@@ -667,7 +662,7 @@ namespace DOL.AI.Brain
 				}
 				#endregion
 				GameLiving target = Body.TargetObject as GameLiving;
-				if(target != null && !target.IsWithinRadius(Body,Body.AttackRange))
+				if(target != null && !target.IsWithinRadius(Body,Body.attackComponent.AttackRange))
                 {
 					Body.SetGroundTarget(target.X, target.Y, target.Z);
 					Body.CastSpell(Hydra_DD2, SkillBase.GetSpellLine(GlobalSpellsLines.Mob_Spells));//cast dmg if main target is not in attack range
@@ -850,11 +845,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -924,7 +915,6 @@ namespace DOL.GS
 			MaxSpeedBase = 0;
 			++SecondHeadCount;
 			Faction = FactionMgr.GetFactionByID(105);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(82));
 
 			MyrddraxisSecondHeadBrain sbrain = new MyrddraxisSecondHeadBrain();
 			SetOwnBrain(sbrain);
@@ -1066,11 +1056,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -1141,7 +1127,6 @@ namespace DOL.GS
 			++ThirdHeadCount;
 
 			Faction = FactionMgr.GetFactionByID(105);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(82));
 
 			MyrddraxisThirdHeadBrain sbrain = new MyrddraxisThirdHeadBrain();
 			SetOwnBrain(sbrain);
@@ -1283,11 +1268,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -1358,7 +1339,6 @@ namespace DOL.GS
 			++FourthHeadCount;
 
 			Faction = FactionMgr.GetFactionByID(105);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(82));
 
 			MyrddraxisFourthHeadBrain sbrain = new MyrddraxisFourthHeadBrain();
 			SetOwnBrain(sbrain);
@@ -1500,11 +1480,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -1574,7 +1550,6 @@ namespace DOL.GS
 			++FifthHeadCount;
 
 			Faction = FactionMgr.GetFactionByID(105);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(82));
 
 			MyrddraxisFifthHeadBrain sbrain = new MyrddraxisFifthHeadBrain();
 			SetOwnBrain(sbrain);

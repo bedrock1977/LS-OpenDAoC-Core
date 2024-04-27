@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 300;
@@ -69,7 +65,6 @@ namespace DOL.GS
 			VisibleActiveWeaponSlots = 34;
 			MeleeDamageType = eDamageType.Crush;
 			Faction = FactionMgr.GetFactionByID(150);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(150));
 			DagarBrain sbrain = new DagarBrain();
 			SetOwnBrain(sbrain);
 			LoadedFromScript = false;//load from database

@@ -217,7 +217,6 @@ namespace DOL.GS
                 CO.Flags ^= eFlags.DONTSHOWNAME;
                 CO.Flags ^= eFlags.PEACE;
                 CO.Faction = FactionMgr.GetFactionByID(64);
-                CO.Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
                 CO.X = 29462;
                 CO.Y = 25240;
                 CO.Z = 19490;
@@ -381,16 +380,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -466,7 +456,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 11;
             Realm = eRealm.None;
             FamesBrain.spawn_fate = false;
@@ -554,7 +543,6 @@ namespace DOL.AI.Brain
             Add.RespawnInterval = -1;
             Add.PackageID = "FamesBaf";
             Add.Faction = FactionMgr.GetFactionByID(64);
-            Add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Add.AddToWorld();
         }
     }
@@ -579,16 +567,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 350;
@@ -664,7 +643,6 @@ namespace DOL.GS
             Add.RespawnInterval = -1;
             Add.PackageID = "BellumBaf";
             Add.Faction = FactionMgr.GetFactionByID(64);
-            Add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Add.AddToWorld();
         }
 
@@ -690,7 +668,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 11;
             Realm = eRealm.None;
             BellumBrain.StartedBellum = false;
@@ -892,7 +869,6 @@ namespace DOL.GS
             Size = 100;
             Level = 75;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Realm = eRealm.None;
             WarIncarnateCrushBrain adds = new WarIncarnateCrushBrain();
             LoadedFromScript = true;
@@ -1061,7 +1037,6 @@ namespace DOL.GS
             Size = 100;
             Level = 75;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Realm = eRealm.None;
             WarIncarnateSlashBrain adds = new WarIncarnateSlashBrain();
             LoadedFromScript = true;
@@ -1230,7 +1205,6 @@ namespace DOL.GS
             Size = 100;
             Level = 75;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Realm = eRealm.None;
             WarIncarnateThrustBrain adds = new WarIncarnateThrustBrain();
             LoadedFromScript = true;
@@ -1378,16 +1352,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 350;
@@ -1453,7 +1418,6 @@ namespace DOL.GS
             Add.RespawnInterval = -1;
             Add.PackageID = "MorbusBaf";
             Add.Faction = FactionMgr.GetFactionByID(64);
-            Add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Add.AddToWorld();
         }
         public override bool AddToWorld()
@@ -1478,7 +1442,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 11;
             Realm = eRealm.None;
             MorbusBrain.StartedMorbus = false;
@@ -1693,16 +1656,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -1810,7 +1764,6 @@ namespace DOL.GS
             AbilityBonus[(int)eProperty.Resist_Thrust] = 25;
 
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 7;
             Realm = eRealm.None;          
 
@@ -1940,16 +1893,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -2009,7 +1953,6 @@ namespace DOL.GS
             Add.RespawnInterval = -1;
             Add.PackageID = "FunusBaf";
             Add.Faction = FactionMgr.GetFactionByID(64);
-            Add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             Add.AddToWorld();
         }
 
@@ -2036,7 +1979,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 11;
             Realm = eRealm.None;
             FunusBrain.StartedFunus = false;
@@ -2151,16 +2093,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100; 
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 450;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -2244,7 +2177,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
 
             ApocalypseBrain.spawn_harbringers = false;
             ApocalypseBrain.spawn_rain_of_fire = false;
@@ -2581,16 +2513,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 90;
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 350;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -2649,7 +2572,6 @@ namespace DOL.GS
             PackageID = "ApocBaf";
 
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 6;
             Realm = eRealm.None;
 
@@ -2752,7 +2674,6 @@ namespace DOL.GS
             Level = 75;
 
             Faction = FactionMgr.GetFactionByID(64);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
             BodyType = 8;
             Realm = eRealm.None;
 

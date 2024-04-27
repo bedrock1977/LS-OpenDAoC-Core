@@ -214,14 +214,13 @@ namespace DOL.GS
 
             get
             {
-                if (owner is GamePlayer)
+                if (owner is GamePlayer player)
                 {
                     DbInventoryItem weapon = owner.ActiveWeapon;
 
                     if (weapon == null)
                         return 0;
 
-                    var player = owner as GamePlayer;
                     GameLiving target = player.TargetObject as GameLiving;
 
                     // TODO: Change to real distance of bows.
@@ -277,28 +276,13 @@ namespace DOL.GS
                         return (int)range;
                     }
 
-
-                    // int meleeRange = 128;
-                    int meleeRange = 150; // Increase default melee range to 150 to help with higher latency players.
-
-                    if (target is GameKeepComponent)
-                        meleeRange += 150;
-                    else
-                    {
-                        if (target != null && target.IsMoving)
-                            meleeRange += 32;
-                        if (player.IsMoving)
-                            meleeRange += 32;
-                    }
-
-                    return meleeRange;
+                    return owner.MeleeAttackRange;
                 }
                 else
                 {
-                    if (owner.ActiveWeaponSlot == eActiveWeaponSlot.Distance)
-                        return Math.Max(32, (int) (2000.0 * owner.GetModified(eProperty.ArcheryRange) * 0.01));
-
-                    return 200;
+                    return owner.ActiveWeaponSlot == eActiveWeaponSlot.Distance
+                        ? Math.Max(32, (int) (2000.0 * owner.GetModified(eProperty.ArcheryRange) * 0.01))
+                        : owner.MeleeAttackRange;
                 }
             }
         }
@@ -801,7 +785,7 @@ namespace DOL.GS
                 // NPCs aren't allowed to prepare their ranged attack while moving or out of range.
                 if (owner is GameNPC npcOwner)
                 {
-                    if (!npcOwner.IsWithinRadius(npcOwner.TargetObject, npcOwner.attackComponent.AttackRange - 30))
+                    if (!npcOwner.IsWithinRadius(npcOwner.TargetObject, AttackRange - 30))
                     {
                         StopAttack();
                         return false;
@@ -823,8 +807,15 @@ namespace DOL.GS
         private void NpcStartAttack(GameObject attackTarget)
         {
             GameNPC npc = owner as GameNPC;
+
+            if (npc.FollowTarget != attackTarget)
+            {
+                npc.StopMoving();
+                npc.TurnTo(attackTarget);
+            }
+
+            npc.FireAmbientSentence(GameNPC.eAmbientTrigger.fighting, attackTarget);
             npc.TargetObject = attackTarget;
-            npc.StopMovingOnPath();
 
             if (npc.Brain is IControlledBrain brain)
             {
@@ -838,9 +829,9 @@ namespace DOL.GS
             {
                 // Archer mobs sometimes bug and keep trying to fire at max range unsuccessfully so force them to get just a tad closer.
                 if (npc.ActiveWeaponSlot == eActiveWeaponSlot.Distance)
-                    npc.Follow(attackTarget, AttackRange - 30, GameNPC.STICK_MAXIMUM_RANGE);
+                    npc.Follow(attackTarget, AttackRange - 30, npc.StickMaximumRange);
                 else
-                    npc.Follow(attackTarget, GameNPC.STICK_MINIMUM_RANGE, GameNPC.STICK_MAXIMUM_RANGE);
+                    npc.Follow(attackTarget, npc.StickMinimumRange, npc.StickMaximumRange);
             }
         }
 

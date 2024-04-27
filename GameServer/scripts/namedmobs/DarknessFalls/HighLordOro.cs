@@ -68,7 +68,6 @@ namespace DOL.GS
             BodyType = 2;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             OroBrain sBrain = new OroBrain();
             SetOwnBrain(sBrain);
@@ -80,11 +79,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -188,11 +183,7 @@ namespace DOL.GS
         {
             get { return 30000; }
         }
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 250;
@@ -219,7 +210,6 @@ namespace DOL.GS
             BodyType = 2;
 
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             OroCloneBrain sBrain = new OroCloneBrain();
             SetOwnBrain(sBrain);

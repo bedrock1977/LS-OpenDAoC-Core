@@ -44,16 +44,7 @@ namespace DOL.GS
         {
             get { return 40000; }
         }
-        public override int AttackRange
-        {
-            get
-            {
-                return 450;
-            }
-            set
-            {
-            }
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -83,7 +74,6 @@ namespace DOL.GS
             TetherRange = 4500;
 
             Faction = FactionMgr.GetFactionByID(31);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(31));
             RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
             MoranBrain sBrain = new MoranBrain();

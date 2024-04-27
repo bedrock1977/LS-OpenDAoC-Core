@@ -286,11 +286,7 @@ namespace DOL.GS
             get { return 300000; }
         }
 
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
        /* public override int GetResist(eDamageType damageType)
         {
             switch (damageType)
@@ -334,7 +330,6 @@ namespace DOL.GS
             Empathy = npcTemplate.Empathy;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
 
             Aroon_slash = false;
             Aroon_thrust = false;
@@ -391,7 +386,6 @@ namespace DOL.GS
                 CO.BodyType = 5;
                 CO.MeleeDamageType = eDamageType.Slash;
                 CO.Faction = FactionMgr.GetFactionByID(96);
-                CO.Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
 
                 CO.X = 51478;
                 CO.Y = 43359;
@@ -636,11 +630,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -683,7 +673,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             CorpScaithBrain adds = new CorpScaithBrain();
@@ -813,11 +802,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -884,7 +869,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             SpioradScaithBrain adds = new SpioradScaithBrain();
@@ -1007,11 +991,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -1078,7 +1058,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             RopadhScaithBrain adds = new RopadhScaithBrain();
@@ -1207,11 +1186,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -1278,7 +1253,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             DamhnaScaithBrain adds = new DamhnaScaithBrain();
@@ -1407,11 +1381,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -1479,7 +1449,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             FuinneamgScaithBrain adds = new FuinneamgScaithBrain();
@@ -1609,11 +1578,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -1681,7 +1646,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             BruScaithBrain adds = new BruScaithBrain();
@@ -1811,11 +1775,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -1883,7 +1843,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             FuarScaithBrain adds = new FuarScaithBrain();
@@ -2013,11 +1972,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -2086,7 +2041,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             TaesScaithBrain adds = new TaesScaithBrain();
@@ -2216,11 +2170,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -2289,7 +2239,6 @@ namespace DOL.GS
             Level = 77;
             MaxSpeedBase = 220;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             BodyType = 8;
             Realm = eRealm.None;
             ScorScaithBrain adds = new ScorScaithBrain();

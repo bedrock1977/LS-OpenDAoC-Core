@@ -47,7 +47,6 @@ namespace DOL.GS
                 CO.Flags ^= eFlags.DONTSHOWNAME;
                 CO.Flags ^= eFlags.PEACE;
                 CO.Faction = FactionMgr.GetFactionByID(191);
-                CO.Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
                 CO.X = 22699;
                 CO.Y = 18684;
                 CO.Z = 15174;
@@ -185,11 +184,7 @@ namespace DOL.GS
             get { return 100000; }
         }
         public override short MaxSpeedBase => (short) (191 + Level * 2);
-        public override int AttackRange
-        {
-            get => 180;
-            set { }
-        }
+        public override int MeleeAttackRange => 180;
         public override bool AddToWorld()
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158351);
@@ -213,7 +208,6 @@ namespace DOL.GS
             BodyType = 2;
 
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             base.AddToWorld();
             return true;
@@ -323,7 +317,6 @@ namespace DOL.GS
             BodyType = 2;
 
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             base.AddToWorld();
             return true;

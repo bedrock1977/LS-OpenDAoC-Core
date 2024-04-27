@@ -27,11 +27,7 @@ namespace DOL.GS
 				default: return 30;// dmg reduction for rest resists
 			}
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -66,7 +62,6 @@ namespace DOL.GS
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(8);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 
 			BeranSupplyMasterBrain sbrain = new BeranSupplyMasterBrain();
 			SetOwnBrain(sbrain);
@@ -160,7 +155,6 @@ namespace DOL.AI.Brain
 					add.RespawnInterval = -1;
 					add.MaxSpeedBase = 225;
 					add.Faction = FactionMgr.GetFactionByID(8);
-					add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 					StandardMobBrain brain = new StandardMobBrain();
 					add.SetOwnBrain(brain);
 					brain.AggroRange = 1000;
@@ -255,7 +249,6 @@ namespace DOL.GS
 			Flags ^= eFlags.STATUE;
 
 			Faction = FactionMgr.GetFactionByID(8);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(8));
 
 			BarrelExplosiveBrain sbrain = new BarrelExplosiveBrain();
 			SetOwnBrain(sbrain);

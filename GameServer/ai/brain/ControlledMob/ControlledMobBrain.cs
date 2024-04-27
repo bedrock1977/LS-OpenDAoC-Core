@@ -29,8 +29,6 @@ namespace DOL.AI.Brain
 		public const short MIN_OWNER_FOLLOW_DIST = 50;
 		//4000 - rough guess, needs to be confirmed
 		public const short MAX_OWNER_FOLLOW_DIST = 10000; // setting this to max stick distance
-		public const short MIN_ENEMY_FOLLOW_DIST = 90;
-		public const short MAX_ENEMY_FOLLOW_DIST = 5000;
 
 		protected int m_tempX = 0;
 		protected int m_tempY = 0;
@@ -409,11 +407,20 @@ namespace DOL.AI.Brain
 				{
 					case Abilities.Intercept:
 					{
-						// The pet should intercept even if a player is still intercepting for the owner.
 						GamePlayer playerOwner = GetPlayerOwner();
 
 						if (playerOwner != null)
+						{
+							InterceptAbilityHandler.CheckExistingEffectsOnTarget(Body, playerOwner, false, out bool foundOurEffect, out InterceptECSGameEffect existingEffectFromAnotherSource);
+
+							if (foundOurEffect)
+								break;
+
+							if (existingEffectFromAnotherSource != null)
+								EffectService.RequestImmediateCancelEffect(existingEffectFromAnotherSource);
+
 							new InterceptECSGameEffect(new ECSGameEffectInitParams(Body, 0, 1), Body, playerOwner);
+						}
 
 						break;
 					}
@@ -428,8 +435,10 @@ namespace DOL.AI.Brain
 							if (foundOurEffect)
 								break;
 
-							if (existingEffectFromAnotherSource == null)
-								GuardAbilityHandler.CancelOurEffectThenAddOnTarget(Body, playerOwner);
+							if (existingEffectFromAnotherSource != null)
+								EffectService.RequestImmediateCancelEffect(existingEffectFromAnotherSource);
+
+							new GuardECSGameEffect(new ECSGameEffectInitParams(Body, 0, 1, null), Body, playerOwner);
 						}
 
 						break;
@@ -439,7 +448,17 @@ namespace DOL.AI.Brain
 						GamePlayer playerOwner = GetPlayerOwner();
 
 						if (playerOwner != null)
-							new ProtectECSGameEffect(new ECSGameEffectInitParams(playerOwner, 0, 1), null, playerOwner);
+						{
+							ProtectAbilityHandler.CheckExistingEffectsOnTarget(Body, playerOwner, false, out bool foundOurEffect, out ProtectECSGameEffect existingEffectFromAnotherSource);
+
+							if (foundOurEffect)
+								break;
+
+							if (existingEffectFromAnotherSource != null)
+								EffectService.RequestImmediateCancelEffect(existingEffectFromAnotherSource);
+
+							new ProtectECSGameEffect(new ECSGameEffectInitParams(Body, 0, 1, null), Body, playerOwner);
+						}
 
 						break;
 					}
@@ -880,12 +899,7 @@ namespace DOL.AI.Brain
 				}
 
 				if (!CheckSpells(eCheckSpellType.Offensive))
-				{
 					Body.StartAttack(target);
-
-					if (Body.FollowTarget != target)
-						Body.Follow(target, MIN_ENEMY_FOLLOW_DIST, MAX_ENEMY_FOLLOW_DIST);
-				}
 			}
 			else
 			{

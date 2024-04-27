@@ -69,11 +69,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -93,7 +89,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             RespawnInterval =
                 ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Humanoid;
@@ -141,7 +136,6 @@ namespace DOL.GS
                 HOC.MeleeDamageType = eDamageType.Crush;
                 HOC.RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
                 HOC.Faction = FactionMgr.GetFactionByID(187);
-                HOC.Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 
                 HOC.X = 31353;
                 HOC.Y = 37634;
@@ -449,11 +443,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -505,7 +495,6 @@ namespace DOL.GS
             MaxSpeedBase = 0;//copies not moves
 
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             BodyType = 6;
             Realm = eRealm.None;
             AidonCopyFireBrain adds = new AidonCopyFireBrain();
@@ -582,11 +571,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -638,7 +623,6 @@ namespace DOL.GS
             MaxSpeedBase = 0;//copies not moves
 
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             BodyType = 6;
             Realm = eRealm.None;
             AidonCopyIceBrain adds = new AidonCopyIceBrain();
@@ -715,11 +699,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -771,7 +751,6 @@ namespace DOL.GS
             MaxSpeedBase = 0;//copies not moves
 
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             BodyType = 6;
             Realm = eRealm.None;
             AidonCopyAirBrain adds = new AidonCopyAirBrain();
@@ -846,11 +825,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 200;
@@ -902,7 +877,6 @@ namespace DOL.GS
             MaxSpeedBase = 0;//copies not moves
 
             Faction = FactionMgr.GetFactionByID(187);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
             BodyType = 6;
             Realm = eRealm.None;
             AidonCopyEarthBrain adds = new AidonCopyEarthBrain();

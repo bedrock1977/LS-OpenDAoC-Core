@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 300;
@@ -76,7 +72,6 @@ namespace DOL.GS
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(150);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(150));
 			RotoddjurBrain sbrain = new RotoddjurBrain();
 			SetOwnBrain(sbrain);
 			LoadedFromScript = false;//load from database
@@ -250,7 +245,6 @@ namespace DOL.GS
 			Size = (byte)Util.Random(40, 60);
 			Level = (byte)Util.Random(62, 66);
 			Faction = FactionMgr.GetFactionByID(150);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(150));
 			RotoddjurAddBrain add = new RotoddjurAddBrain();
 			SetOwnBrain(add);
 			base.AddToWorld();

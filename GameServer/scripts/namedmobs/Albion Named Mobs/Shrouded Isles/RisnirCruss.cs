@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -70,7 +66,6 @@ namespace DOL.GS
 
 			Flags = eFlags.FLYING;
 			Faction = FactionMgr.GetFactionByID(20);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(20));
 
 			RisnirCrussBrain sbrain = new RisnirCrussBrain();
 			SetOwnBrain(sbrain);
@@ -100,7 +95,6 @@ namespace DOL.GS
 				add.CurrentRegion = CurrentRegion;
 				add.Heading = Heading;
 				add.Faction = FactionMgr.GetFactionByID(20);
-				add.Faction.AddFriendFaction(FactionMgr.GetFactionByID(20));
 				StandardMobBrain brain = new StandardMobBrain();
 				add.SetOwnBrain(brain);
 				brain.AggroRange = 600;

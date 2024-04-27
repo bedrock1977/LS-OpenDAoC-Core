@@ -70,11 +70,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -95,7 +91,6 @@ namespace DOL.GS
 			Empathy = npcTemplate.Empathy;
 			RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 			Faction = FactionMgr.GetFactionByID(206);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 			IsCloakHoodUp = true;
 			SummonerLossrenBrain.IsCreatingSouls = false;
 			TorturedSouls.TorturedSoulKilled = 0;
@@ -136,7 +131,6 @@ namespace DOL.GS
 				OF.BodyType = (ushort)NpcTemplateMgr.eBodyType.Humanoid;
 				OF.MeleeDamageType = eDamageType.Crush;
 				OF.Faction = FactionMgr.GetFactionByID(206);
-				OF.Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 
 				OF.X = 39273;
 				OF.Y = 41166;
@@ -424,7 +418,6 @@ namespace DOL.GS
 			Size = (byte)Util.Random(45,55);
 			Level = (byte)Util.Random(48, 53);
 			Faction = FactionMgr.GetFactionByID(187);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 			TorturedSoulsBrain souls = new TorturedSoulsBrain();
 			SetOwnBrain(souls);			
 			base.AddToWorld();
@@ -456,7 +449,7 @@ namespace DOL.AI.Brain
 				}
 				if (Body.TargetObject != null)
 				{
-					if (Body.IsWithinRadius(Body.TargetObject, Body.AttackRange))
+					if (Body.IsWithinRadius(Body.TargetObject, Body.attackComponent.AttackRange))
 					{
 						if (IsKilled == false)
 						{
@@ -539,11 +532,7 @@ namespace DOL.GS
 			// 85% ABS is cap.
 			return 0.25;
 		}
-		public override int AttackRange
-		{
-			get { return 200; }
-			set { }
-		}
+		public override int MeleeAttackRange => 200;
 		public override int GetResist(eDamageType damageType)
 		{
 			switch (damageType)
@@ -589,7 +578,6 @@ namespace DOL.GS
 			Size = 70;
 			Level = (byte)Util.Random(62, 65);
 			Faction = FactionMgr.GetFactionByID(187);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(187));
 			ExplodeUndeadBrain souls = new ExplodeUndeadBrain();
 			SetOwnBrain(souls);
 			bool success = base.AddToWorld();

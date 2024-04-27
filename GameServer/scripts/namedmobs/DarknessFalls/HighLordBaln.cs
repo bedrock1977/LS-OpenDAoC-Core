@@ -64,7 +64,6 @@ namespace DOL.GS
             // demon
             BodyType = 2;
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             BalnBrain sBrain = new BalnBrain();
             SetOwnBrain(sBrain);
@@ -77,11 +76,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100  * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -197,7 +192,6 @@ namespace DOL.GS
             BodyType = 2;
 
             Faction = FactionMgr.GetFactionByID(191);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(191));
 
             base.AddToWorld();
             return true;

@@ -30,11 +30,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -76,7 +72,6 @@ namespace DOL.GS
 				CanSpawnZombies = true;
 			}
 			Faction = FactionMgr.GetFactionByID(64);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
 
 			ColialtBrain sbrain = new ColialtBrain();
 			SetOwnBrain(sbrain);
@@ -272,7 +267,6 @@ namespace DOL.GS
 			Level = (byte)Util.Random(61, 66);
 			MaxSpeedBase = 225;
 			Faction = FactionMgr.GetFactionByID(64);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(64));
 
 			ColialtAddsBrain sbrain = new ColialtAddsBrain();
 			SetOwnBrain(sbrain);

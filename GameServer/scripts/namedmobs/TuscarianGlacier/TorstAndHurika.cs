@@ -27,11 +27,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -72,7 +68,6 @@ namespace DOL.GS
             Size = 90;
             Model = 696;
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             MaxSpeedBase = 250;
             Flags = eFlags.FLYING;
             RespawnInterval =ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
@@ -278,7 +273,7 @@ namespace DOL.AI.Brain
         public override void Think()
         {
             TorstFlyingPath();
-            if (CheckProximityAggro() && Body.IsWithinRadius(Body.TargetObject, Body.AttackRange) && Body.InCombat)
+            if (CheckProximityAggro() && Body.IsWithinRadius(Body.TargetObject, Body.attackComponent.AttackRange) && Body.InCombat)
             {
                 Body.Flags = 0; //dont fly
             }
@@ -441,11 +436,7 @@ namespace DOL.GS
             return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
         }
 
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
 
         public override bool HasAbility(string keyName)
         {
@@ -488,7 +479,6 @@ namespace DOL.GS
             Intelligence = npcTemplate.Intelligence;
             Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             Flags = eFlags.FLYING;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
 
@@ -625,7 +615,7 @@ namespace DOL.AI.Brain
         public override void Think()
         {
             HurikaFlyingPath();
-            if (CheckProximityAggro() && Body.IsWithinRadius(Body.TargetObject, Body.AttackRange) && Body.InCombat)
+            if (CheckProximityAggro() && Body.IsWithinRadius(Body.TargetObject, Body.attackComponent.AttackRange) && Body.InCombat)
             {
                 Body.Flags = 0; //dont fly
             }
@@ -759,7 +749,6 @@ namespace DOL.GS
             RespawnInterval = -1;
             Flags = (GameNPC.eFlags)44;//noname notarget flying
             Faction = FactionMgr.GetFactionByID(140);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(140));
             MaxSpeedBase = 300;
 
             LoadedFromScript = true;

@@ -41,11 +41,7 @@ namespace DOL.GS
 			}
 			base.OnAttackEnemy(ad);
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
 			if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -80,7 +76,6 @@ namespace DOL.GS
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(159);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(159));
 
 			DyranapurBrain sbrain = new DyranapurBrain();
 			SetOwnBrain(sbrain);

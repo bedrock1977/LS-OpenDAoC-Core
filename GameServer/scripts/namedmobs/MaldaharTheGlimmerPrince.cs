@@ -47,11 +47,7 @@ namespace DOL.GS
         {
             return base.AttackDamage(weapon) * Strength / 100;
         }
-        public override int AttackRange
-        {
-            get => 450;
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == DOL.GS.Abilities.CCImmunity)
@@ -75,7 +71,6 @@ namespace DOL.GS
             // magical
             BodyType = 8;
             Faction = FactionMgr.GetFactionByID(83);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(83));
             RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
 
             MaldaharBrain sBrain = new MaldaharBrain();
@@ -110,7 +105,7 @@ namespace DOL.AI.Brain
 
         public override void AttackMostWanted()
         {
-            if (Body.IsWithinRadius(Body.TargetObject, Body.AttackRange + 250))
+            if (Body.IsWithinRadius(Body.TargetObject, Body.attackComponent.AttackRange + 250))
             {
                 switch (Util.Random(1, 2))
                 {
@@ -154,7 +149,7 @@ namespace DOL.AI.Brain
             if (e != GameObjectEvent.TakeDamage && e != GameLivingEvent.EnemyHealed) return;
             GameObject source = (args as TakeDamageEventArgs)?.DamageSource;
             if (source == null) return;
-            if (Body.IsWithinRadius(source, Body.AttackRange + 250)) return;
+            if (Body.IsWithinRadius(source, Body.attackComponent.AttackRange + 250)) return;
             switch (Util.Random(1, 2))
             {
                 case 1:

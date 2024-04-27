@@ -40,11 +40,7 @@ namespace DOL.GS
         {
             get { return 100000; }
         }
-        public override int AttackRange
-        {
-            get { return 450; }
-            set { }
-        }
+        public override int MeleeAttackRange => 450;
         public override double GetArmorAbsorb(eArmorSlot slot)
         {
             // 85% ABS is cap.
@@ -78,7 +74,6 @@ namespace DOL.GS
             OrganicEnergyMechanismBrain sBrain = new OrganicEnergyMechanismBrain();
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             SetOwnBrain(sBrain);
 
             OrganicEnergyMechanismBrain.StartCastDOT = false;
@@ -413,11 +408,7 @@ namespace DOL.GS
         {
             get { return 5000; }
         }
-        public override int AttackRange
-        {
-            get { return 350; }
-            set { }
-        }
+        public override int MeleeAttackRange => 350;
         public override void DropLoot(GameObject killer) //no loot
         {
         }
@@ -445,7 +436,6 @@ namespace DOL.GS
             Gender = eGender.Neutral;
             MeleeDamageType = eDamageType.Slash;
             Faction = FactionMgr.GetFactionByID(96);
-            Faction.AddFriendFaction(FactionMgr.GetFactionByID(96));
             IsWorthReward = false; //worth no reward
 
             BodyType = 1;

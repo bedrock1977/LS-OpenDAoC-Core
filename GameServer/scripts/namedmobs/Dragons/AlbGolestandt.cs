@@ -176,11 +176,7 @@ namespace DOL.GS
 		{
 			return base.AttackDamage(weapon) * Strength / 100;
 		}
-		public override int AttackRange
-		{
-			get { return 350; }
-			set { }
-		}
+		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 350;
@@ -248,7 +244,6 @@ namespace DOL.GS
 			#endregion
 			MeleeDamageType = eDamageType.Crush;
 			Faction = FactionMgr.GetFactionByID(31);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(31));
 			AlbGolestandtBrain sbrain = new AlbGolestandtBrain();
 			SetOwnBrain(sbrain);
 			sbrain.Start();
@@ -1048,7 +1043,6 @@ namespace DOL.GS
 			Realm = eRealm.None;
 			MaxSpeedBase = 225;
 			Faction = FactionMgr.GetFactionByID(31);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(31));
 			GolestandtMessengerBrain adds = new GolestandtMessengerBrain();
 
 			if (!AlbGolestandtBrain.DragonAdds.Contains(this))
@@ -1388,7 +1382,6 @@ namespace DOL.GS
 			}
 			Level = (byte)Util.Random(60, 64);
 			Faction = FactionMgr.GetFactionByID(31);
-			Faction.AddFriendFaction(FactionMgr.GetFactionByID(31));
 			RespawnInterval = -1;
 
 			MaxSpeedBase = 225;

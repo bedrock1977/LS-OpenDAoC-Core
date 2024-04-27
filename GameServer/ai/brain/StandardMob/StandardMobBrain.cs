@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using DOL.GS;
-using DOL.GS.Effects;
 using DOL.GS.Keeps;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
@@ -448,7 +447,7 @@ namespace DOL.AI.Brain
             // It isn't built here because ordering all entities in the aggro list can be expensive, and we typically don't need it.
             // It's built on demand, when `GetOrderedAggroList` is called.
             OrderedAggroList.Clear();
-            int attackRange = Body.AttackRange;
+            int attackRange = Body.attackComponent.AttackRange;
             GameLiving highestThreat = null;
             KeyValuePair<GameLiving, AggroAmount> currentTarget = default;
             long highestEffectiveAggro = -1; // Assumes that negative aggro amounts aren't allowed in the list.
