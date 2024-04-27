@@ -1,4 +1,4 @@
-﻿version: "3.3"
+﻿version: '3.3'
 
 networks:
   opendaoc-network:
@@ -11,20 +11,23 @@ services:
     tty: true        # docker run -t
     command: --default-authentication-plugin=mysql_native_password --lower_case_table_names=1 --character-set-server=utf8mb3 --collation-server=utf8mb3_general_ci --innodb_large_prefix=1 --innodb_file_format=Barracuda --innodb_file_per_table=1
     restart: always
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_DATABASE: opendaoc
       MYSQL_ROOT_PASSWORD: my-secret-pw
     volumes:
       - opendaoc-db-data:/var/lib/mysql
-      - base-db:/docker-entrypoint-initdb.d
-    networks:
+      - dummy-db:/docker-entrypoint-initdb.d
+    networks: 
       - opendaoc-network
-
+    expose: 
+      - "3306:3306"
+      
   gameserver:
     stdin_open: true # docker run -i
     tty: true        # docker run -t
-    #image: claitz/opendaoc:latest
-    image: opendaoc:test
+    image: bedrock77/laststanddaoc:latest
     ports:
       - "10300:10300"
       - "10400:10400"
@@ -40,8 +43,8 @@ services:
       UDP_PORT: "10400"
       ENABLE_UPNP: "False"
       DETECT_REGION_IP: "True"
-      SERVER_NAME: "OpenDAoC"
-      SERVER_NAME_SHORT: "OPENDAOC"
+      SERVER_NAME: "Last Stand OpenDAoC"
+      SERVER_NAME_SHORT: "LSPDAOC"
       LOG_CONFIG_FILE: "./config/logconfig.xml"
       SCRIPT_COMPILATION_TARGET: "./lib/GameServerScripts.dll"
       SCRIPT_ASSEMBLIES: ""
@@ -55,13 +58,14 @@ services:
       DB_AUTOSAVE: "True"
       DB_AUTOSAVE_INTERVAL: "10"
       CPU_USE: "8"
-
     volumes:
-      - base-db:/tmp/opendaoc-db
-
-    networks:
+      - dummy-db:/tmp/dummy-db
+    networks: 
       - opendaoc-network
-
+    expose:
+      - "10300:10300"
+      - "10400:10400"
+      
 volumes:
   opendaoc-db-data:
-  base-db:
+  dummy-db:
