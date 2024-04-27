@@ -45,7 +45,9 @@ namespace DOL.GS.PlayerClass
 
 		public override List<PlayerRace> EligibleRaces => new List<PlayerRace>()
 		{
-			 PlayerRace.Briton, //atlas only briton friars should be allowed
-		};
+            PlayerRace.Avalonian, PlayerRace.Briton, PlayerRace.Highlander, 
+			// Comment out OpenDAoC changes
+            //PlayerRace.Briton, //atlas only briton friars should be allowed
+        };
 	}
 }
