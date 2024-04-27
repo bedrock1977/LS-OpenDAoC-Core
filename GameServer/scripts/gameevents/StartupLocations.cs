@@ -82,7 +82,11 @@ namespace DOL.GS.GameEvents
 				// get the first entry according to Tutorial Enabling.
 				foreach (var location in availableLocation)
 				{
-					dbStartupLocation = location;
+					// Put this back in for tutorial zone
+                    if (ServerProperties.Properties.DISABLE_TUTORIAL && location.ClientRegionID == TUTORIAL_REGIONID)
+                        continue;
+
+                    dbStartupLocation = location;
 					break;
 				}
 				
