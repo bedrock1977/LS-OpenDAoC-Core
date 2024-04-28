@@ -211,6 +211,20 @@ namespace DOL.GS
         SummonJuggernaut = 205,
         SummonAnimistAmbusher = 206,
         StrikingTheSoul = 207,
-        Null = 208
+        Null = 208,
+        // Added for Heretic
+        RampingDamageFocus = 209,
+        ReanimateCorpse = 210,
+        SummonMonster = 211,
+        MonsterDoT = 212,
+        MonsterDisease = 213,
+        StrengthShear = 214,
+        DexterityShear = 215,
+        ConstitutionShear = 216,
+        AcuityShear = 217,
+        StrengthConstitutionShear = 218,
+        DexterityQuicknessShear = 219,
+        RandomBuffShear = 220
+        // End Heretic add
     }
 }
