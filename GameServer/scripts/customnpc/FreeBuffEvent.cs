@@ -694,7 +694,8 @@ namespace DOL.GS.Scripts
 					spell.Range = WorldMgr.VISIBILITY_DISTANCE;
 					spell.SpellID = 88008;
 					spell.Target = "Realm";
-					spell.Type = "PowerRegenBuff";
+					//spell.Type = "PowerRegenBuff";
+                    spell.Type = eSpellType.PoweregBuff.ToString();
 					m_powereg = new Spell(spell, 50);
 				}
 				return m_powereg;
@@ -876,7 +877,7 @@ namespace DOL.GS.Scripts
                 BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
                 BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
                 BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
-                BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
+                //BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
                 BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
                 #endregion Non-live (commented out)
                 player.Out.SendMessage("Fight well, " + player.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
