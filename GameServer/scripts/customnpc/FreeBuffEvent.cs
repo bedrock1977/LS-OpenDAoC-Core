@@ -13,7 +13,7 @@ namespace DOL.GS.Scripts
 {
     public class FreeBuffEvent : GameMerchant
     {
-        #region BuffMerchant attrib/spells/casting
+        #region FreeBuffMerchant attrib/spells/casting
         public FreeBuffEvent()
             : base()
         {
@@ -835,16 +835,20 @@ namespace DOL.GS.Scripts
         {
             if (!base.Interact(player)) return false;
             TurnTo(player, 10000);
-            player.Out.SendMessage("Greetings, " + player.Name + ".\n I've been instructed to strengthen you so that you may defend the lands with valor. Simply hand me the token for the enhancement you desire, and I will empower you accordingly.", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
+            //player.Out.SendMessage("Greetings, " + player.Name + ".\n I've been instructed to strengthen you so that you may defend the lands with valor. Simply hand me the token for the enhancement you desire, and I will empower you accordingly.", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
 
-            //GamePlayer t = source as GamePlayer;
 
-            if (GetDistanceTo(player) > WorldMgr.INTERACT_DISTANCE)
+            if (player == null || player.InCombat)
+                return false;
+
+            if (player.Client.Account.PrivLevel == 1 && !IsWithinRadius(player, WorldMgr.INTERACT_DISTANCE))
             {
-                ((GamePlayer)source).Out.SendMessage("You are too far away to give anything to " + GetName(0, false) + ".", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObject.Interact.TooFarAway", GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                Notify(GameObjectEvent.InteractFailed, this, new InteractEventArgs(player));
                 return false;
             }
-                if (player.CharacterClass.ClassType == eClassType.ListCaster)
+
+            if (player.CharacterClass.ClassType == eClassType.ListCaster)
                 {
                     BuffPlayer(player, casterMerchBaseAFBuff, MerchBaseSpellLine);
                     BuffPlayer(player, casterMerchStrBuff, MerchBaseSpellLine);
