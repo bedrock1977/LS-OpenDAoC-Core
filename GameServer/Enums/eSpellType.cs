@@ -125,7 +125,7 @@ namespace DOL.GS
         PBAoEHeal = 118,
         SummonHealingElemental = 119,
         Pet = 120, // May not be needed.
-        AfHitsBuff = 121,
+        AFHitsBuff = 121,
         AllMagicResistBuff = 122,
         Buff = 123,
         CelerityBuff = 124,
