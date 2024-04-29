@@ -234,7 +234,7 @@ namespace DOL.GS
         VampiirMagicResistance = 225,
         VampiirSkillBonusDeBuff = 226,
         VampiirStealthDetection = 227,
-        VampSpeedDecrease = 228
+        VampSpeedDecrease = 228,
         // End Vampiir
         // Other Misc
         MagicAblativeArmor = 229,
