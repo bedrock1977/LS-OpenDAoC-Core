@@ -837,45 +837,45 @@ namespace DOL.GS.Scripts
             TurnTo(player, 10000);
             player.Out.SendMessage("Greetings, " + player.Name + ".\n I've been instructed to strengthen you so that you may defend the lands with valor. Simply hand me the token for the enhancement you desire, and I will empower you accordingly.", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
 
-            GamePlayer t = source as GamePlayer;
+            //GamePlayer t = source as GamePlayer;
 
-            if (GetDistanceTo(t) > WorldMgr.INTERACT_DISTANCE)
+            if (GetDistanceTo(player) > WorldMgr.INTERACT_DISTANCE)
             {
                 ((GamePlayer)source).Out.SendMessage("You are too far away to give anything to " + GetName(0, false) + ".", eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 return false;
             }
-                if (t.CharacterClass.ClassType == eClassType.ListCaster)
+                if (player.CharacterClass.ClassType == eClassType.ListCaster)
                 {
-                    BuffPlayer(t, casterMerchBaseAFBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, casterMerchStrBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, casterMerchDexBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, casterMerchConBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, casterMerchSpecAFBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, casterMerchStrConBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, casterMerchDexQuiBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, casterMerchAcuityBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, MerchHasteBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, casterMerchBaseAFBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, casterMerchStrBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, casterMerchDexBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, casterMerchConBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, casterMerchSpecAFBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, casterMerchStrConBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, casterMerchDexQuiBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, casterMerchAcuityBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
                 }
                 else
                 {
-                    BuffPlayer(t, MerchBaseAFBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, MerchStrBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, MerchDexBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, MerchConBuff, MerchBaseSpellLine);
-                    BuffPlayer(t, MerchSpecAFBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, MerchStrConBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, MerchDexQuiBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, MerchAcuityBuff, MerchSpecSpellLine);
-                    BuffPlayer(t, MerchHasteBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchBaseAFBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, MerchStrBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, MerchDexBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, MerchConBuff, MerchBaseSpellLine);
+                    BuffPlayer(player, MerchSpecAFBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchStrConBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchDexQuiBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchAcuityBuff, MerchSpecSpellLine);
+                    BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
                 }
                 #region Non-live (commented out)
-                BuffPlayer(t, MerchPoweregBuff, MerchSpecSpellLine);
-                BuffPlayer(t, MerchDmgaddBuff, MerchSpecSpellLine);
-                BuffPlayer(t, MerchHPRegenBuff, MerchSpecSpellLine);
-                BuffPlayer(t, MerchEndRegenBuff, MerchSpecSpellLine);
-                BuffPlayer(t, MerchHealBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
                 #endregion Non-live (commented out)
-                t.Out.SendMessage("Fight well, " + t.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
+                player.Out.SendMessage("Fight well, " + player.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
                 return true;
         }
     }
