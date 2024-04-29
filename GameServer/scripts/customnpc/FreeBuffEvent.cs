@@ -137,10 +137,10 @@ namespace DOL.GS.Scripts
         private static Spell m_casterspecaf;
         private static Spell m_haste;
         #region Non-live (commented out)
-        private static Spell m_powereg;
-        private static Spell m_dmgadd;
-        private static Spell m_hpRegen;
-        private static Spell m_heal;
+        //private static Spell m_powereg;
+        //private static Spell m_dmgadd;
+        //private static Spell m_hpRegen;
+        //private static Spell m_heal;
         #endregion None-live (commented out)
 
         #region Spells
@@ -672,6 +672,7 @@ namespace DOL.GS.Scripts
             }
         }
         #region Non-live (commented out)
+        /*
 		/// <summary>
 		/// Merch Power Reg buff
 		/// </summary>
@@ -695,7 +696,7 @@ namespace DOL.GS.Scripts
 					spell.SpellID = 88008;
 					spell.Target = "Realm";
 					//spell.Type = "PowerRegenBuff";
-                    spell.Type = eSpellType.PoweregBuff.ToString();
+                    spell.Type = eSpellType.PowerRegenBuff.ToString();
 					m_powereg = new Spell(spell, 50);
 				}
 				return m_powereg;
@@ -787,6 +788,7 @@ namespace DOL.GS.Scripts
 				return m_heal;
 			}
 		}
+        */
         #endregion Non-live (commented out)
 
         #endregion Spells
@@ -874,11 +876,11 @@ namespace DOL.GS.Scripts
                     BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
                 }
                 #region Non-live (commented out)
-                BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
-                BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
-                BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
+                //BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
+                //BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
+                //BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
                 //BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
-                BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
+                //BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
                 #endregion Non-live (commented out)
                 player.Out.SendMessage("Fight well, " + player.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
                 return true;
