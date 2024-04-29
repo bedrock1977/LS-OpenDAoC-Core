@@ -125,7 +125,7 @@ namespace DOL.GS
         PBAoEHeal = 118,
         SummonHealingElemental = 119,
         Pet = 120, // May not be needed.
-        AFHitsBuff = 121,
+        AfHitsBuff = 121,
         AllMagicResistBuff = 122,
         Buff = 123,
         CelerityBuff = 124,
@@ -224,7 +224,22 @@ namespace DOL.GS
         AcuityShear = 217,
         StrengthConstitutionShear = 218,
         DexterityQuicknessShear = 219,
-        RandomBuffShear = 220
-        // End Heretic add
+        RandomBuffShear = 220,
+        // End Heretic
+        // Start Vampiir
+        VampiirArmorDebuff = 221,
+        VampiirEffectivenessDeBuff = 222,
+        VampiirBolt = 223,
+        VampiirMeleeResistance = 224,
+        VampiirMagicResistance = 225,
+        VampiirSkillBonusDeBuff = 226,
+        VampiirStealthDetection = 227,
+        VampSpeedDecrease = 228
+        // End Vampiir
+        // Other Misc
+        MagicAblativeArmor = 229,
+        BothAblativeArmor = 230,
+        // Start Warlock
+        WarlockSpeedDecrease = 231
     }
 }
