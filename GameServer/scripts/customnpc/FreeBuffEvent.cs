@@ -137,10 +137,10 @@ namespace DOL.GS.Scripts
         private static Spell m_casterspecaf;
         private static Spell m_haste;
         #region Non-live (commented out)
-        //private static Spell m_powereg;
-        //private static Spell m_dmgadd;
-        //private static Spell m_hpRegen;
-        //private static Spell m_heal;
+        private static Spell m_powereg;
+        private static Spell m_dmgadd;
+        private static Spell m_hpRegen;
+        private static Spell m_heal;
         #endregion None-live (commented out)
 
         #region Spells
