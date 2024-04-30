@@ -37,12 +37,61 @@ namespace DOL.GS.Scripts
         }
 
         private Queue m_buffs = new Queue();
-        private const int BUFFS_SPELL_DURATION = 1800;
+        private const int BUFFS_SPELL_DURATION = 86400;
         private const bool BUFFS_PLAYER_PET = true;
 
         public override bool AddToWorld()
         {
-            Level = 50;
+            switch (Realm)
+            {
+                case eRealm.Albion:
+                    Name = "Master Sparkles";
+                    GuildName = "Realm Enhancements";
+                    Model = 34; //35; 64; 65; 42; 43;
+
+                    GameNpcInventoryTemplate templateAlb = new GameNpcInventoryTemplate();
+                    templateAlb.AddNPCEquipment(eInventorySlot.Cloak, 26, 676);
+                    templateAlb.AddNPCEquipment(eInventorySlot.TorsoArmor, 25, 713);
+                    templateAlb.AddNPCEquipment(eInventorySlot.LegsArmor, 27, 714);
+                    templateAlb.AddNPCEquipment(eInventorySlot.ArmsArmor, 28, 715);
+                    templateAlb.AddNPCEquipment(eInventorySlot.HandsArmor, 22, 716);
+                    templateAlb.AddNPCEquipment(eInventorySlot.FeetArmor, 23, 717);
+                    //templateAlb.AddNPCEquipment(eInventorySlot.TwoHandWeapon, 1166);
+                    Inventory = templateAlb.CloseTemplate();
+                    break;
+                case eRealm.Midgard:
+                    Name = "Stor Gothi Fireworks";
+                    GuildName = "Realm Enhancements";
+                    Model = 176; //177; 1062; 1063; 144; 145;
+
+                    GameNpcInventoryTemplate templateMid = new GameNpcInventoryTemplate();
+                    templateMid.AddNPCEquipment(eInventorySlot.Cloak, 26, 677);
+                    templateMid.AddNPCEquipment(eInventorySlot.TorsoArmor, 25, 766);
+                    templateMid.AddNPCEquipment(eInventorySlot.LegsArmor, 27, 767);
+                    templateMid.AddNPCEquipment(eInventorySlot.ArmsArmor, 28, 768);
+                    templateMid.AddNPCEquipment(eInventorySlot.HandsArmor, 22, 769);
+                    templateMid.AddNPCEquipment(eInventorySlot.FeetArmor, 23, 770);
+                    Inventory = templateMid.CloseTemplate();
+                    break;
+                case eRealm.Hibernia:
+                    Name = "Channeler ILoveTrees";
+                    GuildName = "Realm Enhancements";
+                    Model = 309; //310; 293; 294; 707; 708;
+
+                    GameNpcInventoryTemplate templateHib = new GameNpcInventoryTemplate();
+                    templateHib.AddNPCEquipment(eInventorySlot.Cloak, 26, 678);
+                    templateHib.AddNPCEquipment(eInventorySlot.TorsoArmor, 25, 739);
+                    templateHib.AddNPCEquipment(eInventorySlot.LegsArmor, 27, 740);
+                    templateHib.AddNPCEquipment(eInventorySlot.ArmsArmor, 28, 741);
+                    templateHib.AddNPCEquipment(eInventorySlot.HandsArmor, 22, 742);
+                    templateHib.AddNPCEquipment(eInventorySlot.FeetArmor, 23, 743);
+                    //templateHib.AddNPCEquipment(eInventorySlot.TwoHandWeapon, 468);
+                    Inventory = templateHib.CloseTemplate();
+                    break;
+            }
+            Level = 60;
+            Size = 50;
+            Flags |= GameNPC.eFlags.PEACE;
             return base.AddToWorld();
         }
         public void BuffPlayer(GamePlayer player, Spell spell, SpellLine spellLine)
