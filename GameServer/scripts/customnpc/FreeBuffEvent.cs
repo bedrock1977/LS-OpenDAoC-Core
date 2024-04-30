@@ -11,9 +11,9 @@ using log4net;
 
 namespace DOL.GS.Scripts
 {
-    public class FreeBuffEvent : GameMerchant
+    public class FreeBuffEvent : GameNPC
     {
-        #region FreeBuffMerchant attrib/spells/casting
+        #region FreeBuffEvent attrib/spells/casting
         public FreeBuffEvent()
             : base()
         {
@@ -842,11 +842,11 @@ namespace DOL.GS.Scripts
         #endregion Spells
 
         #endregion SpellCasting
-
+        /*
         private void SendReply(GamePlayer target, string msg)
         {
             target.Out.SendMessage(msg, eChatType.CT_System, eChatLoc.CL_PopupWindow);
-        }
+        }*/
 
         public class Container
         {
