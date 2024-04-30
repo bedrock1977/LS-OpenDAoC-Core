@@ -17,31 +17,6 @@ namespace DOL.GS.Scripts
         public FreeBuffEvent()
             : base()
         {
-            Flags |= GameNPC.eFlags.PEACE;
-        }
-
-        public override int Concentration
-        {
-            get
-            {
-                return 10000;
-            }
-        }
-
-        public override int Mana
-        {
-            get
-            {
-                return 10000;
-            }
-        }
-
-        private Queue m_buffs = new Queue();
-        private const int BUFFS_SPELL_DURATION = 86400;
-        private const bool BUFFS_PLAYER_PET = true;
-
-        public override bool AddToWorld()
-        {
             switch (Realm)
             {
                 case eRealm.Albion:
@@ -92,6 +67,30 @@ namespace DOL.GS.Scripts
             Level = 60;
             Size = 50;
             Flags |= GameNPC.eFlags.PEACE;
+        }
+
+        public override int Concentration
+        {
+            get
+            {
+                return 10000;
+            }
+        }
+
+        public override int Mana
+        {
+            get
+            {
+                return 10000;
+            }
+        }
+
+        private Queue m_buffs = new Queue();
+        private const int BUFFS_SPELL_DURATION = 86400;
+        private const bool BUFFS_PLAYER_PET = true;
+
+        public override bool AddToWorld()
+        {
             return base.AddToWorld();
         }
         public void BuffPlayer(GamePlayer player, Spell spell, SpellLine spellLine)
