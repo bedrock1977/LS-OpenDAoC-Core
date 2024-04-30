@@ -88,6 +88,9 @@ namespace DOL.GS.Scripts
         private Queue m_buffs = new Queue();
         private const int BUFFS_SPELL_DURATION = 86400;
         private const bool BUFFS_PLAYER_PET = true;
+        public const int SPEEDOFTHEREALMID = 2430;
+        //public const int GREATERFURY = 18;
+
 
         public override bool AddToWorld()
         {
@@ -900,38 +903,45 @@ namespace DOL.GS.Scripts
             }
 
             if (player.CharacterClass.ClassType == eClassType.ListCaster)
-                {
-                    BuffPlayer(player, casterMerchBaseAFBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, casterMerchStrBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, casterMerchDexBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, casterMerchConBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, casterMerchSpecAFBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, casterMerchStrConBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, casterMerchDexQuiBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, casterMerchAcuityBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
-                }
-                else
-                {
-                    BuffPlayer(player, MerchBaseAFBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, MerchStrBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, MerchDexBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, MerchConBuff, MerchBaseSpellLine);
-                    BuffPlayer(player, MerchSpecAFBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, MerchStrConBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, MerchDexQuiBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, MerchAcuityBuff, MerchSpecSpellLine);
-                    BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
-                }
-                #region Non-live (commented out)
-                //BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
-                //BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
-                //BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
-                //BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
-                //BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
-                #endregion Non-live (commented out)
-                player.Out.SendMessage("Fight well, " + player.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-                return true;
+            {
+                BuffPlayer(player, casterMerchBaseAFBuff, MerchBaseSpellLine);
+                BuffPlayer(player, casterMerchStrBuff, MerchBaseSpellLine);
+                BuffPlayer(player, casterMerchDexBuff, MerchBaseSpellLine);
+                BuffPlayer(player, casterMerchConBuff, MerchBaseSpellLine);
+                BuffPlayer(player, casterMerchSpecAFBuff, MerchSpecSpellLine);
+                BuffPlayer(player, casterMerchStrConBuff, MerchSpecSpellLine);
+                BuffPlayer(player, casterMerchDexQuiBuff, MerchSpecSpellLine);
+                BuffPlayer(player, casterMerchAcuityBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
+            }
+            else
+            {
+                BuffPlayer(player, MerchBaseAFBuff, MerchBaseSpellLine);
+                BuffPlayer(player, MerchStrBuff, MerchBaseSpellLine);
+                BuffPlayer(player, MerchDexBuff, MerchBaseSpellLine);
+                BuffPlayer(player, MerchConBuff, MerchBaseSpellLine);
+                BuffPlayer(player, MerchSpecAFBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchStrConBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchDexQuiBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchAcuityBuff, MerchSpecSpellLine);
+                BuffPlayer(player, MerchHasteBuff, MerchSpecSpellLine);
+            }
+            #region Non-live (commented out)
+            //BuffPlayer(player, MerchPoweregBuff, MerchSpecSpellLine);
+            //BuffPlayer(player, MerchDmgaddBuff, MerchSpecSpellLine);
+            //BuffPlayer(player, MerchHPRegenBuff, MerchSpecSpellLine);
+            //BuffPlayer(player, MerchEndRegenBuff, MerchSpecSpellLine);
+            //BuffPlayer(player, MerchHealBuff, MerchSpecSpellLine);
+            #endregion Non-live (commented out)
+            GameNPCHelper.CastSpellOnOwnerAndPets(this, player, SkillBase.GetSpellByID(GameHastener.SPEEDOFTHEREALMID), SkillBase.GetSpellLine(GlobalSpellsLines.Realm_Spells), false);
+            player.Out.SendSpellEffectAnimation(this, player, SkillBase.GetSpellByID(980).ClientEffect, 0, false, 1);
+            player.Out.SendSpellEffectAnimation(this, player, SkillBase.GetSpellByID(18).ClientEffect, 0, false, 1);
+            player.Out.SendSpellEffectAnimation(this, player, SkillBase.GetSpellByID(1534).ClientEffect, 0, false, 1);
+            player.Out.SendSpellEffectAnimation(this, player, SkillBase.GetSpellByID(3298).ClientEffect, 0, false, 1);
+            //player.Out.SendSpellEffectAnimation(this, player, SkillBase.GetSpellByID(980).ClientEffect, 0, false, 1);
+            player.Out.SendMessage("Fight well, " + player.RaceName + ".", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
+        return true;
+            
         }
     }
 }
