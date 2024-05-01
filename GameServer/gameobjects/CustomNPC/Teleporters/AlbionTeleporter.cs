@@ -82,30 +82,33 @@ namespace DOL.GS
 			switch (subSelection.TeleportID.ToLower())
 			{
 				case "shrouded isles":
-					{
-						String reply = String.Format("The isles of Avalon are an excellent choice. {0} {1}",
-							"Would you prefer [Gothwaite] or perhaps one of the outlying towns",
-							"like [Wearyall Village], Fort [Gwyntell], or [Caer Diogel]?");
-						SayTo(player, reply);
-						break;
-					}
+				{
+					String reply = String.Format("The isles of Avalon are an excellent choice. {0} {1}",
+						"Would you prefer [Gothwaite] or perhaps one of the outlying towns",
+						"like [Wearyall Village], Fort [Gwyntell], or [Caer Diogel]?");
+					SayTo(player, reply);
+					break;
+				}
 				
 				case "housing":
-					{
-						SayTo(player,
-							"I can send you to your [personal] or [guild] house. If you do not have a personal house, I can teleport you to the housing [entrance] or your housing [hearth] bindstone.");
-						return;
-					}
+				{
+					SayTo(player,
+						"I can send you to your [personal] or [guild] house. If you do not have a personal house, I can teleport you to the housing [entrance] or your housing [hearth] bindstone.");
+					return;
+				}
 				
 				case "towns":
 				{
 					SayTo(player, "I can send you to:\n" +
-					              "[Cotswold Village]\n" +
-					              "[Prydwen Keep]\n" +
-					              "[Caer Ulfwych]\n" +
-					              "[Campacorentin Station]\n" +
-					              "[Adribard's Retreat]\n" +
-					              "[Yarley's Farm]");
+									"[Cotswold Village]\n" +
+									"[Prydwen Keep]\n" +
+									"[Caer Ulfwych]\n" +
+									"[Campacorentin Station]\n" +
+									"[Adribard's Retreat]\n" +
+									"[West Downs]\n" +
+									"[Cornwall Station]\n" +
+									"[Yarley's Farm]\n" +
+									"[Lyonesse]");
 					return;
 				}
 			}
