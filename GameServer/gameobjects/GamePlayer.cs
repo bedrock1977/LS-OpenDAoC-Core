@@ -9440,7 +9440,7 @@ namespace DOL.GS
         /// <summary>
         /// The base speed of the player
         /// </summary>
-        public const int PLAYER_BASE_SPEED = 191;
+        public const int PLAYER_BASE_SPEED = 250;  // Last Stand adjustment, players are too slow while running. Default: 191;
 
         public long m_areaUpdateTick = 0;
 
