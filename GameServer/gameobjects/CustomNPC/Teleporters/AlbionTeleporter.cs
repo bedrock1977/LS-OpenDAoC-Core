@@ -35,7 +35,12 @@ namespace DOL.GS
 		/// <returns></returns>
 		public override bool AddToWorld()
 		{
-			GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
+            Name = "Mistress Alice";
+            GuildName = "Albion Teleporter";
+            Model = 43;
+
+
+            GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
 			template.AddNPCEquipment(eInventorySlot.Cloak, 57, 66);
 			template.AddNPCEquipment(eInventorySlot.TorsoArmor, 1005, 86);
 			template.AddNPCEquipment(eInventorySlot.LegsArmor, 140, 6);
@@ -105,10 +110,7 @@ namespace DOL.GS
 									"[Caer Ulfwych]\n" +
 									"[Campacorentin Station]\n" +
 									"[Adribard's Retreat]\n" +
-									"[West Downs]\n" +
-									"[Cornwall Station]\n" +
-									"[Yarley's Farm]\n" +
-									"[Lyonesse]");
+									"[Yarley's Farm]");
 					return;
 				}
 			}
