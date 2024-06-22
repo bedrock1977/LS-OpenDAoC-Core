@@ -240,6 +240,9 @@ namespace DOL.GS
         MagicAblativeArmor = 229,
         BothAblativeArmor = 230,
         // Start Warlock
-        WarlockSpeedDecrease = 231
+        WarlockSpeedDecrease = 231,
+        //Added for Tinderbox
+        OmniHealOverTime = 232,
+        SummonTenderbox = 233
     }
 }
