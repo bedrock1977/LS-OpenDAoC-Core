@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -9,7 +8,6 @@ using DOL.Database;
 using DOL.GS.RealmAbilities;
 using DOL.GS.Styles;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
@@ -18,7 +16,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Flag to Check if SkillBase has been pre-loaded.
@@ -26,21 +24,21 @@ namespace DOL.GS
 		private static bool m_loaded = false;
 
 		private static ReaderWriterLockSlim m_syncLockUpdates = new();
-		private static object m_loadingLock = new();
+		private static readonly Lock _loadingLock = new();
 
 		#region caches and static indexes
 
 		// Career Dictionary, Spec Attached to Character class ID, auto loaded on char creation !!
-		protected static readonly Dictionary<int, IDictionary<string, int>> m_specsByClass = new();
+		protected static readonly Dictionary<int, Dictionary<string, int>> m_specsByClass = new();
 
 		// Specialization dict KeyName => Spec Tuple to instanciate.
 		protected static readonly Dictionary<string, Tuple<Type, string, ushort, int>> m_specsByName = new();
 
 		// Specialization X SpellLines Dict<"string spec keyname", "List<"Tuple<"SpellLine line", "int classid"> line constraint"> list of lines">
-		protected static readonly Dictionary<string, IList<Tuple<SpellLine, int>>> m_specsSpellLines = new();
+		protected static readonly Dictionary<string, List<Tuple<SpellLine, int>>> m_specsSpellLines = new();
 
 		// global table for spec => List of styles, Dict <"string spec keyname", "Dict <"int classid", "List<"Tuple<"Style style", "byte requiredLevel"> Style Constraint" StyleByClass">
-		protected static readonly Dictionary<string, IDictionary<int, List<Tuple<Style, byte>>>> m_specsStyles = new();
+		protected static readonly Dictionary<string, Dictionary<int, List<Tuple<Style, byte>>>> m_specsStyles = new();
 
 		// Specialization X Ability Cache Dict<"string spec keyname", "List<"Tuple<"string abilitykey", "byte speclevel", "int ab Level", "int class hint"> ab constraint"> list ab's>">
 		protected static readonly Dictionary<string, List<Tuple<string, byte, int, int>>> m_specsAbilities = new();
@@ -49,7 +47,7 @@ namespace DOL.GS
 		protected static readonly Dictionary<string, DbAbility> m_abilityIndex = new();
 
 		// class id => realm abilitykey list
-		protected static readonly Dictionary<int, IList<string>> m_classRealmAbilities = new();
+		protected static readonly Dictionary<int, List<string>> m_classRealmAbilities = new();
 
 		// SpellLine Cache Dict KeyName => SpellLine Object
 		protected static readonly Dictionary<string, SpellLine> m_spellLineIndex = new();
@@ -89,7 +87,7 @@ namespace DOL.GS
 
 		public static void LoadSkills()
 		{
-			lock (m_loadingLock)
+			lock (_loadingLock)
 			{
 				if (!m_loaded)
 				{
@@ -103,6 +101,7 @@ namespace DOL.GS
 					LoadClassSpecializations();
 					LoadAbilityHandlers();
 					LoadSkillHandlers();
+					ScriptMgr.CacheSpellHandlerConstructors();
 					m_loaded = true;
 				}
 			}
@@ -227,7 +226,6 @@ namespace DOL.GS
 						{
 							if (log.IsErrorEnabled)
 								log.ErrorFormat("LineXSpell Spell Adding Error : {0}, Line {1}, Spell {2}, Level {3}", e.Message, lxs.LineName, lxs.SpellID, lxs.Level);
-
 						}
 					}
 
@@ -252,7 +250,7 @@ namespace DOL.GS
 		/// Useful to load new spells added in preperation for ReloadSpellLine(linename) to update a spell line live
 		/// We want to add any new spells in the DB to the global spell list, m_spells, but not remove any added by scripts
 		/// </summary>
-		public static void ReloadDBSpells()
+		public static void ReloadSpells()
 		{
 			// lock skillbase for writes
 			m_syncLockUpdates.EnterWriteLock();
@@ -260,47 +258,45 @@ namespace DOL.GS
 			{
 				//load all spells
 				if (log.IsInfoEnabled)
-					log.Info("Reloading DB spells...");
+					log.Info("Reloading spells...");
 
 				IList<DbSpell> spelldb = GameServer.Database.SelectAllObjects<DbSpell>();
 
 				if (spelldb != null)
 				{
-
-					int count = 0;
-
 					foreach (DbSpell spell in spelldb)
 					{
-						if (m_spellIndex.ContainsKey(spell.SpellID) == false)
+						try
 						{
-							// Add new spell
-							m_spellIndex.Add(spell.SpellID, new Spell(spell, 1));
-							count++;
-						}
-						else
-						{
-							// Replace Spell
-							m_spellIndex[spell.SpellID] = new Spell(spell, 1);
-						}
-
-						// Update tooltip index
-						if (spell.TooltipId != 0)
-						{
-							if (m_spellToolTipIndex.ContainsKey(spell.TooltipId))
-								m_spellToolTipIndex[spell.TooltipId] = spell.SpellID;
+							if (m_spellIndex.ContainsKey(spell.SpellID) == false)
+							{
+								// Add new spell
+								m_spellIndex.Add(spell.SpellID, new Spell(spell, 1));
+							}
 							else
 							{
-								m_spellToolTipIndex.Add(spell.TooltipId, spell.SpellID);
-								count++;
+								// Replace Spell
+								m_spellIndex[spell.SpellID] = new Spell(spell, 1);
 							}
+
+							// Update tooltip index
+							if (spell.TooltipId != 0)
+							{
+								if (m_spellToolTipIndex.ContainsKey(spell.TooltipId))
+									m_spellToolTipIndex[spell.TooltipId] = spell.SpellID;
+								else
+									m_spellToolTipIndex.Add(spell.TooltipId, spell.SpellID);
+							}
+						}
+						catch (Exception e)
+						{
+							if (log.IsErrorEnabled)
+								log.ErrorFormat("{0} with spellid = {1} spell.TS= {2}", e.Message, spell.SpellID, spell.ToString());
 						}
 					}
 
 					if (log.IsInfoEnabled)
-					{
-						log.Info("Spells loaded from DB: " + spelldb.Count);
-						log.Info("Spells added to global spell list: " + count);
-					}
+						log.Info("Spells loaded: " + spelldb.Count);
 				}
 			}
 			finally
@@ -316,9 +312,8 @@ namespace DOL.GS
 		/// <param name="lineName"></param>
 		/// <returns></returns>
 		[RefreshCommandAttribute]
-		public static int ReloadSpellLines()
+		public static void ReloadSpellLines()
 		{
-			int count = 0;
 			// lock skillbase for writes
 			m_syncLockUpdates.EnterWriteLock();
 			try
@@ -358,16 +353,12 @@ namespace DOL.GS
 
 								// no replacement then add this
 								if (!added)
-								{
 									m_lineSpells[lineName].Add(spl);
-									count++;
-								}
 							}
 							catch (Exception e)
 							{
 								if (log.IsErrorEnabled)
 									log.ErrorFormat("LineXSpell Adding Error : {0}, Line {1}, Spell {2}, Level {3}", e.Message, lxs.LineName, lxs.SpellID, lxs.Level);
-
 							}
 						}
 
@@ -380,8 +371,6 @@ namespace DOL.GS
 			{
 				m_syncLockUpdates.ExitWriteLock();
 			}
-
-			return count;
 		}
 
 		/// <summary>
@@ -426,9 +415,7 @@ namespace DOL.GS
 				}
 
 				if (log.IsInfoEnabled)
-				{
 					log.InfoFormat("Total abilities loaded: {0}", m_abilityIndex.Count);
-				}
 			}
 			finally
 			{
@@ -476,7 +463,8 @@ namespace DOL.GS
 					}
 				}
 
-				log.Info("Realm Abilities assigned to classes!");
+				if (log.IsInfoEnabled)
+					log.Info("Realm Abilities assigned to classes!");
 			}
 			finally
 			{
@@ -601,34 +589,29 @@ namespace DOL.GS
 							foreach (DbStyle specStyle in spec.Styles)
 							{
 								// Update Style Career
-								if (!m_specsStyles.ContainsKey(spec.KeyName))
+								if (!m_specsStyles.TryGetValue(spec.KeyName, out Dictionary<int, List<Tuple<Style, byte>>> specStyles))
 								{
-									m_specsStyles.Add(spec.KeyName, new Dictionary<int, List<Tuple<Style, byte>>>());
+									specStyles = new Dictionary<int, List<Tuple<Style, byte>>>();
+									m_specsStyles.Add(spec.KeyName, specStyles);
 								}
 
-								if (!m_specsStyles[spec.KeyName].ContainsKey(specStyle.ClassId))
+								if (!specStyles.TryGetValue(specStyle.ClassId, out List<Tuple<Style, byte>> styles))
 								{
-									m_specsStyles[spec.KeyName].Add(specStyle.ClassId, new List<Tuple<Style, byte>>());
+									styles = [];
+									specStyles.Add(specStyle.ClassId, styles);
 								}
 
 								Style newStyle = new(specStyle, null);
-
-								m_specsStyles[spec.KeyName][specStyle.ClassId].Add(new Tuple<Style, byte>(newStyle, (byte)specStyle.SpecLevelRequirement));
+								styles.Add(new Tuple<Style, byte>(newStyle, (byte) specStyle.SpecLevelRequirement));
 
 								// Update Style Index.
 
 								KeyValuePair<int, int> styleKey = new(newStyle.ID, specStyle.ClassId);
 
-								if (!m_styleIndex.ContainsKey(styleKey))
-								{
-									m_styleIndex.Add(styleKey, newStyle);
+								if (m_styleIndex.TryAdd(styleKey, newStyle))
 									count++;
-								}
-								else
-								{
-									if (log.IsWarnEnabled)
-										log.WarnFormat("Specialization {0} - Duplicate Style Key, StyleID {1} : ClassID {2}, Ignored...", spec.KeyName, newStyle.ID, specStyle.ClassId);
-								}
+								else if (log.IsWarnEnabled)
+									log.Warn($"Specialization {spec.KeyName} - Duplicate Style Key, StyleID {newStyle.ID} : ClassID {specStyle.ClassId}, Ignored...");
 
 								// Load Procs.
 								if (specStyle.AttachedProcs != null)
@@ -636,7 +619,7 @@ namespace DOL.GS
 									foreach (DbStyleXSpell styleProc in specStyle.AttachedProcs)
 									{
 										if (m_spellIndex.TryGetValue(styleProc.SpellID, out Spell spell))
-											newStyle.Procs.Add((spell, styleProc.ClassID, styleProc.Chance));
+											newStyle.Procs.Add(new(spell, styleProc.ClassID, styleProc.Chance));
 									}
 								}
 							}
@@ -704,23 +687,18 @@ namespace DOL.GS
 
 					foreach (DbClassXSpecialization career in dbo)
 					{
-						if (!m_specsByClass.ContainsKey(career.ClassID))
+						if (!m_specsByClass.TryGetValue(career.ClassID, out Dictionary<string, int> specs))
 						{
-							m_specsByClass.Add(career.ClassID, new Dictionary<string, int>());
+							specs = [];
+							m_specsByClass.Add(career.ClassID, specs);
 							summary.Add(career.ClassID, new StringBuilder());
-							summary[career.ClassID].AppendFormat("Career for Class {0} - ", career.ClassID);
+							summary[career.ClassID].Append($"Career for Class {career.ClassID} - ");
 						}
 
-						if (!m_specsByClass[career.ClassID].ContainsKey(career.SpecKeyName))
-						{
-							m_specsByClass[career.ClassID].Add(career.SpecKeyName, career.LevelAcquired);
-							summary[career.ClassID].AppendFormat("{0}({1}), ", career.SpecKeyName, career.LevelAcquired);
-						}
-						else
-						{
-							if (log.IsWarnEnabled)
-								log.WarnFormat("Duplicate Sepcialization Key {0} for Class Career : {1}", career.SpecKeyName, career.ClassID);
-						}
+						if (specs.TryAdd(career.SpecKeyName, career.LevelAcquired))
+							summary[career.ClassID].Append($"{career.SpecKeyName}({career.LevelAcquired}), ");
+						else if (log.IsWarnEnabled)
+							log.Warn($"Duplicate Specialization Key {career.SpecKeyName} for Class Career : {career.ClassID}");
 					}
 				}
 
@@ -761,7 +739,7 @@ namespace DOL.GS
 				foreach (KeyValuePair<string, Type> entry in ht)
 				{
 					if (log.IsDebugEnabled)
-						log.DebugFormat("\tFound ability handler for {0}", entry.Key);
+						log.DebugFormat("Found ability handler for {0}", entry.Key);
 
 					if (m_abilityActionHandler.ContainsKey(entry.Key))
 					{
@@ -797,16 +775,16 @@ namespace DOL.GS
 						try
 						{
 							if (m_abilityActionHandler.ContainsKey(entry.Key))
-								message = "\tFound new ability handler for " + entry.Key;
+								message = "Found new ability handler for " + entry.Key;
 							else
-								message = "\tFound ability handler for " + entry.Key;
+								message = "Found ability handler for " + entry.Key;
 
 							m_abilityActionHandler[entry.Key] = GetNewAbilityActionHandlerConstructor(entry.Value);
 						}
 						catch (Exception ex)
 						{
 							if (log.IsErrorEnabled)
-								log.ErrorFormat("Error While instantiacting IAbilityHandler {0} using {1} in GameServerScripts : {2}", entry.Key, entry.Value, ex);
+								log.ErrorFormat("Error while instantiating IAbilityHandler {0} using {1} in GameServerScripts : {2}", entry.Key, entry.Value, ex);
 						}
 
 						if (log.IsDebugEnabled)
@@ -844,7 +822,7 @@ namespace DOL.GS
 				foreach (KeyValuePair<string, Type> entry in ht)
 				{
 					if (log.IsDebugEnabled)
-						log.Debug("\tFound skill handler for " + entry.Key);
+						log.Debug("Found skill handler for " + entry.Key);
 
 					if (m_specActionHandler.ContainsKey(entry.Key))
 					{
@@ -882,9 +860,9 @@ namespace DOL.GS
 						try
 						{
 							if (m_specActionHandler.ContainsKey(entry.Key))
-								message = "\tFound new spec handler for " + entry.Key;
+								message = "Found new spec handler for " + entry.Key;
 							else
-								message = "\tFound spec handler for " + entry.Key;
+								message = "Found spec handler for " + entry.Key;
 
 							m_specActionHandler[entry.Key] = GetNewSpecActionHandlerConstructor(entry.Value);
 						}
@@ -930,7 +908,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Holds all property types
 		/// </summary>
-		private static readonly ePropertyType[] m_propertyTypes = new ePropertyType[(int)eProperty.MaxProperty+1];
+		private static readonly ePropertyType[] m_propertyTypes = new ePropertyType[(int) eProperty.MaxProperty + 1];
 
 		/// <summary>
 		/// table for property names
@@ -1190,53 +1168,53 @@ namespace DOL.GS
 			#region Resist
 
 			// resists
-			m_propertyTypes[(int)eProperty.Resist_Natural] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Body] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Cold] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Crush] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Energy] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Heat] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Matter] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Slash] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Spirit] = ePropertyType.Resist;
-			m_propertyTypes[(int)eProperty.Resist_Thrust] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Natural] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Body] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Cold] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Crush] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Energy] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Heat] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Matter] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Slash] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Spirit] = ePropertyType.Resist;
+			m_propertyTypes[(int) eProperty.Resist_Thrust] = ePropertyType.Resist;
 
 			#endregion
 
 			#region Focus
 
 			// focuses
-			m_propertyTypes[(int)eProperty.Focus_Darkness] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Suppression] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Runecarving] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Spirit] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Fire] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Air] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Cold] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Earth] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Light] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Body] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Matter] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Mind] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Void] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Mana] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Enchantments] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Mentalism] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Summoning] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_BoneArmy] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_PainWorking] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_DeathSight] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_DeathServant] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Verdant] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_CreepingPath] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Arboreal] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_EtherealShriek] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_PhantasmalWail] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_SpectralForce] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Cursing] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Hexing] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.Focus_Witchcraft] = ePropertyType.Focus;
-			m_propertyTypes[(int)eProperty.AllFocusLevels] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Darkness] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Suppression] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Runecarving] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Spirit] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Fire] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Air] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Cold] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Earth] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Light] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Body] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Matter] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Mind] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Void] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Mana] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Enchantments] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Mentalism] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Summoning] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_BoneArmy] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_PainWorking] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_DeathSight] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_DeathServant] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Verdant] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_CreepingPath] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Arboreal] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_EtherealShriek] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_PhantasmalWail] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_SpectralForce] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Cursing] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Hexing] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.Focus_Witchcraft] = ePropertyType.Focus;
+			m_propertyTypes[(int) eProperty.AllFocusLevels] = ePropertyType.Focus;
 
 			#endregion
 
@@ -1255,115 +1233,120 @@ namespace DOL.GS
 			#region Melee Skills
 
 			// skills
-			m_propertyTypes[(int)eProperty.Skill_Two_Handed] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Critical_Strike] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Crushing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Flexible_Weapon] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Polearms] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Slashing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Staff] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Thrusting] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Sword] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Hammer] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Axe] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Spear] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Blades] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Blunt] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Piercing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Large_Weapon] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Celtic_Spear] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Scythe] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_Thrown_Weapons] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_HandToHand] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_FistWraps] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
-			m_propertyTypes[(int)eProperty.Skill_MaulerStaff] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Two_Handed] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Crushing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Flexible_Weapon] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Polearms] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Slashing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Staff] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Thrusting] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Sword] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Hammer] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Axe] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Spear] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Blades] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Blunt] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Piercing] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Large_Weapon] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Celtic_Spear] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_Scythe] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_HandToHand] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_FistWraps] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
+			m_propertyTypes[(int) eProperty.Skill_MaulerStaff] = ePropertyType.Skill | ePropertyType.SkillMeleeWeapon;
 
-			m_propertyTypes[(int)eProperty.Skill_Dual_Wield] = ePropertyType.Skill | ePropertyType.SkillDualWield;
-			m_propertyTypes[(int)eProperty.Skill_Left_Axe] = ePropertyType.Skill | ePropertyType.SkillDualWield;
-			m_propertyTypes[(int)eProperty.Skill_Celtic_Dual] = ePropertyType.Skill | ePropertyType.SkillDualWield;
+			m_propertyTypes[(int) eProperty.Skill_Dual_Wield] = ePropertyType.Skill | ePropertyType.SkillDualWield;
+			m_propertyTypes[(int) eProperty.Skill_Left_Axe] = ePropertyType.Skill | ePropertyType.SkillDualWield;
+			m_propertyTypes[(int) eProperty.Skill_Celtic_Dual] = ePropertyType.Skill | ePropertyType.SkillDualWield;
+
+			m_propertyTypes[(int) eProperty.Skill_Critical_Strike] = ePropertyType.Skill;
 
 			#endregion
 
 			#region Magical Skills
 
-			m_propertyTypes[(int)eProperty.Skill_Power_Strikes] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Magnetism] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Aura_Manipulation] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Body] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Chants] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Death_Servant] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_DeathSight] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Earth] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Enhancement] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Fire] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Cold] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Instruments] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Matter] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Mind] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Pain_working] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Rejuvenation] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Smiting] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_SoulRending] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Spirit] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Wind] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Mending] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Augmentation] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Darkness] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Suppression] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Runecarving] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Stormcalling] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_BeastCraft] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Light] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Void] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Mana] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Battlesongs] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Enchantments] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Mentalism] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Regrowth] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Nurture] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Nature] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Music] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Valor] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Subterranean] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_BoneArmy] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Verdant] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Creeping] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Arboreal] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Pacification] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Savagery] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Nightshade] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Pathfinding] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Summoning] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Power_Strikes] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Magnetism] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Aura_Manipulation] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Body] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Chants] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Death_Servant] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_DeathSight] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Earth] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Enhancement] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Fire] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Cold] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Instruments] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Matter] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Mind] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Pain_working] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Rejuvenation] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Smiting] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_SoulRending] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Spirit] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Wind] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Mending] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Augmentation] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Darkness] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Suppression] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Runecarving] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Stormcalling] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_BeastCraft] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Light] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Void] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Mana] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Battlesongs] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Enchantments] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Mentalism] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Regrowth] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Nurture] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Nature] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Music] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Valor] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Subterranean] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_BoneArmy] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Verdant] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Creeping] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Arboreal] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Pacification] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Savagery] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Nightshade] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Pathfinding] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Summoning] = ePropertyType.Skill | ePropertyType.SkillMagical;
 
 			// no idea about these
-			m_propertyTypes[(int)eProperty.Skill_Dementia] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_ShadowMastery] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_VampiiricEmbrace] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_EtherealShriek] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_PhantasmalWail] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_SpectralForce] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_SpectralGuard] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_OdinsWill] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Cursing] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Hexing] = ePropertyType.Skill | ePropertyType.SkillMagical;
-			m_propertyTypes[(int)eProperty.Skill_Witchcraft] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Dementia] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_ShadowMastery] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_VampiiricEmbrace] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_EtherealShriek] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_PhantasmalWail] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_SpectralForce] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_SpectralGuard] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_OdinsWill] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Cursing] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Hexing] = ePropertyType.Skill | ePropertyType.SkillMagical;
+			m_propertyTypes[(int) eProperty.Skill_Witchcraft] = ePropertyType.Skill | ePropertyType.SkillMagical;
 
 			#endregion
 
-			#region Other
+			#region Ranged skills
 
-			m_propertyTypes[(int)eProperty.Skill_Long_bows] = ePropertyType.Skill | ePropertyType.SkillArchery;
-			m_propertyTypes[(int)eProperty.Skill_Composite] = ePropertyType.Skill | ePropertyType.SkillArchery;
-			m_propertyTypes[(int)eProperty.Skill_RecurvedBow] = ePropertyType.Skill | ePropertyType.SkillArchery;
+			m_propertyTypes[(int) eProperty.Skill_Long_bows] = ePropertyType.Skill | ePropertyType.SkillArchery;
+			m_propertyTypes[(int) eProperty.Skill_Composite] = ePropertyType.Skill | ePropertyType.SkillArchery;
+			m_propertyTypes[(int) eProperty.Skill_RecurvedBow] = ePropertyType.Skill | ePropertyType.SkillArchery;
+			m_propertyTypes[(int) eProperty.Skill_Archery] = ePropertyType.Skill | ePropertyType.SkillArchery;
 
-			m_propertyTypes[(int)eProperty.Skill_Parry] = ePropertyType.Skill;
-			m_propertyTypes[(int)eProperty.Skill_Shields] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_Cross_Bows] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_Thrown_Weapons] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_ShortBow] = ePropertyType.Skill;
 
-			m_propertyTypes[(int)eProperty.Skill_Stealth] = ePropertyType.Skill;
-			m_propertyTypes[(int)eProperty.Skill_Cross_Bows] = ePropertyType.Skill;
-			m_propertyTypes[(int)eProperty.Skill_ShortBow] = ePropertyType.Skill;
-			m_propertyTypes[(int)eProperty.Skill_Envenom] = ePropertyType.Skill;
-			m_propertyTypes[(int)eProperty.Skill_Archery] = ePropertyType.Skill | ePropertyType.SkillArchery;
+			#endregion
+
+			#region Others
+
+			m_propertyTypes[(int) eProperty.Skill_Parry] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_Shields] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_Stealth] = ePropertyType.Skill;
+			m_propertyTypes[(int) eProperty.Skill_Envenom] = ePropertyType.Skill;
 
 			#endregion
 		}
@@ -1758,11 +1741,11 @@ namespace DOL.GS
 			m_propertyNames.Add(eProperty.ArmorAbsorption, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                          "SkillBase.RegisterPropertyNames.BonusToArmorAbsorption"));
 
-			m_propertyNames.Add(eProperty.HealthRegenerationRate, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
+			m_propertyNames.Add(eProperty.HealthRegenerationAmount, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                                 "SkillBase.RegisterPropertyNames.HealthRegeneration"));
-			m_propertyNames.Add(eProperty.PowerRegenerationRate, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
+			m_propertyNames.Add(eProperty.PowerRegenerationAmount, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                                "SkillBase.RegisterPropertyNames.PowerRegeneration"));
-			m_propertyNames.Add(eProperty.EnduranceRegenerationRate, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
+			m_propertyNames.Add(eProperty.EnduranceRegenerationAmount, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                                    "SkillBase.RegisterPropertyNames.EnduranceRegeneration"));
 			m_propertyNames.Add(eProperty.SpellRange, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                     "SkillBase.RegisterPropertyNames.SpellRange"));
@@ -1832,7 +1815,7 @@ namespace DOL.GS
 			                                                                       "SkillBase.RegisterPropertyNames.CastingSpeed"));
 			m_propertyNames.Add(eProperty.OffhandDamageAndChance, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                       "SkillBase.RegisterPropertyNames.OffhandChanceAndDamage"));
-			m_propertyNames.Add(eProperty.DebuffEffectivness, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
+			m_propertyNames.Add(eProperty.DebuffEffectiveness, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                             "SkillBase.RegisterPropertyNames.DebuffEffectivness"));
 			m_propertyNames.Add(eProperty.Fatigue, LanguageMgr.GetTranslation(ServerProperties.Properties.DB_LANGUAGE,
 			                                                                  "SkillBase.RegisterPropertyNames.Fatigue"));
@@ -1933,9 +1916,6 @@ namespace DOL.GS
 				return 0;
 
 			const int realmBits = DAMAGETYPE_BITCOUNT + ARMORTYPE_BITCOUNT;
-
-			//Console.WriteLine($"Realm {realm} armorType {armorType} damage {damage} input {(realm << realmBits) | (armorType << DAMAGETYPE_BITCOUNT) | damage} resistoutput {m_armorResists[(realm << realmBits) | (armorType << DAMAGETYPE_BITCOUNT) | damage]}");
-
 			return m_armorResists[(realm << realmBits) | (armorType << DAMAGETYPE_BITCOUNT) | damage];
 		}
 
@@ -2130,7 +2110,7 @@ namespace DOL.GS
 					foreach (DbStyleXSpell styleProc in style.AttachedProcs)
 					{
 						if (m_spellIndex.TryGetValue(styleProc.SpellID, out Spell spell))
-							st.Procs.Add((spell, styleProc.ClassID, styleProc.Chance));
+							st.Procs.Add(new(spell, styleProc.ClassID, styleProc.Chance));
 					}
 				}
 			}
@@ -2169,10 +2149,10 @@ namespace DOL.GS
 		public static void UnRegisterSpellLine(string LineKeyName)
 		{
 			m_syncLockUpdates.EnterWriteLock();
+
 			try
 			{
-				if (m_spellLineIndex.ContainsKey(LineKeyName))
-					m_spellLineIndex.Remove(LineKeyName);
+				m_spellLineIndex.Remove(LineKeyName);
 			}
 			finally
 			{
@@ -2183,25 +2163,19 @@ namespace DOL.GS
 		/// <summary>
 		/// returns level 1 instantiated realm abilities, only for readonly use!
 		/// </summary>
-		/// <param name="classID"></param>
-		/// <returns></returns>
 		public static List<RealmAbility> GetClassRealmAbilities(int classID)
 		{
-			List<DbAbility> ras = new();
+			List<DbAbility> ras = [];
 			m_syncLockUpdates.EnterReadLock();
+
 			try
 			{
-				if (m_classRealmAbilities.ContainsKey(classID))
+				if (m_classRealmAbilities.TryGetValue(classID, out List<string> realmAbilities))
 				{
-					foreach (string str in m_classRealmAbilities[classID])
+					foreach (string str in realmAbilities)
 					{
-						try
-						{
-							ras.Add(m_abilityIndex[str]);
-						}
-						catch
-						{
-						}
+						if (m_abilityIndex.TryGetValue(str, out DbAbility ability))
+							ras.Add(ability);
 					}
 				}
 			}
@@ -2212,7 +2186,7 @@ namespace DOL.GS
 
 			/// [Atlas - Takii] Order RAs by their PrimaryKey in the DB so we have control over their order, instead of base DOL implementation.
 			//return ras.Select(e => GetNewAbilityInstance(e)).Where(ab => ab is RealmAbility).Cast<RealmAbility>().OrderByDescending(el => el.MaxLevel).ThenBy(el => el.KeyName).ToList();
-			return ras.Select(e => GetNewAbilityInstance(e)).Where(ab => ab is RealmAbility).Cast<RealmAbility>().ToList();
+			return ras.Select(GetNewAbilityInstance).Where(ab => ab is RealmAbility).Cast<RealmAbility>().ToList();
 		}
 
 		/// <summary>
@@ -2293,12 +2267,11 @@ namespace DOL.GS
 		{
 			m_syncLockUpdates.EnterReadLock();
 			DbAbility dbab = null;
+
 			try
 			{
-				if (m_abilityIndex.ContainsKey(keyname))
-				{
-					dbab = m_abilityIndex[keyname];
-				}
+				if (m_abilityIndex.TryGetValue(keyname, out DbAbility value))
+					dbab = value;
 			}
 			finally
 			{
@@ -2313,9 +2286,9 @@ namespace DOL.GS
 			}
 
 			if (log.IsWarnEnabled)
-				log.Warn("Ability '" + keyname + "' unknown");
+				log.Warn($"Ability '{keyname}' unknown");
 
-			return new Ability(keyname, "?" + keyname, "", 0, 0, level, 0);
+			return new Ability(keyname, $"?{keyname}", "", 0, 0, level, 0);
 		}
 
 		/// <summary>
@@ -2326,13 +2299,14 @@ namespace DOL.GS
 		/// <returns>list of spells, never null</returns>
 		public static List<Spell> GetSpellList(string spellLineID)
 		{
-			List<Spell> spellList = new();
+			List<Spell> spellList = [];
 			m_syncLockUpdates.EnterReadLock();
+
 			try
 			{
-				if (m_lineSpells.ContainsKey(spellLineID))
+				if (m_lineSpells.TryGetValue(spellLineID, out List<Spell> spells))
 				{
-					foreach (var element in m_lineSpells[spellLineID])
+					foreach (var element in spells)
 						spellList.Add((Spell)element.Clone());
 				}
 			}
@@ -2401,12 +2375,10 @@ namespace DOL.GS
 			m_syncLockUpdates.EnterReadLock();
 			try
 			{
-				if (m_specsSpellLines.ContainsKey(specName))
+				if (m_specsSpellLines.TryGetValue(specName, out List<Tuple<SpellLine, int>> spellLines))
 				{
-					foreach(Tuple<SpellLine, int> entry in m_specsSpellLines[specName])
-					{
+					foreach (Tuple<SpellLine, int> entry in spellLines)
 						list.Add(new Tuple<SpellLine, int>((SpellLine)entry.Item1.Clone(), entry.Item2));
-					}
 				}
 			}
 			finally
@@ -2437,10 +2409,11 @@ namespace DOL.GS
 		{
 			SpellLine result = null;
 			m_syncLockUpdates.EnterReadLock();
+
 			try
 			{
-				if (m_spellLineIndex.ContainsKey(keyname))
-					result = (SpellLine)m_spellLineIndex[keyname].Clone();
+				if (m_spellLineIndex.TryGetValue(keyname, out SpellLine value))
+					result = (SpellLine) value.Clone();
 			}
 			finally
 			{
@@ -2453,11 +2426,9 @@ namespace DOL.GS
 			if (create)
 			{
 				if (log.IsWarnEnabled)
-				{
-					log.WarnFormat("Spell-Line {0} unknown, creating temporary line.", keyname);
-				}
+					log.WarnFormat($"Spell-Line {keyname} unknown, creating temporary line.");
 
-				return new SpellLine(keyname, string.Format("{0}?", keyname), "", true);
+				return new SpellLine(keyname, $"{keyname}?", "", true);
 			}
 
 			return null;
@@ -2514,6 +2485,7 @@ namespace DOL.GS
 				{
 					try
 					{
+						// Yo what the fuck.
 						if ((m_lineSpells[spellLineID][r] != null &&
 						    spell.ID > 0 && m_lineSpells[spellLineID][r].ID == spell.ID && m_lineSpells[spellLineID][r].Name.ToLower().Equals(spell.Name.ToLower()) && m_lineSpells[spellLineID][r].SpellType.ToString().ToLower().Equals(spell.SpellType.ToString().ToLower()))
 						    || (m_lineSpells[spellLineID][r].Name.ToLower().Equals(spell.Name.ToLower()) && m_lineSpells[spellLineID][r].SpellType.ToString().ToLower().Equals(spell.SpellType.ToString().ToLower())))
@@ -2635,10 +2607,11 @@ namespace DOL.GS
 		{
 			Specialization spec = null;
 			m_syncLockUpdates.EnterReadLock();
+
 			try
 			{
-				if (m_specsByName.ContainsKey(keyname))
-					spec = GetNewSpecializationInstance(keyname, m_specsByName[keyname]);
+				if (m_specsByName.TryGetValue(keyname, out Tuple<Type, string, ushort, int> value))
+					spec = GetNewSpecializationInstance(keyname, value);
 			}
 			finally
 			{
@@ -2651,12 +2624,10 @@ namespace DOL.GS
 			if (create)
 			{
 				if (log.IsWarnEnabled)
-				{
-					log.WarnFormat("Specialization {0} unknown", keyname);
-				}
+					log.Warn($"Specialization {keyname} unknown");
 
 				// Untrainable Spec by default to prevent garbage in player display...
-				return new UntrainableSpecialization(keyname, "?" + keyname, 0, 0);
+				return new UntrainableSpecialization(keyname, $"?{keyname}", 0, 0);
 			}
 
 			return null;
@@ -2688,15 +2659,14 @@ namespace DOL.GS
 		/// <returns>Dictionary of Specialization with their Level Requirement (including ClassId 0 for game wide specs)</returns>
 		public static IDictionary<Specialization, int> GetSpecializationCareer(int classID)
 		{
-			Dictionary<Specialization, int> dictRes = new();
+			Dictionary<Specialization, int> dictRes = [];
 			m_syncLockUpdates.EnterReadLock();
 			IDictionary<string, int> entries = new Dictionary<string, int>();
+
 			try
 			{
-				if (m_specsByClass.ContainsKey(classID))
-				{
-					entries = new Dictionary<string, int>(m_specsByClass[classID]);
-				}
+				if (m_specsByClass.TryGetValue(classID, out Dictionary<string, int> value))
+					entries = new Dictionary<string, int>(value);
 			}
 			finally
 			{
@@ -2711,19 +2681,16 @@ namespace DOL.GS
 					spec.LevelRequired = constraint.Value;
 					dictRes.Add(spec, constraint.Value);
 				}
-				catch
-				{
-				}
+				catch { }
 			}
 
 			m_syncLockUpdates.EnterReadLock();
 			entries = new Dictionary<string, int>();
+
 			try
 			{
-				if (m_specsByClass.ContainsKey(0))
-				{
-					entries = new Dictionary<string, int>(m_specsByClass[0]);
-				}
+				if (m_specsByClass.TryGetValue(0, out Dictionary<string, int> value))
+					entries = new Dictionary<string, int>(value);
 			}
 			finally
 			{
@@ -2739,9 +2706,7 @@ namespace DOL.GS
 					spec.LevelRequired = constraint.Value;
 					dictRes.Add(spec, constraint.Value);
 				}
-				catch
-				{
-				}
+				catch { }
 			}
 
 			return dictRes;
@@ -2757,22 +2722,21 @@ namespace DOL.GS
 		public static List<Style> GetStyleList(string specID, int classId)
 		{
 			m_syncLockUpdates.EnterReadLock();
-			List<Tuple<Style, byte>> entries = new();
+			List<Tuple<Style, byte>> entries = [];
+
 			try
 			{
-				if(m_specsStyles.ContainsKey(specID) && m_specsStyles[specID].ContainsKey(classId))
-				{
-					entries = new List<Tuple<Style, byte>>(m_specsStyles[specID][classId]);
-				}
+				if (m_specsStyles.TryGetValue(specID, out Dictionary<int, List<Tuple<Style, byte>>> value) && value.TryGetValue(classId, out List<Tuple<Style, byte>> styles))
+					entries = new List<Tuple<Style, byte>>(styles);
 			}
 			finally
 			{
 				m_syncLockUpdates.ExitReadLock();
 			}
 
-			List<Style> styleRes = new();
+			List<Style> styleRes = [];
 
-			foreach(Tuple<Style, byte> constraint in entries)
+			foreach (Tuple<Style, byte> constraint in entries)
 				styleRes.Add((Style)constraint.Item1.Clone());
 
 			return styleRes;
@@ -2786,20 +2750,20 @@ namespace DOL.GS
 		public static List<Ability> GetSpecAbilityList(string specID, int classID)
 		{
 			m_syncLockUpdates.EnterReadLock();
-			List<Tuple<string, byte, int, int>> entries = new();
+			List<Tuple<string, byte, int, int>> entries = [];
+
 			try
 			{
-				if (m_specsAbilities.ContainsKey(specID))
-				{
-					entries = new List<Tuple<string, byte, int, int>>(m_specsAbilities[specID]);
-				}
+				if (m_specsAbilities.TryGetValue(specID, out List<Tuple<string, byte, int, int>> value))
+					entries = new List<Tuple<string, byte, int, int>>(value);
 			}
 			finally
 			{
 				m_syncLockUpdates.ExitReadLock();
 			}
 
-			List<Ability> abRes = new();
+			List<Ability> abRes = [];
+
 			foreach (Tuple<string, byte, int, int> constraint in entries)
 			{
 				if (constraint.Item4 != 0 && constraint.Item4 != classID)
@@ -2969,33 +2933,22 @@ namespace DOL.GS
 		/// <returns></returns>
 		public static int GetRaceResist(int race, eResist type)
 		{
-			if( race == 0 )
+			if (race == 0 )
 				return 0;
 
 			int resistValue = 0;
 
-			if (m_raceResists.ContainsKey(race))
+			if (m_raceResists.TryGetValue(race, out int[] value))
 			{
-				int resistIndex;
+				int resistIndex = type is eResist.Natural ? 9 : (int) type - (int) eProperty.Resist_First;
 
-				if (type == eResist.Natural)
-					resistIndex = 9;
-				else
-					resistIndex = (int)type - (int)eProperty.Resist_First;
-
-				if (resistIndex < m_raceResists[race].Length)
-				{
-					resistValue = m_raceResists[race][resistIndex];
-				}
-				else
-				{
-					log.WarnFormat("No resists defined for type: {0}", type.ToString());
-				}
+				if (resistIndex < value.Length)
+					resistValue = value[resistIndex];
+				else if (log.IsWarnEnabled)
+					log.Warn($"No resists defined for type: {type}");
 			}
-			else
-			{
-				log.WarnFormat("No resists defined for race: {0}", race);
-			}
+			else if (log.IsWarnEnabled)
+				log.Warn($"No resists defined for race: {race}");
 
 			return resistValue;
 		}
@@ -3021,11 +2974,7 @@ namespace DOL.GS
 		public static eProperty SpecToSkill(string specKey)
 		{
 			if (!m_specToSkill.TryGetValue(specKey, out eProperty res))
-			{
-				//if (log.IsWarnEnabled)
-				//log.Warn("No skill property found for spec " + specKey);
 				return eProperty.Undefined;
-			}
 
 			return res;
 		}
@@ -3038,25 +2987,39 @@ namespace DOL.GS
 		public static eProperty SpecToFocus(string specKey)
 		{
 			if (!m_specToFocus.TryGetValue(specKey, out eProperty res))
-			{
-				//if (log.IsWarnEnabled)
-				//log.Warn("No skill property found for spec " + specKey);
 				return eProperty.Undefined;
-			}
 
 			return res;
 		}
 
 		private static Func<ISpecActionHandler> GetNewSpecActionHandlerConstructor(Type type)
 		{
-			ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes);
-			return Expression.Lambda<Func<ISpecActionHandler>>(Expression.New(constructor, null), null).Compile();
+			try
+			{
+				return CompiledConstructorFactory.CompileConstructor(type, []) as Func<ISpecActionHandler>;
+			}
+			catch (Exception e)
+			{
+				if (log.IsErrorEnabled)
+					log.Error(e);
+			}
+
+			return null;
 		}
 
 		private static Func<IAbilityActionHandler> GetNewAbilityActionHandlerConstructor(Type type)
 		{
-			ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes);
-			return Expression.Lambda<Func<IAbilityActionHandler>>(Expression.New(constructor, null), null).Compile();
+			try
+			{
+				return CompiledConstructorFactory.CompileConstructor(type, []) as Func<IAbilityActionHandler>;
+			}
+			catch (Exception e)
+			{
+				if (log.IsErrorEnabled)
+					log.Error(e);
+			}
+
+			return null;
 		}
 
 		private static Ability GetNewAbilityInstance(string keyname, int level)
@@ -3064,12 +3027,10 @@ namespace DOL.GS
 			Ability ab = null;
 			DbAbility dba = null;
 			m_syncLockUpdates.EnterReadLock();
+
 			try
 			{
-				if (m_abilityIndex.ContainsKey(keyname))
-				{
-					dba = m_abilityIndex[keyname];
-				}
+				m_abilityIndex.TryGetValue(keyname, out dba);
 			}
 			finally
 			{

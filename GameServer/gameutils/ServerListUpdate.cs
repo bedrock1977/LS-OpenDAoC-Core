@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading;
 using DOL.Events;
 using DOL.GS.ServerProperties;
-using log4net;
 
 namespace DOL.GS.GameEvents
 {
@@ -38,7 +37,7 @@ namespace DOL.GS.GameEvents
 		/// <summary>
 		/// Sets up our logger instance
 		/// </summary>
-		protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// This method is called when the script is loaded.
@@ -109,7 +108,7 @@ namespace DOL.GS.GameEvents
 		private static void StartList()
 		{
 			//Set up our URI to be passed to the WebClient.
-			string Updater = UrlEncode($"{UpdateURL}&username={Properties.SERVER_LIST_UPDATE_USER}&password={Properties.SERVER_LIST_UPDATE_PASS}&totalclients={ClientService.ClientCount}&version={ScriptVersion}");
+			string Updater = UrlEncode($"{UpdateURL}&username={Properties.SERVER_LIST_UPDATE_USER}&password={Properties.SERVER_LIST_UPDATE_PASS}&totalclients={ClientService.Instance.ClientCount}&version={ScriptVersion}");
 
 			if (!ListUpdater(Updater))
 			{

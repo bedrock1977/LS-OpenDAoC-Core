@@ -1,9 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using DOL.Events;
 using DOL.GS;
-using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 using DOL.Language;
 
@@ -15,16 +13,7 @@ namespace DOL.AI.Brain
     /// <author>Aredhel</author>
     public class NecromancerPetBrain : ControlledMobBrain
     {
-        public NecromancerPetBrain(GameLiving owner) : base(owner)
-        {
-            FSM.ClearStates();
-            FSM.Add(new ControlledMobState_WAKING_UP(this));
-            FSM.Add(new NecromancerPetState_DEFENSIVE(this));
-            FSM.Add(new NecromancerPetState_AGGRO(this));
-            FSM.Add(new NecromancerPetState_PASSIVE(this));
-            FSM.Add(new StandardMobState_DEAD(this));
-            FSM.SetCurrentState(eFSMStateType.WAKING_UP);
-        }
+        public NecromancerPetBrain(GameLiving owner) : base(owner) { }
 
         public override int ThinkInterval => 500;
 
@@ -37,38 +26,34 @@ namespace DOL.AI.Brain
             FSM.Think();
         }
 
+        public override void Attack(GameObject target)
+        {
+            if (m_orderAttackTarget == null && !Body.InCombat)
+                ClearAttackSpellQueue();
+
+            base.Attack(target);
+        }
+
+        public override void Disengage()
+        {
+            base.Disengage();
+            ClearAttackSpellQueue();
+        }
+
         #region Events
 
         public void OnOwnerFinishPetSpellCast(Spell spell, SpellLine spellLine, GameLiving target)
         {
-            bool hadQueuedSpells = false;
-
-            if (!m_spellQueue.IsEmpty)
-            {
+            if (Body.IsCasting)
                 MessageToOwner(LanguageMgr.GetTranslation((Owner as GamePlayer).Client.Account.Language, "AI.Brain.Necromancer.CastSpellAfterAction", Body.Name), eChatType.CT_System, Owner as GamePlayer);
-                hadQueuedSpells = true;
-            }
 
-            if (Body.attackComponent.AttackState || Body.IsCasting)
-            {
-                if (spell.IsInstantCast && !spell.IsHarmful)
-                    CastSpell(spell, spellLine, target, true);
-                else if (!spell.IsInstantCast)
-                    AddToSpellQueue(spell, spellLine, target);
-                else
-                    AddToAttackSpellQueue(spell, spellLine, target);
-            }
+            if (spell.IsInstantCast)
+                AddToAttackSpellQueue(spell, spellLine, target);
             else
-            {
-                if (spell.IsInstantCast)
-                    CastSpell(spell, spellLine, target, true);
-                else
-                    AddToSpellQueue(spell, spellLine, target);
-            }
+                AddToSpellQueue(spell, spellLine, target);
 
-            // Immediately cast if this was the first spell added.
-            if (hadQueuedSpells == false && !Body.IsCasting)
-                CheckSpellQueue();
+            // Immediately try to cast.
+            CheckSpellQueue();
         }
 
         public void OnPetBeginCast(Spell spell, SpellLine spellLine)
@@ -90,42 +75,7 @@ namespace DOL.AI.Brain
         {
             base.Notify(e, sender, args);
 
-            if (e == GameLivingEvent.Dying)
-            {
-                // At necropet Die, we check DamageRvRMemory for transfer it to owner if necessary.
-                GamePlayer playerowner = GetPlayerOwner();
-
-                if (playerowner != null && Body.DamageRvRMemory > 0)
-                    playerowner.DamageRvRMemory = Body.DamageRvRMemory;
-
-                return;
-            }
-            else if (e == GameLivingEvent.CastFinished)
-            {
-                // Instant cast spells bypass the queue.
-                if (args is CastingEventArgs cArgs && !cArgs.SpellHandler.Spell.IsInstantCast)
-                {
-                    // Remove the spell that has finished casting from the queue, if there are more, keep casting.
-                    RemoveSpellFromQueue();
-                    AttackMostWanted();
-
-                    if (!m_spellQueue.IsEmpty)
-                    {
-                        DebugMessageToOwner("+ Cast finished, more spells to cast");
-                        CheckSpellQueue();
-                    }
-                    else
-                        DebugMessageToOwner("- Cast finished, no more spells to cast");
-                }
-                else
-                {
-                    RemoveSpellFromAttackQueue();
-                    AttackMostWanted();
-                }
-
-                Owner.Notify(GameLivingEvent.CastFinished, Owner, args);
-            }
-            else if (e == GameLivingEvent.CastFailed)
+            if (e == GameLivingEvent.CastFailed)
             {
                 // Tell owner why cast has failed.
                 switch ((args as CastFailedEventArgs).Reason)
@@ -151,32 +101,6 @@ namespace DOL.AI.Brain
                 Owner.Notify(GameLivingEvent.AttackFinished, Owner, args);
         }
 
-        /// <summary>
-        /// Set the tether timer if pet gets out of range or comes back into range.
-        /// </summary>
-        /// <param name="seconds"></param>
-        public void SetTetherTimer(int seconds)
-        {
-            NecromancerShadeEffect shadeEffect = Owner.EffectList.GetOfType<NecromancerShadeEffect>();
-
-            if (shadeEffect != null)
-            {
-                lock (shadeEffect)
-                {
-                    shadeEffect.SetTetherTimer(seconds);
-                }
-
-                ArrayList effectList = new(1)
-                {
-                    shadeEffect
-                };
-
-                int effectsCount = 1;
-
-                (Owner as GamePlayer)?.Out.SendUpdateIcons(effectList, ref effectsCount);
-            }
-        }
-
         #endregion
 
         #region Spell Queue
@@ -185,26 +109,28 @@ namespace DOL.AI.Brain
         /// See if there are any spells queued up and if so, get the first one
         /// and cast it.
         /// </summary>
-        public void CheckSpellQueue()
+        public bool CheckSpellQueue()
         {
-            SpellQueueEntry entry = GetSpellFromQueue();
-
-            if (entry != null)
+            // Only start casting if the pet has finished his attack round.
+            // This will be false most of the time, unless called from the attack component directly.
+            if (!GameServiceUtils.ShouldTick(Body.attackComponent.attackAction.NextTick))
             {
-                // If the spell can be cast, remove it from the queue.
-                if (CastSpell(entry.Spell, entry.SpellLine, entry.Target, true))
-                    RemoveSpellFromQueue();
+                MessageToOwner(LanguageMgr.GetTranslation((Owner as GamePlayer).Client.Account.Language, "AI.Brain.Necromancer.CastSpellAfterAction", Body.Name), eChatType.CT_System, Owner as GamePlayer);
+                return false;
             }
-        }
 
-        public GameLiving GetSpellTarget()
-        {
+            // Check the attack spell queue before casting spells.
+            // This allows instant spells such as FP to be activated first.
+            if (!Body.IsCasting)
+                CheckAttackSpellQueue();
+
             SpellQueueEntry entry = GetSpellFromQueue();
 
-            if (entry != null)
-                return entry.Target;
-            else
-                return null;
+            if (entry == null || !CastSpell(entry.Spell, entry.SpellLine, entry.Target, true))
+                return false;
+
+            RemoveSpellFromQueue();
+            return true;
         }
 
         /// <summary>
@@ -218,12 +144,10 @@ namespace DOL.AI.Brain
             {
                 SpellQueueEntry entry = GetSpellFromAttackQueue();
 
-                if (entry != null)
-                {
-                    // If the spell can be cast, remove it from the queue.
-                    if (CastSpell(entry.Spell, entry.SpellLine, entry.Target, false))
-                        RemoveSpellFromAttackQueue();
-                }
+                if (entry == null || !CastSpell(entry.Spell, entry.SpellLine, entry.Target, false))
+                    continue;
+
+                RemoveSpellFromAttackQueue();
             }
         }
 
@@ -242,10 +166,7 @@ namespace DOL.AI.Brain
                     Body.attackComponent.StopAttack();
 
                 Body.TargetObject = spellTarget;
-                Body.CastSpell(spell, line, checkLos);
-
-                // Assume that the spell can always be casted, otherwise the same spell will be queued in the casting component if LoS checks are enabled.
-                return true;
+                return Body.CastSpell(spell, line, checkLos);
             }
             else
             {
@@ -398,40 +319,30 @@ namespace DOL.AI.Brain
 
         #region Tether
 
-        private const int m_softTether = 750; // TODO: Check on Pendragon
-        private const int m_hardTether = 2000;
-        private TetherTimer m_tetherTimer = null;
+        private const int SOFT_TETHER_RANGE = 1500;
+        private const int HARD_TETHER_RANGE = 2000;
+        private TetherTimer _tetherTimer = null;
 
         private void CheckTether()
         {
-            // Check if pet is past hard tether range, if so, despawn it right away.
-            if (!Body.IsWithinRadius(Owner, m_hardTether))
+            // Check if pet is past hard tether range. If so, cut it right away.
+            if (!Body.IsWithinRadius(Owner, HARD_TETHER_RANGE))
             {
-                m_tetherTimer?.Stop();
+                _tetherTimer?.Stop();
                 (Body as NecromancerPet).CutTether();
                 return;
             }
 
             // Check if pet is out of soft tether range.
-            if (!Body.IsWithinRadius(Owner, m_softTether))
-            {
-                if (m_tetherTimer == null)
-                {
-                    // Pet just went out of range, start the timer.
-                    m_tetherTimer = new TetherTimer(Body as NecromancerPet);
-                    m_tetherTimer.Callback = new ECSGameTimer.ECSTimerCallback(FollowCallback);
-                    m_tetherTimer.Start(1);
-                    followSeconds = 10;
-                }
-            }
+            if (!Body.IsWithinRadius(Owner, SOFT_TETHER_RANGE))
+                _tetherTimer ??= new(Body as NecromancerPet);
             else
             {
-                if (m_tetherTimer != null)
+                if (_tetherTimer != null)
                 {
                     // Pet is back in range, stop the timer.
-                    m_tetherTimer.Stop();
-                    m_tetherTimer = null;
-                    SetTetherTimer(-1);
+                    _tetherTimer.OnReturnWithinRange();
+                    _tetherTimer = null;
                 }
             }
         }
@@ -439,62 +350,70 @@ namespace DOL.AI.Brain
         /// <summary>
         /// Timer for pet out of tether range.
         /// </summary>
-        private class TetherTimer : ECSGameTimer
+        private class TetherTimer : ECSGameTimerWrapperBase
         {
-            private NecromancerPet m_pet;
-            private int m_seconds = 10;
+            private NecromancerPet _pet;
+            private GamePlayer _playerOwner;
+            public int SecondsRemaining { get; set; } = 10;
 
-            public TetherTimer(NecromancerPet pet) : base(pet) 
+            public TetherTimer(NecromancerPet pet) : base(pet)
             {
-                m_pet = pet;
+                _pet = pet;
+                _playerOwner = pet.Owner as GamePlayer;
+                Start(0);
             }
 
-            protected void OnTick()
+            protected override int OnTick(ECSGameTimer timer)
             {
-                Interval = 1000;
-
-                if (m_seconds > 0)
-                    m_seconds -= 1;
-                else
+                if (SecondsRemaining > 0)
                 {
-                    Stop();
-                    m_pet.CutTether();
+                    OutOfTetherCheck();
+                    SecondsRemaining -= 1;
+                    return 1000;
+                }
+
+                Stop();
+
+                if (_playerOwner != null)
+                    MessageToOwner(LanguageMgr.GetTranslation(_playerOwner.Client.Account.Language, "AI.Brain.Necromancer.HaveLostBondToPet"), eChatType.CT_System, _playerOwner);
+
+                _pet.CutTether();
+                return 0;
+
+                void OutOfTetherCheck()
+                {
+                    // Pet past its tether, update effect icon (remaining time) and send warnings to owner at t = 10 seconds and t = 5 seconds.
+                    SetShadeIconRemainingTime(SecondsRemaining);
+
+                    if (_playerOwner == null)
+                        return;
+
+                    if (SecondsRemaining == 10)
+                        MessageToOwner(LanguageMgr.GetTranslation(_playerOwner.Client.Account.Language, "AI.Brain.Necromancer.PetTooFarBeLostSecIm", SecondsRemaining), eChatType.CT_System, _playerOwner);
+                    else if (SecondsRemaining == 5)
+                        MessageToOwner(LanguageMgr.GetTranslation(_playerOwner.Client.Account.Language, "AI.Brain.Necromancer.PetTooFarBeLostSec", SecondsRemaining), eChatType.CT_System, _playerOwner);
                 }
             }
-        }
 
-        private int followSeconds = 10;
-
-        private int FollowCallback(ECSGameTimer timer)
-        {
-            if (followSeconds > 0)
+            public void OnReturnWithinRange()
             {
-                OutOfTetherCheck(followSeconds);
-                followSeconds -= 1;
-            }
-            else
-            {
+                SetShadeIconRemainingTime(-1);
                 Stop();
-                MessageToOwner(LanguageMgr.GetTranslation((Owner as GamePlayer).Client.Account.Language,
-                    "AI.Brain.Necromancer.HaveLostBondToPet"), eChatType.CT_System, Owner as GamePlayer);
-                (Body as NecromancerPet)?.CutTether();
-                return 0;
             }
 
-            return 1000;
-        }
+            private void SetShadeIconRemainingTime(int duration)
+            {
+                if (_playerOwner == null)
+                    return;
 
-        private void OutOfTetherCheck(int secondsRemaining)
-        {
-            // Pet past its tether, update effect icon (remaining time) and send warnings to owner at t = 10 seconds and t = 5 seconds.
-            SetTetherTimer(secondsRemaining);
+                if (EffectListService.GetEffectOnTarget(_playerOwner, eEffect.Shade) is not NecromancerShadeECSGameEffect shadeEffect)
+                    return;
 
-            if (secondsRemaining == 10)
-                MessageToOwner(LanguageMgr.GetTranslation((Owner as GamePlayer).Client.Account.Language,
-                    "AI.Brain.Necromancer.PetTooFarBeLostSecIm", secondsRemaining), eChatType.CT_System, Owner as GamePlayer);
-            else if (secondsRemaining == 5)
-                MessageToOwner(LanguageMgr.GetTranslation((Owner as GamePlayer).Client.Account.Language,
-                    "AI.Brain.Necromancer.PetTooFarBeLostSec", secondsRemaining), eChatType.CT_System, Owner as GamePlayer);
+                shadeEffect.SetTetherTimer(duration);
+                ECSGameEffect[] effectList = [shadeEffect];
+                int effectsCount = 1;
+                _playerOwner.Out.SendUpdateIcons(effectList, ref effectsCount);
+            }
         }
 
         /// <summary>

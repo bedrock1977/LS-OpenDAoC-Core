@@ -11,13 +11,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(12745);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			//RespawnInterval = Util.Random(3600000, 7200000);
 
 			WaterSpiderGleekBrain sbrain = new WaterSpiderGleekBrain();
@@ -33,7 +26,7 @@ namespace DOL.AI.Brain
 {
 	public class WaterSpiderGleekBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public WaterSpiderGleekBrain() : base()
 		{
 			AggroLevel = 100;

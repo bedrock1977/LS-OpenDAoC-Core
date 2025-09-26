@@ -14,7 +14,7 @@ namespace DOL.GS
     ///</summary>
     public class BaseInstance : Region
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
         /// Creates an instance object. This shouldn't be used directly - Please use WorldMgr.CreateInstance
@@ -24,9 +24,6 @@ namespace DOL.GS
         {
             m_regionID = ID;
             m_skinID = data.Id;
-            
-            //Notify we've created an instance.
-            log.Warn("An instance is created! " + Name + ", RegionID: " + ID + ", SkinID: " + Skin);
         }
 
 		/// <summary>
@@ -111,7 +108,9 @@ namespace DOL.GS
 				//If no more players remain, remove and clean up the instance...
 				if (m_destroyWhenEmpty && m_playersInInstance == 0)
 				{
-					log.Info("Instance is empty, destroying instance " + Description + ", ID: " + ID + ".");
+					if (log.IsInfoEnabled)
+						log.Info("Instance is empty, destroying instance " + Description + ", ID: " + ID + ".");
+
 					WorldMgr.RemoveInstance(this);
 				}
 			}
@@ -194,7 +193,9 @@ namespace DOL.GS
             //If no more players remain, remove and clean up the instance...
             if (m_playersInInstance < 1 && DestroyWhenEmpty)
             {
-                log.Warn("Instance now empty, destroying instance " + Description + ", ID: " + ID + ", type=" + GetType().ToString() + ".");
+                if (log.IsWarnEnabled)
+                    log.Warn("Instance now empty, destroying instance " + Description + ", ID: " + ID + ", type=" + GetType().ToString() + ".");
+
                 WorldMgr.RemoveInstance(this);
             }
         }
@@ -249,11 +250,6 @@ namespace DOL.GS
 			m_zoneSkinMap.Clear();
 
 			Areas.Clear();
-		}
-
-		~BaseInstance()
-		{
-			log.Debug("BaseInstance destructor called for " + Description);
 		}
 
         private AutoCloseRegionTimer m_autoCloseRegionTimer;
@@ -320,7 +316,9 @@ namespace DOL.GS
             {
                 if (m_instance == null)
                 {
-                    log.Warn("RegionRemovalTimer is not being stopped once the instance is destroyed!");
+                    if (log.IsWarnEnabled)
+                        log.Warn("RegionRemovalTimer is not being stopped once the instance is destroyed!");
+
                     Stop();
                     return 0;
                 }
@@ -329,12 +327,17 @@ namespace DOL.GS
                 //a base in one of their OnPlayerEnter/Exit overrides.
                 //When this is a case, keep the timer ticking - we will eventually have it cleanup the instance,
                 //it just wont be running at optimum speed.
-                if (ClientService.GetPlayersOfRegion(m_instance).Count > 0)
-                    log.Warn("Players were still in the region on AutoRemoveregionTimer Tick! Please check the overridden voids OnPlayerEnter/Exit to ensure that a 'base.OnPlayerEnter/Exit' is included!");
+                if (ClientService.Instance.GetPlayersOfRegion(m_instance).Count > 0)
+                {
+                    if (log.IsWarnEnabled)
+                        log.Warn("Players were still in the region on AutoRemoveregionTimer Tick! Please check the overridden voids OnPlayerEnter/Exit to ensure that a 'base.OnPlayerEnter/Exit' is included!");
+                }
                 else
                 {
                     //Collapse the zone!
-                    log.Info(m_instance.Name + " (ID: " + m_instance.ID + ") just reached the timeout for the removal timer. The region is empty, and will now be demolished and removed from the world. Entering OnCollapse!");
+                    if (log.IsInfoEnabled)
+                        log.Info(m_instance.Name + " (ID: " + m_instance.ID + ") just reached the timeout for the removal timer. The region is empty, and will now be demolished and removed from the world. Entering OnCollapse!");
+
                     Stop();
                     WorldMgr.RemoveInstance(m_instance);
                 }
@@ -361,7 +364,9 @@ namespace DOL.GS
 			{
 				if (m_instance == null)
 				{
-					log.Warn("DelayCloseRegionTimer is not being stopped once the instance is destroyed!");
+					if (log.IsWarnEnabled)
+						log.Warn("DelayCloseRegionTimer is not being stopped once the instance is destroyed!");
+
 					Stop();
 					return 0;
 				}
@@ -391,7 +396,7 @@ namespace DOL.GS
 		/// <param name="p"></param>
 		/// <param name="checkZ"></param>
 		/// <returns></returns>
-		public override IList<IArea> GetAreasOfZone(Zone zone, IPoint3D p, bool checkZ)
+		public override List<IArea> GetAreasOfZone(Zone zone, IPoint3D p, bool checkZ)
 		{
 			Zone checkZone = zone;
 			var areas = new List<IArea>();
@@ -411,7 +416,7 @@ namespace DOL.GS
 
 			if (zoneIndex >= 0)
 			{
-				lock (m_lockAreas)
+				lock (_lockAreas)
 				{
 					try
 					{
@@ -426,7 +431,8 @@ namespace DOL.GS
 					}
 					catch (Exception e)
 					{
-						log.Error("GetAreaOfZone: Caught exception for Zone " + zone.Description + ", Area count " + m_ZoneAreasCount[zoneIndex] + ".", e);
+						if (log.IsErrorEnabled)
+							log.Error("GetAreaOfZone: Caught exception for Zone " + zone.Description + ", Area count " + m_ZoneAreasCount[zoneIndex] + ".", e);
 					}
 				}
 			}
@@ -441,7 +447,7 @@ namespace DOL.GS
 		/// <param name="p"></param>
 		/// <param name="checkZ"></param>
 		/// <returns></returns>
-		public override IList<IArea> GetAreasOfZone(Zone zone, int x, int y, int z)
+		public override List<IArea> GetAreasOfZone(Zone zone, int x, int y, int z)
 		{
 			Zone checkZone = zone;
 			var areas = new List<IArea>();
@@ -461,7 +467,7 @@ namespace DOL.GS
 
 			if (zoneIndex >= 0)
 			{
-				lock (m_lockAreas)
+				lock (_lockAreas)
 				{
 					try
 					{
@@ -474,7 +480,8 @@ namespace DOL.GS
 					}
 					catch (Exception e)
 					{
-						log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
+						if (log.IsErrorEnabled)
+							log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
 					}
 				}
 			}

@@ -1,21 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
-
 using System.Collections.Generic;
 using DOL.Database;
 using DOL.GS.Effects;
@@ -33,7 +15,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Perfecter-3
-    [SpellHandlerAttribute("FOH")]
+    [SpellHandler(eSpellType.FOH)]
     public class FOHSpellHandler : FontSpellHandler
     {
         // constructor
@@ -89,7 +71,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Perfecter-5
-    [SpellHandlerAttribute("FOP")]
+    [SpellHandler(eSpellType.FOP)]
     public class FOPSpellHandler : FontSpellHandler
     {
         // constructor
@@ -143,7 +125,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Perfecter-6
-    [SpellHandlerAttribute("FOR")]
+    [SpellHandler(eSpellType.FOR)]
     public class FORSpellHandler : FontSpellHandler
     {
         // constructor
@@ -197,7 +179,7 @@ namespace DOL.GS.Spells
 
     //no shared timer
     #region Perfecter-8
-    [SpellHandlerAttribute("SickHeal")]
+    [SpellHandler(eSpellType.SickHeal)]
     public class SickHealSpellHandler : RemoveSpellEffectHandler
     {
         // constructor
@@ -213,7 +195,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Perfecter-9
-    [SpellHandlerAttribute("FOD")]
+    [SpellHandler(eSpellType.FOD)]
     public class FODSpellHandler : FontSpellHandler
     {
         // constructor
@@ -265,7 +247,7 @@ namespace DOL.GS.Spells
     //ML10 Rampant Healing - already handled in another area
 
     #region PoT
-    [SpellHandlerAttribute("PowerOverTime")]
+    [SpellHandler(eSpellType.PowerOverTime)]
     public class PoTSpellHandler : SpellHandler
     {
         /// <summary>
@@ -276,26 +258,6 @@ namespace DOL.GS.Spells
         {
             m_caster.Mana -= PowerCost(target);
             base.FinishSpellCast(target);
-        }
-
-        public override void ApplyEffectOnTarget(GameLiving target)
-        {
-            // TODO: correct formula
-            Effectiveness = 1.25;
-            if (Caster is GamePlayer)
-            {
-                double lineSpec = Caster.GetModifiedSpecLevel(m_spellLine.Spec);
-                if (lineSpec < 1)
-                    lineSpec = 1;
-                Effectiveness = 0.75;
-                if (Spell.Level > 0)
-                {
-                    Effectiveness += (lineSpec - 1.0) / Spell.Level * 0.5;
-                    if (Effectiveness > 1.25)
-                        Effectiveness = 1.25;
-                }
-            }
-            base.ApplyEffectOnTarget(target);
         }
 
         protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
@@ -332,7 +294,7 @@ namespace DOL.GS.Spells
             }
 
             base.OnDirectEffect(target);
-            double heal = Spell.Value * Effectiveness;
+            double heal = Spell.Value * CasterEffectiveness;
             if (heal < 0) target.Mana += (int)(-heal * target.MaxMana / 100);
             else target.Mana += (int)heal;
             //"You feel calm and healthy."
@@ -366,15 +328,15 @@ namespace DOL.GS.Spells
     #endregion
 
     #region CCResist
-    [SpellHandler("CCResist")]
+    [SpellHandler(eSpellType.CCResist)]
     public class CCResistSpellHandler : MasterlevelHandling
     {
         public override void OnEffectStart(GameSpellEffect effect)
         {
         	base.OnEffectStart(effect);
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.MesmerizeDurationReduction] += (int)m_spell.Value;
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.StunDurationReduction] += (int)m_spell.Value;
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.SpeedDecreaseDurationReduction] += (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.MesmerizeDurationReduction] += (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.StunDurationReduction] += (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.SpeedDecreaseDurationReduction] += (int)m_spell.Value;
              
             if (effect.Owner is GamePlayer)
             {
@@ -386,9 +348,9 @@ namespace DOL.GS.Spells
 
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
         {
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.MesmerizeDurationReduction] -= (int)m_spell.Value;
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.StunDurationReduction] -= (int)m_spell.Value;
-            effect.Owner.BaseBuffBonusCategory[(int)eProperty.SpeedDecreaseDurationReduction] -= (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.MesmerizeDurationReduction] -= (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.StunDurationReduction] -= (int)m_spell.Value;
+            effect.Owner.BaseBuffBonusCategory[eProperty.SpeedDecreaseDurationReduction] -= (int)m_spell.Value;
             
             if (effect.Owner is GamePlayer)
             {

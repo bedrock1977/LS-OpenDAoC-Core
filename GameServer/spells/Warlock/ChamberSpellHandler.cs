@@ -6,7 +6,7 @@ using DOL.Language;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("Chamber")]
+	[SpellHandler(eSpellType.Chamber)]
 	public class ChamberSpellHandler : SpellHandler
 	{
 		private Spell m_primaryspell = null;
@@ -152,7 +152,7 @@ namespace DOL.GS.Spells
 						return false;
 					}
 				}
-				if (!caster.IsWithinRadius(Target, ((SpellHandler)spellhandler).CalculateSpellRange()))
+				if (!caster.IsWithinRadius(Target, Spell.CalculateEffectiveRange(caster)))
 				{
 					MessageToCaster("That target is too far away!", eChatType.CT_SpellResisted);
 					return false;
@@ -174,7 +174,7 @@ namespace DOL.GS.Spells
 				}
 				if (Target.HasAbility(Abilities.DamageImmunity))
 				{
-					MessageToCaster(Target.Name + " is immune to this effect!", eChatType.CT_SpellResisted);
+					MessageToCaster("Your target is immune to this effect!", eChatType.CT_SpellResisted);
 					return false;
 				}
 				if (GameServer.ServerRules.IsAllowedToAttack(Caster, Target, true) && chamber.PrimarySpell.Target == eSpellTarget.REALM)
@@ -310,7 +310,7 @@ namespace DOL.GS.Spells
 				list.Add("");
 
 				//Description
-				list.Add("Description: " + Spell.Description);
+				list.Add("Description: " + ShortDescription);
 				list.Add("");
 
 				//SpellType

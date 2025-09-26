@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,22 +13,22 @@ using DOL.Config;
 using DOL.Database;
 using DOL.Database.Attributes;
 using DOL.Events;
+using DOL.GS.Appeal;
 using DOL.GS.Behaviour;
 using DOL.GS.DatabaseUpdate;
 using DOL.GS.Housing;
 using DOL.GS.Keeps;
+using DOL.GS.Metrics;
 using DOL.GS.PacketHandler;
 using DOL.GS.PlayerTitles;
 using DOL.GS.Quests;
 using DOL.GS.ServerProperties;
 using DOL.GS.ServerRules;
 using DOL.Language;
+using DOL.Logging;
 using DOL.Mail;
 using DOL.Network;
 using JNogueira.Discord.Webhook.Client;
-using log4net;
-using log4net.Config;
-using log4net.Core;
 
 namespace DOL.GS
 {
@@ -39,14 +40,9 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static Logger log;
 
 		#region Variables
-
-		/// <summary>
-		/// Maximum UDP buffer size
-		/// </summary>
-		protected const int MAX_UDPBUF = 4096;
 
 		public DateTime StartupTime;
 
@@ -63,12 +59,12 @@ namespace DOL.GS
 		/// <summary>
 		/// The textwrite for log operations
 		/// </summary>
-		protected ILog m_cheatLog;
-		
+		protected Logging.Logger m_cheatLog;
+
 		/// <summary>
 		/// The textwrite for log operations
 		/// </summary>
-		protected ILog m_dualIPLog;
+		protected Logging.Logger m_dualIPLog;
 
 		/// <summary>
 		/// Database instance
@@ -78,12 +74,12 @@ namespace DOL.GS
 		/// <summary>
 		/// The textwrite for log operations
 		/// </summary>
-		protected ILog m_gmLog;
+		protected Logging.Logger m_gmLog;
 
 		/// <summary>
 		/// The textwrite for log operations
 		/// </summary>
-		protected ILog m_inventoryLog;
+		protected Logging.Logger m_inventoryLog;
 
 		/// <summary>
 		/// Holds instance of current server rules
@@ -111,24 +107,9 @@ namespace DOL.GS
 		protected Timer m_timer;
 
 		/// <summary>
-		/// Receive buffer for UDP
-		/// </summary>
-		protected byte[] m_udpBuf;
-
-		/// <summary>
-		/// Socket that listens for UDP packets
-		/// </summary>
-		protected Socket m_udpListen;
-
-		/// <summary>
-		/// Socket that sends UDP packets
-		/// </summary>
-		protected Socket m_udpOutSocket;
-
-		/// <summary>
 		/// A general logger for the server
 		/// </summary>
-		public ILog Logger
+		public Logging.Logger Log
 		{
 			get { return log; }
 		}
@@ -146,10 +127,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Retrieves the server configuration
 		/// </summary>
-		public new virtual GameServerConfiguration Configuration
-		{
-			get { return (GameServerConfiguration)_config; }
-		}
+		public new virtual GameServerConfiguration Configuration => base.Configuration as GameServerConfiguration;
 
 		/// <summary>
 		/// Gets the server status
@@ -260,14 +238,6 @@ namespace DOL.GS
 		}
 
 		/// <summary>
-		/// True if the server is listening
-		/// </summary>
-		public bool IsRunning
-		{
-			get { return _listen != null; }
-		}
-
-		/// <summary>
 		/// Gets the number of millisecounds elapsed since the GameServer started.
 		/// </summary>
 		public int TickCount
@@ -291,274 +261,17 @@ namespace DOL.GS
 			if (Instance != null)
 				return;
 
-			//Try to find the log.config file, if it doesn't exist
-			//we create it
 			var logConfig = new FileInfo(config.LogConfigFile);
-			if (!logConfig.Exists)
-			{
-				ResourceUtil.ExtractResource("logconfig.xml", logConfig.FullName);
-			}
 
-			//Configure and watch the config file
-			XmlConfigurator.ConfigureAndWatch(logConfig);
+			if (!logConfig.Exists)
+				ResourceUtil.ExtractResource("logconfig.xml", logConfig.FullName);
+
+			if (!LoggerManager.Initialize(logConfig.FullName))
+				return;
 
 			//Create the instance
 			m_instance = new GameServer(config);
 		}
-		#endregion
-
-		#region UDP
-
-		/// <summary>
-		/// Holds udp receive callback delegate
-		/// </summary>
-		protected readonly AsyncCallback m_udpReceiveCallback;
-
-		/// <summary>
-		/// Holds the async UDP send callback
-		/// </summary>
-		protected readonly AsyncCallback m_udpSendCallback;
-
-		/// <summary>
-		/// Gets the UDP Socket of this server instance
-		/// </summary>
-		protected Socket UDPSocket
-		{
-			get { return m_udpListen; }
-		}
-
-		/// <summary>
-		/// Gets the UDP buffer of this server instance
-		/// </summary>
-		protected byte[] UDPBuffer
-		{
-			get { return m_udpBuf; }
-		}
-
-		/// <summary>
-		/// Starts the udp listening
-		/// </summary>
-		/// <returns>true if successfull</returns>
-		protected bool StartUDP()
-		{
-			bool ret = true;
-			try
-			{
-				// Open our udp socket
-				m_udpListen = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-				m_udpListen.Bind(new IPEndPoint(Configuration.UDPIP, Configuration.UDPPort));
-
-				// Bind out UDP socket
-				m_udpOutSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-				if (Configuration.UDPOutEndpoint != null)
-				{
-					m_udpOutSocket.Bind(Configuration.UDPOutEndpoint);
-				}
-
-				ret = BeginReceiveUDP(m_udpListen, this);
-			}
-			catch (Exception e)
-			{
-				if (log.IsErrorEnabled)
-					log.Error("StartUDP", e);
-				ret = false;
-			}
-
-			return ret;
-		}
-
-		/// <summary>
-		/// UDP event handler. Called when a UDP packet is waiting to be read
-		/// </summary>
-		/// <param name="ar"></param>
-		protected void RecvFromCallback(IAsyncResult ar)
-		{
-			if (m_status != EGameServerStatus.GSS_Open)
-				return;
-
-			if (ar == null)
-				return;
-
-			var server = (GameServer)ar.AsyncState;
-			Socket s = server.UDPSocket;
-			GameClient client = null;
-
-			if (s != null)
-			{
-				//Creates a temporary EndPoint to pass to EndReceiveFrom.
-				EndPoint tempRemoteEP = new IPEndPoint(IPAddress.Any, 0);
-				bool receiving = false;
-				try
-				{
-					// Handle the packet
-					int read = s.EndReceiveFrom(ar, ref tempRemoteEP);
-					if (read == 0)
-					{
-						log.Debug("UDP received bytes = 0");
-					}
-					else
-					{
-						int pakCheck = (server.UDPBuffer[read - 2] << 8) | server.UDPBuffer[read - 1];
-						int calcCheck = PacketProcessor.CalculateChecksum(server.UDPBuffer, 0, read - 2);
-
-						if (calcCheck != pakCheck)
-						{
-							if (log.IsWarnEnabled)
-								log.WarnFormat("Bad UDP packet checksum (packet:0x{0:X4} calculated:0x{1:X4}) -> ignored", pakCheck, calcCheck);
-							if (log.IsDebugEnabled)
-								log.Debug(Marshal.ToHexDump("UDP buffer dump, received " + read + "bytes", server.UDPBuffer));
-						}
-						else
-						{
-							var sender = (IPEndPoint)(tempRemoteEP);
-
-							var pakin = new GSPacketIn(read - GSPacketIn.HDR_SIZE);
-							pakin.Load(server.UDPBuffer, 0, read);
-
-							//Get the next message
-							BeginReceiveUDP(s, server);
-							receiving = true;
-
-							client = ClientService.GetClientFromId(pakin.SessionID);
-
-							if (client != null)
-							{
-								//If this is the first message from the client, we
-								//save the endpoint!
-								if (client.UdpEndPoint == null)
-								{
-									client.UdpEndPoint = sender;
-									client.UdpConfirm = false;
-								}
-								//Only handle the packet if it comes from a valid client
-								if (client.UdpEndPoint.Equals(sender))
-								{
-									client.PacketProcessor.HandlePacket(pakin);
-								}
-							}
-							else if (log.IsErrorEnabled)
-							{
-								log.Error(
-									string.Format("Got an UDP packet from invalid client id or ip: client id = {0}, ip = {1},  code = {2:x2}",
-												  pakin.SessionID, sender, pakin.ID));
-							}
-						}
-					}
-				}
-				catch (SocketException)
-				{
-				}
-				catch (ObjectDisposedException)
-				{
-				}
-				catch (Exception e)
-				{
-					if (log.IsErrorEnabled)
-						log.Error("RecvFromCallback", e);
-				}
-				finally
-				{
-					if (!receiving)
-					{
-						//Get the next message
-						//Even if we have errors, we need to continue with UDP
-						BeginReceiveUDP(s, server);
-					}
-				}
-			}
-		}
-
-		/// <summary>
-		/// Starts receiving UDP packets.
-		/// </summary>
-		/// <param name="s">Socket to receive packets.</param>
-		/// <param name="server">Server instance used to receive packets.</param>
-		private bool BeginReceiveUDP(Socket s, GameServer server)
-		{
-			bool ret = false;
-			EndPoint tempRemoteEP = new IPEndPoint(IPAddress.Any, 0);
-
-			try
-			{
-				s.BeginReceiveFrom(server.UDPBuffer, 0, MAX_UDPBUF, SocketFlags.None, ref tempRemoteEP, m_udpReceiveCallback,
-								   server);
-				ret = true;
-			}
-			catch (SocketException e)
-			{
-				log.Fatal(
-					string.Format("Failed to resume receiving UDP packets. UDP is DEAD now. (code: {0}  socketCode: {1})", e.ErrorCode,
-								  e.SocketErrorCode), e);
-			}
-			catch (ObjectDisposedException e)
-			{
-				log.Fatal("Tried to start UDP. Object disposed.", e);
-			}
-			catch (Exception e)
-			{
-				if (log.IsErrorEnabled)
-					log.Error("UDP Recv", e);
-			}
-
-			return ret;
-		}
-
-		/// <summary>
-		/// Sends a UDP packet
-		/// </summary>
-		/// <param name="bytes">Packet to be sent</param>
-		/// <param name="count">The count of bytes to send</param>
-		/// <param name="clientEndpoint">Address of receiving client</param>
-		public void SendUDP(byte[] bytes, int count, EndPoint clientEndpoint)
-		{
-			SendUDP(bytes, count, clientEndpoint, null);
-		}
-
-		/// <summary>
-		/// Sends a UDP packet
-		/// </summary>
-		/// <param name="bytes">Packet to be sent</param>
-		/// <param name="count">The count of bytes to send</param>
-		/// <param name="clientEndpoint">Address of receiving client</param>
-		/// <param name="callback"></param>
-		public void SendUDP(byte[] bytes, int count, EndPoint clientEndpoint, AsyncCallback callback)
-		{
-			int start = Environment.TickCount;
-
-			m_udpOutSocket.BeginSendTo(bytes, 0, count, SocketFlags.None, clientEndpoint, callback, m_udpOutSocket);
-
-			int took = Environment.TickCount - start;
-			if (took > 100 && log.IsWarnEnabled)
-				log.WarnFormat("m_udpListen.BeginSendTo took {0}ms! (UDP to {1})", took, clientEndpoint.ToString());
-		}
-
-		/// <summary>
-		/// Callback function for UDP sends
-		/// </summary>
-		/// <param name="ar">Asynchronous result of this operation</param>
-		protected void SendToCallback(IAsyncResult ar)
-		{
-			if (ar == null)
-				return;
-
-			try
-			{
-				var s = (Socket)ar.AsyncState;
-				s.EndSendTo(ar);
-			}
-			catch (ObjectDisposedException)
-			{
-			}
-			catch (SocketException)
-			{
-			}
-			catch (Exception e)
-			{
-				if (log.IsErrorEnabled)
-					log.Error("SendToCallback", e);
-			}
-		}
-
 		#endregion
 
 		#region Start
@@ -569,21 +282,30 @@ namespace DOL.GS
 		/// <returns>True if the server was successfully started</returns>
 		public override bool Start()
 		{
+			Stopwatch stopwatch = Stopwatch.StartNew();
+
 			try
 			{
 				//Manually set ThreadPool min thread count.
-				int minWorkerThreads, minIOCThreads, maxWorkerThreads, maxIOCThreads;
-				ThreadPool.GetMinThreads(out minWorkerThreads, out minIOCThreads);
-				ThreadPool.GetMaxThreads(out maxWorkerThreads, out maxIOCThreads);
-				log.Info($"Default ThreadPoool minworkthreads {minWorkerThreads} minIOCThreads {minIOCThreads} maxworkthreads {maxWorkerThreads} maxIOCThreads {maxIOCThreads}");
+				ThreadPool.GetMinThreads(out int minWorkerThreads, out int minIOCThreads);
+				ThreadPool.GetMaxThreads(out int maxWorkerThreads, out int maxIOCThreads);
 
 				if (log.IsDebugEnabled)
+				{
+					log.Debug($"Default ThreadPool minworkthreads {minWorkerThreads} minIOCThreads {minIOCThreads} maxworkthreads {maxWorkerThreads} maxIOCThreads {maxIOCThreads}");
 					log.DebugFormat("Starting Server, Memory is {0}MB", GC.GetTotalMemory(false) / 1024 / 1024);
+				}
 
 				m_status = EGameServerStatus.GSS_Closed;
 				Thread.CurrentThread.Priority = ThreadPriority.Normal;
 
 				AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+				// -----------------------------------------------------------
+				// Init Metrics
+				if (!InitComponent(InitMetrics(), "Setup Metric Server"))
+					log.Error("Can't setup Metric Server");
+
 				//---------------------------------------------------------------
 				//Try to compile the Scripts
 				if (!InitComponent(CompileScripts(), "Script compilation"))
@@ -602,21 +324,6 @@ namespace DOL.GS
 				//---------------------------------------------------------------
 				//Check and update the database if needed
 				if (!UpdateDatabase())
-					return false;
-
-				//---------------------------------------------------------------
-				//Try to init the server port
-				if (!InitComponent(InitSocket(), "InitSocket()"))
-					return false;
-
-				//---------------------------------------------------------------
-				//Packet buffers
-				if (!InitComponent(AllocatePacketBuffers(), "AllocatePacketBuffers()"))
-					return false;
-
-				//---------------------------------------------------------------
-				//Try to start the udp port
-				if (!InitComponent(StartUDP(), "StartUDP()"))
 					return false;
 
 				//---------------------------------------------------------------
@@ -707,8 +414,6 @@ namespace DOL.GS
 				if (!InitComponent(WorldMgr.StartRegionMgrs(), "Region Managers"))
 					return false;
 
-				
-
 				//---------------------------------------------------------------
 				//Enable Worldsave timer now
 				if (m_timer != null)
@@ -744,7 +449,7 @@ namespace DOL.GS
 				//Load the area manager
 				if (!InitComponent(AreaMgr.LoadAllAreas(), "Areas"))
 					return false;
-					
+
 				//---------------------------------------------------------------
 				//Try to initialize the WorldMgr
 				if (!InitComponent(WorldMgr.Init(regionsData), "World Manager Initialization"))
@@ -767,6 +472,11 @@ namespace DOL.GS
 					return false;
 
 				//---------------------------------------------------------------
+				//Load player titles manager
+				if (!InitComponent(AppealMgr.Init(), "Appeal Manager"))
+					return false;
+
+				//---------------------------------------------------------------
 				//Load behaviour manager
 				if (!InitComponent(BehaviourMgr.Init(), "Behaviour Manager"))
 					return false;
@@ -777,10 +487,8 @@ namespace DOL.GS
 					if (!InitComponent(QuestMgr.Init(), "Quest Manager"))
 						return false;
 				}
-				else
-				{
+				else if (log.IsInfoEnabled)
 					log.InfoFormat("Not Loading Quest Manager : Obeying Server Property <load_quests> - {0}", Properties.LOAD_QUESTS);
-				}
 
 				//---------------------------------------------------------------
 				//Notify our scripts that everything went fine!
@@ -802,9 +510,13 @@ namespace DOL.GS
 				if (!InitComponent(GameLoop.Init(), "GameLoop Init"))
 					return false;
 
+				if (!InitComponent(StatPrint.Init(), "StatPrint Init"))
+					return false;
+
 				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
 
-				log.Info($"GarbageCollection IsServerGC: {System.Runtime.GCSettings.IsServerGC}" );
+				if (log.IsInfoEnabled)
+					log.Info($"GarbageCollection IsServerGC: {System.Runtime.GCSettings.IsServerGC}" );
 
 				//---------------------------------------------------------------
 				//Open the server, players can now connect if webhook, inform Discord!
@@ -815,7 +527,7 @@ namespace DOL.GS
 				{
 
 					var client = new DiscordWebhookClient(Properties.DISCORD_WEBHOOK_ID);
-					
+
  					var message = new DiscordMessage(
  						"",
  						username: "Game Server",
@@ -834,18 +546,19 @@ namespace DOL.GS
 					client.SendToDiscord(message);
 				}
 
-				if (log.IsInfoEnabled)
-					log.Info("GameServer is now open for connections!");
-
 				if (Properties.ATLAS_API)
 				{
-					var webserver = new DOL.GS.API.ApiHost();
-					log.Info("Game WebAPI open for connections.");
+					_ = new API.ApiHost();
+
+					if (log.IsInfoEnabled)
+						log.Info("Game WebAPI open for connections.");
 				}
-				
+
 				GetPatchNotes();
 
-				//INIT WAS FINE!
+				if (log.IsInfoEnabled)
+					log.Info($"GameServer startup completed in {stopwatch.Elapsed.TotalSeconds:F3} seconds");
+
 				return true;
 			}
 			catch (Exception e)
@@ -857,12 +570,38 @@ namespace DOL.GS
 			}
 		}
 
+        /// <summary>
+        /// Setup Metrics, this includes running a dedicated Kestrel Server for prometheus endpoints
+        /// and also starting the MetricsCollector
+        /// </summary>
+        /// <returns></returns>
+        private bool InitMetrics()
+        {
+            try
+            {
+                if (!Instance.Configuration.MetricsEnabled)
+                    return true;
+
+                MeterRegistry.RegisterMeterProviders();
+                return true;
+            }
+            catch (Exception e)
+            {
+                log.Error(e);
+                return false;
+            }
+        }
+
 		public async void GetPatchNotes()
 		{
+			string url = Properties.PATCH_NOTES_URL;
+
+			if (string.IsNullOrEmpty(url))
+				return;
+
 			try
 			{
 				using var newsClient = new HttpClient();
-				var url = Properties.PATCH_NOTES_URL;
 				var newsResult = await newsClient.GetStringAsync(url);
 				PatchNotes = [newsResult];
 				log.Debug("Patch notes updated.");
@@ -883,7 +622,7 @@ namespace DOL.GS
 		{
 			log.Fatal("Unhandled exception!\n" + e.ExceptionObject);
 			if (e.IsTerminating)
-				LogManager.Shutdown();
+				LoggerManager.Stop();
 		}
 
 		/// <summary>
@@ -901,7 +640,8 @@ namespace DOL.GS
 			// Check if Configuration Forces to use Pre-Compiled Game Server Scripts Assembly
 			if (!Configuration.EnableCompilation)
 			{
-				log.Info("Script Compilation Disabled in Server Configuration, Loading pre-compiled Assembly...");
+				if (log.IsInfoEnabled)
+					log.Info("Script Compilation Disabled in Server Configuration, Loading pre-compiled Assembly...");
 
 				if (File.Exists(Configuration.ScriptCompilationTarget))
 				{
@@ -909,7 +649,8 @@ namespace DOL.GS
 				}
 				else
 				{
-					log.WarnFormat("Compilation Disabled - Could not find pre-compiled Assembly : {0} - Server starting without Scripts Assembly!", Configuration.ScriptCompilationTarget);
+					if (log.IsWarnEnabled)
+						log.WarnFormat("Compilation Disabled - Could not find pre-compiled Assembly : {0} - Server starting without Scripts Assembly!", Configuration.ScriptCompilationTarget);
 				}
 
 				compiled = true;
@@ -1097,11 +838,14 @@ namespace DOL.GS
 
 				if (m_keepManager != null)
 				{
-					log.Warn("No Keep manager found, using " + m_keepManager.GetType().FullName);
+					if (log.IsWarnEnabled)
+						log.Warn("No Keep manager found, using " + m_keepManager.GetType().FullName);
 				}
 				else
 				{
-					log.Error("Cannot create Keep manager!");
+					if (log.IsErrorEnabled)
+						log.Error("Cannot create Keep manager!");
+
 					return false;
 				}
 			}
@@ -1118,7 +862,8 @@ namespace DOL.GS
 			bool result = true;
 			try
 			{
-				log.Info("Checking database for updates ...");
+				if (log.IsInfoEnabled)
+					log.Info("Checking database for updates ...");
 
 				foreach (Assembly asm in ScriptMgr.GameServerScripts)
 				{
@@ -1151,11 +896,15 @@ namespace DOL.GS
 			}
 			catch (Exception e)
 			{
-				log.Error("Error checking/updating database: ", e);
+				if (log.IsErrorEnabled)
+					log.Error("Error checking/updating database: ", e);
+
 				return false;
 			}
 
-			log.Info("Database update complete.");
+			if (log.IsInfoEnabled)
+				log.Info("Database update complete.");
+
 			return result;
 		}
 
@@ -1230,176 +979,41 @@ namespace DOL.GS
 		/// </summary>
 		public override void Stop()
 		{
-			//Stop new clients from logging in
+			if (log.IsInfoEnabled)
+				log.Info("Stopping server...");
+
+			// Stop new clients from logging in.
 			m_status = EGameServerStatus.GSS_Closed;
 
-			log.Info("GameServer.Stop() - enter method");
+			if (log.IsInfoEnabled)
+				log.Info("No longer accepting incoming connections");
 
-			if (log.IsWarnEnabled)
-			{
-				string stacks = PacketProcessor.GetConnectionThreadpoolStacks();
-				if (stacks.Length > 0)
-				{
-					log.Warn("Packet processor thread stacks:");
-					log.Warn(stacks);
-				}
-			}
-
-			//Notify our scripthandlers
+			GameLoop.Exit();
 			GameEventMgr.Notify(ScriptEvent.Unloaded);
-
-			//Notify of the global server stop event
-			//We notify before we shutdown the database
-			//so that event handlers can use the datbase too
 			GameEventMgr.Notify(GameServerEvent.Stopped, this);
 			GameEventMgr.RemoveAllHandlers(true);
+			WorldMgr.Exit();
+			Scheduler?.Shutdown();
+			Scheduler = null;
+			m_serverRules = null;
 
-			//Stop the World Save timer
+			// Stop the save timer and save manually.
 			if (m_timer != null)
 			{
 				m_timer.Change(Timeout.Infinite, Timeout.Infinite);
 				m_timer.Dispose();
 				m_timer = null;
+				SaveTimerProc(null);
 			}
 
-			//Stop the base server
 			base.Stop();
 
-			//Close the UDP connection
-			if (m_udpListen != null)
-			{
-				m_udpListen.Close();
-				m_udpListen = null;
-			}
-			if (m_udpOutSocket != null)
-			{
-				m_udpOutSocket.Close();
-				m_udpOutSocket = null;
-			}
-
-			//Stop all mobMgrs
-			WorldMgr.StopRegionMgrs();
-
-			//Stop the WorldMgr, save all players
-			//WorldMgr.SaveToDatabase();
-			SaveTimerProc(null);
-
-			WorldMgr.Exit();
-			GameLoop.Exit();
-
-			//Save the database
-			// 2008-01-29 Kakuri - Obsolete
-			/*if ( m_database != null )
-				{
-					m_database.WriteDatabaseTables();
-				}*/
-
-			m_serverRules = null;
-
-			// Stop Server Scheduler
-			if (Scheduler != null)
-				Scheduler.Shutdown();
-			Scheduler = null;
-
-			Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
-
 			if (log.IsInfoEnabled)
-				log.Info("Server Stopped");
+				log.Info("Stopped");
 
-			LogManager.Shutdown();
-		}
-
-		#endregion
-
-		#region Packet buffer pool
-
-		/// <summary>
-		/// The size of all packet buffers.
-		/// </summary>
-		private const int BUF_SIZE = 2048;
-
-		/// <summary>
-		/// Holds all packet buffers.
-		/// </summary>
-		private Queue<byte[]> m_packetBufPool;
-		private object m_packetBufPoolLock = new object();
-
-		public int MaxPacketPoolSize
-		{
-			get { return Configuration.MaxClientCount * 3; }
-		}
-
-		/// <summary>
-		/// Gets the count of packet buffers in the pool.
-		/// </summary>
-		public int PacketPoolSize
-		{
-			get
-			{
-				int packetBufCount = 0;
-
-				lock (m_packetBufPoolLock)
-					packetBufCount = m_packetBufPool.Count;
-
-				return packetBufCount;
-			}
-		}
-
-		/// <summary>
-		/// Allocates all packet buffers.
-		/// </summary>
-		/// <returns>success</returns>
-		private bool AllocatePacketBuffers()
-		{
-			int count = MaxPacketPoolSize;
-
-			lock (m_packetBufPoolLock)
-			{
-				m_packetBufPool = new Queue<byte[]>(count);
-
-				for (int i = 0; i < count; i++)
-				{
-					m_packetBufPool.Enqueue(new byte[BUF_SIZE]);
-				}
-			}
-
-			if (log.IsDebugEnabled)
-				log.DebugFormat("allocated packet buffers: {0}", count.ToString());
-
-			return true;
-		}
-
-		/// <summary>
-		/// Gets packet buffer from the pool.
-		/// </summary>
-		/// <returns>byte array that will be used as packet buffer.</returns>
-		public override byte[] AcquirePacketBuffer()
-		{
-			lock (m_packetBufPoolLock)
-			{
-				if (m_packetBufPool.Count > 0)
-					return m_packetBufPool.Dequeue();
-			}
-
-			log.Warn("packet buffer pool is empty!");
-
-			return new byte[BUF_SIZE];
-		}
-
-		/// <summary>
-		/// Releases previously acquired packet buffer.
-		/// </summary>
-		/// <param name="buf">The released buf</param>
-		public override void ReleasePacketBuffer(byte[] buf)
-		{
-			if (buf == null)
-				return;
-
-			lock (m_packetBufPoolLock)
-			{
-				if (m_packetBufPool.Count < MaxPacketPoolSize)
-					m_packetBufPool.Enqueue(buf);
-			}
+			// Stop the logger manager last, so that all logs are flushed.
+			LoggerManager.Stop();
+			Environment.Exit(0);
 		}
 
 		#endregion
@@ -1410,13 +1024,93 @@ namespace DOL.GS
 		/// Creates a new client
 		/// </summary>
 		/// <returns>An instance of a new client</returns>
-		protected override BaseClient GetNewClient()
+		protected override BaseClient GetNewClient(Socket socket)
 		{
-			var client = new GameClient(this);
+			var client = new GameClient(socket);
 			GameEventMgr.Notify(GameClientEvent.Created, client);
 			client.UdpConfirm = false;
 
 			return client;
+		}
+
+		protected override void OnUdpReceive(byte[] buffer, int offset, int size, EndPoint endPoint)
+		{
+			if (m_status is not EGameServerStatus.GSS_Open)
+				return;
+
+			if (size == 0)
+			{
+				log.Debug("Received bytes = 0");
+				return;
+			}
+
+			int endPosition = offset + size;
+			int packetCheck = (buffer[endPosition - 2] << 8) | buffer[endPosition - 1];
+			int calculatedCheck = PacketProcessor.CalculateChecksum(buffer, offset, size - 2);
+
+			if (packetCheck != calculatedCheck)
+			{
+				if (log.IsWarnEnabled)
+					log.Warn($"Bad UDP packet checksum (packet:0x{packetCheck:X4} calculated:0x{calculatedCheck:X4})");
+
+				if (log.IsDebugEnabled)
+					log.Debug(Marshal.ToHexDump($"UDP buffer dump, received {size} bytes", buffer));
+
+				return;
+			}
+
+			// Post the packet to the game loop for processing.
+			ClientService.Instance.Post(static state =>
+			{
+				var packet = PooledObjectFactory.GetForTick<GSPacketIn>().Init();
+				packet.Load(state.Buffer, state.Offset, state.Size);
+				GameClient client = ClientService.Instance.GetClientBySessionId(packet.SessionID);
+
+				if (client == null)
+				{
+					if (log.IsWarnEnabled)
+						log.Warn($"Got an UDP packet from invalid client ID or IP (id: {packet.SessionID}) (ip: {state.EndPoint}) (code: {packet.Code:x2})");
+
+					return;
+				}
+
+				if (client.UdpEndPoint == null)
+				{
+					client.UdpEndPoint = state.EndPoint as IPEndPoint;
+					client.UdpConfirm = false;
+				}
+
+				if (!client.UdpEndPoint.Equals(state.EndPoint))
+					return;
+
+				try
+				{
+					client.PacketProcessor.ProcessInboundPacket(packet);
+				}
+				catch (Exception e)
+				{
+					if (log.IsErrorEnabled)
+						log.Error(e);
+				}
+				finally
+				{
+					packet.ReleasePooledObject();
+				}
+			}, new
+			{
+				Buffer = buffer,
+				Offset = offset,
+				Size = size,
+				EndPoint = endPoint
+			});
+		}
+
+		private class UdpPacketState
+		{
+			public byte[] Buffer { get; init; }
+			public int Offset { get; init; }
+			public int Size { get; init; }
+			public EndPoint EndPoint { get; init; }
 		}
 
 		#endregion
@@ -1429,7 +1123,7 @@ namespace DOL.GS
 		/// <param name="text">the text to log</param>
 		public void LogGMAction(string text)
 		{
-			m_gmLog.Logger.Log(typeof(GameServer), Level.Alert, text, null);
+			m_gmLog.Info(text);
 		}
 
 		/// <summary>
@@ -1438,18 +1132,16 @@ namespace DOL.GS
 		/// <param name="text">the text to log</param>
 		public void LogCheatAction(string text)
 		{
-			m_cheatLog.Logger.Log(typeof(GameServer), Level.Alert, text, null);
-			log.Debug(text);
+			m_cheatLog.Info(text);
 		}
-		
+
 		/// <summary>
 		/// Writes a line to the cheat log file
 		/// </summary>
 		/// <param name="text">the text to log</param>
 		public void LogDualIPAction(string text)
 		{
-			m_dualIPLog.Logger.Log(typeof(GameServer), Level.Alert, text, null);
-			log.Debug(text);
+			m_dualIPLog.Info(text);
 		}
 
 		/// <summary>
@@ -1458,7 +1150,7 @@ namespace DOL.GS
 		/// <param name="text">the text to log</param>
 		public void LogInventoryAction(string text)
 		{
-			m_inventoryLog.Logger.Log(typeof(GameServer), Level.Alert, text, null);
+			m_inventoryLog.Info(text);
 		}
 
 		#endregion
@@ -1494,9 +1186,7 @@ namespace DOL.GS
 							if (attrib.Any())
 							{
 								if (log.IsInfoEnabled)
-								{
 									log.InfoFormat("Registering table: {0}", type.FullName);
-								}
 
 								m_database.RegisterDataObject(type);
 							}
@@ -1507,11 +1197,14 @@ namespace DOL.GS
 				{
 					if (log.IsErrorEnabled)
 						log.Error("Error registering Tables", e);
+
 					return false;
 				}
 			}
+
 			if (log.IsInfoEnabled)
 				log.Info("Database Initialization: true");
+
 			return true;
 		}
 
@@ -1525,8 +1218,7 @@ namespace DOL.GS
 
 			try
 			{
-				long startTick = GameLoop.GetCurrentTime();
-				long startTick2 = GameLoop.GetCurrentTime();
+				long startTick = GameLoop.GetRealTime();
 
 				if (log.IsInfoEnabled)
 					log.Info("Saving database...");
@@ -1537,23 +1229,21 @@ namespace DOL.GS
 				(int count, long elapsed) boats = (0, 0);
 				(int count, long elapsed) factions = (0, 0);
 				(int count, long elapsed) crafting = (0, 0);
+				(int count, long elapsed) appeals = (0, 0);
 
 				if (m_database != null)
 				{
 					Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-
-					// The following line goes through EACH region and EACH object is tested for savability. A real waste of time, so it is commented out.
-					// Only save players instead.
-					//WorldMgr.SaveToDatabase();
-					Save(ClientService.SavePlayers, ref players);
+					Save(ClientService.Instance.SavePlayers, ref players);
 					Save(DoorMgr.SaveKeepDoors, ref keepDoors);
 					Save(GuildMgr.SaveAllGuilds, ref guilds);
 					Save(BoatMgr.SaveAllBoats, ref boats);
 					Save(FactionMgr.SaveAllAggroToFaction, ref factions);
 					Save(CraftingProgressMgr.Save, ref crafting);
+					Save(AppealMgr.Save, ref appeals);
 				}
 
-				startTick = GameLoop.GetCurrentTime() - startTick;
+				startTick = GameLoop.GetRealTime() - startTick;
 
 				if (log.IsInfoEnabled)
 				{
@@ -1564,9 +1254,11 @@ namespace DOL.GS
 					stringBuilder.Append($"    {nameof(guilds)}: {guilds.count} in {guilds.elapsed}ms\n");
 					stringBuilder.Append($"     {nameof(boats)}: {boats.count} in {boats.elapsed}ms\n");
 					stringBuilder.Append($"  {nameof(factions)}: {factions.count} in {factions.elapsed}ms\n");
-					stringBuilder.Append($"  {nameof(crafting)}: {crafting.count} in {crafting.elapsed}ms");
+					stringBuilder.Append($"  {nameof(crafting)}: {crafting.count} in {crafting.elapsed}ms\n");
+					stringBuilder.Append($"   {nameof(appeals)}: {appeals.count} in {appeals.elapsed}ms");
 
-					log.Info(stringBuilder.ToString());
+					if (log.IsInfoEnabled)
+						log.Info(stringBuilder.ToString());
 				}
 			}
 			catch (Exception e)
@@ -1582,9 +1274,9 @@ namespace DOL.GS
 
 			static void Save(Func<int> save, ref (int count, long elapsed) result)
 			{
-				result.elapsed = GameLoop.GetCurrentTime();
+				result.elapsed = GameLoop.GetRealTime();
 				result.count = save();
-				result.elapsed = GameLoop.GetCurrentTime() - result.elapsed;
+				result.elapsed = GameLoop.GetRealTime() - result.elapsed;
 			}
 		}
 
@@ -1595,22 +1287,20 @@ namespace DOL.GS
 		/// <summary>
 		/// Default game server constructor
 		/// </summary>
-		protected GameServer()
-			: this(new GameServerConfiguration())
-		{
-		}
+		protected GameServer() : this(new GameServerConfiguration()) { }
 
 		/// <summary>
 		/// Constructor with a given configuration
 		/// </summary>
 		/// <param name="config">A valid game server configuration</param>
-		protected GameServer(GameServerConfiguration config)
-			: base(config)
+		protected GameServer(GameServerConfiguration config) : base(config)
 		{
-			m_gmLog = LogManager.GetLogger(Configuration.GMActionsLoggerName);
-			m_cheatLog = LogManager.GetLogger(Configuration.CheatLoggerName);
-			m_dualIPLog = LogManager.GetLogger(Configuration.DualIPLoggerName);
-			m_inventoryLog = LogManager.GetLogger(Configuration.InventoryLoggerName);
+			log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+
+			m_gmLog = LoggerManager.Create(Configuration.GMActionsLoggerName);
+			m_cheatLog = LoggerManager.Create(Configuration.CheatLoggerName);
+			m_dualIPLog = LoggerManager.Create(Configuration.DualIPLoggerName);
+			m_inventoryLog = LoggerManager.Create(Configuration.InventoryLoggerName);
 
 			if (log.IsDebugEnabled)
 			{
@@ -1618,14 +1308,11 @@ namespace DOL.GS
 				log.Debug("Gameserver root directory is: " + Configuration.RootDirectory);
 				log.Debug("Changing directory to root directory");
 			}
+
 			Directory.SetCurrentDirectory(Configuration.RootDirectory);
 
 			try
 			{
-				m_udpBuf = new byte[MAX_UDPBUF];
-				m_udpReceiveCallback = new AsyncCallback(RecvFromCallback);
-				m_udpSendCallback = new AsyncCallback(SendToCallback);
-
 				CheckAndInitDB();
 
 				if (log.IsInfoEnabled)
@@ -1651,4 +1338,3 @@ namespace DOL.GS
 		#endregion
 	}
 }
-

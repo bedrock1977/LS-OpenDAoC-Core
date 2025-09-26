@@ -20,7 +20,7 @@ namespace DOL.GS
         #region Custom methods
         public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -157,13 +157,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60164337);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 			MaxSpeedBase = 0;
@@ -309,7 +302,7 @@ namespace DOL.AI.Brain
 {
 	public class MyrddraxisBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MyrddraxisBrain() : base()
 		{
 			AggroLevel = 100;
@@ -328,7 +321,7 @@ namespace DOL.AI.Brain
 		public static bool CanCastPBAOE3 = false;
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -903,13 +896,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60165727);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = -1;
 			MaxSpeedBase = 0;
@@ -928,7 +914,7 @@ namespace DOL.AI.Brain
 {
 	public class MyrddraxisSecondHeadBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MyrddraxisSecondHeadBrain() : base()
 		{
 			AggroLevel = 100;
@@ -1114,13 +1100,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60167005);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = -1;
 			MaxSpeedBase = 0;
@@ -1140,7 +1119,7 @@ namespace DOL.AI.Brain
 {
 	public class MyrddraxisThirdHeadBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MyrddraxisThirdHeadBrain() : base()
 		{
 			AggroLevel = 100;
@@ -1326,13 +1305,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60161055);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = -1;
 			MaxSpeedBase = 0;
@@ -1352,7 +1324,7 @@ namespace DOL.AI.Brain
 {
 	public class MyrddraxisFourthHeadBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MyrddraxisFourthHeadBrain() : base()
 		{
 			AggroLevel = 100;
@@ -1538,13 +1510,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60160835);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			RespawnInterval = -1;
 			MaxSpeedBase = 0;
 			++FifthHeadCount;
@@ -1563,7 +1528,7 @@ namespace DOL.AI.Brain
 {
 	public class MyrddraxisFifthHeadBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MyrddraxisFifthHeadBrain() : base()
 		{
 			AggroLevel = 100;

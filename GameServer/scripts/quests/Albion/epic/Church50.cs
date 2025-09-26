@@ -36,7 +36,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Albion
 {
@@ -45,7 +44,7 @@ namespace DOL.GS.Quests.Albion
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "Passage to Eternity";
 		protected const int minimumLevel = 50;
@@ -111,7 +110,7 @@ namespace DOL.GS.Quests.Albion
 				Roben = new GameNPC();
 				Roben.Model = 36;
 				Roben.Name = "Roben Fraomar";
-				Roben.GuildName = "";
+				Roben.GuildName = string.Empty;
 				Roben.Realm = eRealm.Albion;
 				Roben.CurrentRegionID = 1;
 				Roben.Size = 52;
@@ -144,7 +143,7 @@ namespace DOL.GS.Quests.Albion
 				Blythe = new SisterBlythe();
 				Blythe.Model = 67;
 				Blythe.Name = "Sister Blythe";
-				Blythe.GuildName = "";
+				Blythe.GuildName = string.Empty;
 				Blythe.Realm = eRealm.None;
 				Blythe.CurrentRegionID = 1;
 				Blythe.Size = 50;
@@ -359,7 +358,7 @@ namespace DOL.GS.Quests.Albion
 				i.Bonus2Type = (int) eResist.Spirit;
 
 				i.Bonus3 = 12;
-				i.Bonus3Type = (int) eProperty.PowerRegenerationRate;
+				i.Bonus3Type = (int) eProperty.PowerRegenerationAmount;
 
 				i.Bonus4 = 27;
 				i.Bonus4Type = (int) eProperty.MaxHealth;

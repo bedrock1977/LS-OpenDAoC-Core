@@ -8,12 +8,16 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Reduce range needed to cast the spell
 	/// </summary>
-	[SpellHandler("Nearsight")]
+	[SpellHandler(eSpellType.Nearsight)]
 	public class NearsightSpellHandler : ImmunityEffectSpellHandler
 	{
-        public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override string ShortDescription => $"Reduces the target's attack and spell casting range by {Spell.Value}%.";
+
+		public NearsightSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+
+        public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
         {
-            return new NearsightECSGameEffect(initParams);
+            return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new NearsightECSGameEffect(i));
         }
 
         public override void ApplyEffectOnTarget(GameLiving target)
@@ -22,32 +26,33 @@ namespace DOL.GS.Spells
 			//Nearsight Immunity check
 			if (target.HasAbility(Abilities.NSImmunity))
 			{
-				MessageToCaster(target.Name + " can't be nearsighted!", eChatType.CT_SpellResisted);
+				MessageToCaster("Your target can't be nearsighted!", eChatType.CT_SpellResisted);
 				SendEffectAnimation(target, 0, false, 0);
 				return;
 			}
 			if (EffectListService.GetEffectOnTarget(target, eEffect.Nearsight) != null)
             {
-				MessageToCaster(target.Name + " already has this effect!", eChatType.CT_SpellResisted);
+				MessageToCaster("Your target already has this effect!", eChatType.CT_SpellResisted);
 				SendEffectAnimation(target, 0, false, 0);
 				//target.StartInterruptTimer(target.SpellInterruptDuration, AttackData.eAttackType.Spell, Caster);
 				return;
 			}
 			if (EffectListService.GetEffectOnTarget(target, eEffect.NearsightImmunity) != null)
 			{
-				MessageToCaster(target.Name + " is immune to this effect!", eChatType.CT_SpellResisted);
+				MessageToCaster("Your target is immune to this effect!", eChatType.CT_SpellResisted);
 				SendEffectAnimation(target, 0, false, 0);
 				
 				return;
 			}
 			base.ApplyEffectOnTarget(target);
         }
+
         /// <summary>
         /// Calculates chance of spell getting resisted
         /// </summary>
         /// <param name="target">the target of the spell</param>
         /// <returns>chance that spell will be resisted for specific target</returns>
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             //Bonedancer rr5
             if (target.EffectList.GetOfType<AllureofDeathEffect>() != null)
@@ -55,8 +60,8 @@ namespace DOL.GS.Spells
                 return AllureofDeathEffect.nschance;
             }
             return base.CalculateSpellResistChance(target);
-
         }
+
 		/// <summary>
 		/// When an applied effect starts
 		/// duration spells only
@@ -67,8 +72,8 @@ namespace DOL.GS.Spells
 			//GameSpellEffect mezz = SpellHandler.FindEffectOnTarget(effect.Owner, "Mesmerize");
  		//	if(mezz != null) mezz.Cancel(false);
 			//// percent category
-			//effect.Owner.DebuffCategory[(int)eProperty.ArcheryRange] += (int)Spell.Value;
-			//effect.Owner.DebuffCategory[(int)eProperty.SpellRange] += (int)Spell.Value;
+			//effect.Owner.DebuffCategory[eProperty.ArcheryRange] += (int)Spell.Value;
+			//effect.Owner.DebuffCategory[eProperty.SpellRange] += (int)Spell.Value;
 			//SendEffectAnimation(effect.Owner, 0, false, 1);
 			//MessageToLiving(effect.Owner, Spell.Message1, eChatType.CT_Spell);
 			//Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message2, effect.Owner.GetName(0, false)), eChatType.CT_Spell, effect.Owner);
@@ -84,8 +89,8 @@ namespace DOL.GS.Spells
 		public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
 		{
 			//// percent category
-			//effect.Owner.DebuffCategory[(int)eProperty.ArcheryRange] -= (int)Spell.Value;
-			//effect.Owner.DebuffCategory[(int)eProperty.SpellRange] -= (int)Spell.Value;
+			//effect.Owner.DebuffCategory[eProperty.ArcheryRange] -= (int)Spell.Value;
+			//effect.Owner.DebuffCategory[eProperty.SpellRange] -= (int)Spell.Value;
 			//if (!noMessages) {
 			//	MessageToLiving(effect.Owner, Spell.Message3, eChatType.CT_SpellExpires);
 			//	Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message4, effect.Owner.GetName(0, false)), eChatType.CT_SpellExpires, effect.Owner);
@@ -119,9 +124,9 @@ namespace DOL.GS.Spells
 
 				var list = new List<string>();
 
-                list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "NearsightSpellHandler.DelveInfo.Function", (Spell.SpellType.ToString() == "" ? "(not implemented)" : Spell.SpellType.ToString())));
+                list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "NearsightSpellHandler.DelveInfo.Function", (Spell.SpellType.ToString() == string.Empty ? "(not implemented)" : Spell.SpellType.ToString())));
 				list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
                 if (Spell.Damage != 0)
                     list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "DelveInfo.Damage", Spell.Damage.ToString("0.###;0.###'%'")));
@@ -155,16 +160,18 @@ namespace DOL.GS.Spells
 				return list;
 			}
 		}
-
-		// constructor
-		public NearsightSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
 	}
+
 	/// <summary>
 	/// Reduce efficacity of nearsight effect
 	/// </summary>
-	[SpellHandler("NearsightReduction")]
+	[SpellHandler(eSpellType.NearsightReduction)]
 	public class NearsightReductionSpellHandler : SpellHandler
 	{
+		public override string ShortDescription => $"Nearsight spells cast upon the caster's group are reduced in effectiveness by {Spell.Value}%, or outright resisted.";
+
+		public NearsightReductionSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+
 		/// <summary>
 		/// called after normal spell cast is completed and effect has to be started
 		/// </summary>
@@ -172,8 +179,6 @@ namespace DOL.GS.Spells
 		{
 			m_caster.Mana -= PowerCost(target);
 			base.FinishSpellCast(target);
-		}	
-		// constructor
-		public NearsightReductionSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
+		}
 	}
 }

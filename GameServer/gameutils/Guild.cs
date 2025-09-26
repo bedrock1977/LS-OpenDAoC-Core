@@ -1,31 +1,12 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using DOL.Database;
 using DOL.GS.Keeps;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
@@ -34,7 +15,7 @@ namespace DOL.GS
 	/// </summary>
 	public class Guild
 	{
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public enum eRank : int
 		{
@@ -108,7 +89,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Use this object to lock the guild member list
 		/// </summary>
-		public Object m_memberListLock = new Object();
+		public readonly Lock m_memberListLock = new();
 
 		/// <summary>
 		/// This holds all players inside the guild
@@ -123,7 +104,9 @@ namespace DOL.GS
 		/// <summary>
 		/// the runtime ID of the guild
 		/// </summary>
-		protected ushort m_id;
+		protected int m_id;
+
+		private GuildBuffTimer _guidBuffTimer;
 
 		/// <summary>
 		/// Stores claimed keeps (unique)
@@ -223,77 +206,126 @@ namespace DOL.GS
 
 		public void SetGuildDuesPercent(long dues)
 		{
-			if (IsGuildDuesOn() == true)
-			{
-				this.m_DBguild.DuesPercent = dues;
-			}
-			else
-			{
-				this.m_DBguild.DuesPercent = 0;
-			}
+			m_DBguild.DuesPercent = IsGuildDuesOn() ? dues : 0;
 		}
-		/// <summary>
-		/// Set guild bank command 
-		/// </summary>
-		/// <param name="donating"></param>
-		/// <param name="amount"></param>
-		/// <returns></returns>
-		public void SetGuildBank(GamePlayer donating, double amount)
+
+		public bool ValidateAddToBankAmount(long amount, out double newBank, out ChangeBankResult changeBankResult)
 		{
-			if (donating == null || donating.Guild == null)
-				return;
+			newBank = GetGuildBank() + amount;
 
-			if (amount < 0)
+			if (newBank < 0)
 			{
-				donating.Out.SendMessage(LanguageMgr.GetTranslation(donating.Client, "Scripts.Player.Guild.DepositInvalid"), eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
-				return;
-			}
-			else if ((donating.Guild.GetGuildBank() + amount) >= 1000000001)
-			{
-				donating.Out.SendMessage(LanguageMgr.GetTranslation(donating.Client, "Scripts.Player.Guild.DepositFull"), eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
-				return;
+				changeBankResult = ChangeBankResult.INVALID;
+				return false;
 			}
 
-            if (!donating.RemoveMoney(long.Parse(amount.ToString())))
-            {
-                donating.Out.SendMessage("You don't have this amount of money !", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
-                return;
-            }
+			if (newBank >= 1000000001)
+			{
+				changeBankResult = ChangeBankResult.FULL;
+				return false;
+			}
 
-			donating.Out.SendMessage(LanguageMgr.GetTranslation(donating.Client, "Scripts.Player.Guild.DepositAmount", Money.GetString(long.Parse(amount.ToString()))), eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+			changeBankResult = ChangeBankResult.SUCCESS;
+			return true;
+		}
 
-			donating.Guild.UpdateGuildWindow();
-			m_DBguild.Bank += amount;
+		public void DepositToBank(GamePlayer player, long amount)
+		{
+			if (player == null || player.Guild == null)
+				return;
 
-            InventoryLogging.LogInventoryAction(donating, "(GUILD;" + Name + ")", eInventoryActionType.Other, long.Parse(amount.ToString()));
-			//donating.SaveIntoDatabase();
-			donating.Out.SendUpdatePlayer();			
+			amount = Math.Abs(amount);
+
+			if (!ValidateAddToBankAmount(amount, out double newBank, out ChangeBankResult changeBankResult))
+			{
+				switch (changeBankResult)
+				{
+					case ChangeBankResult.INVALID:
+					{
+						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.DepositInvalid"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+						return;
+					}
+					case ChangeBankResult.FULL:
+					{
+						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.DepositFull"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+						return;
+					}
+				}
+			}
+
+			if (!player.RemoveMoney(amount))
+			{
+				player.Out.SendMessage("You don't have this amount of money !", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
+				return;
+			}
+
+			player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.DepositAmount", amount), eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+
+			foreach (GamePlayer guildPlayer in GetListOfOnlineMembers())
+			{
+				if (guildPlayer != player)
+					guildPlayer.Out.SendMessage(LanguageMgr.GetTranslation(guildPlayer.Client.Account.Language, "Scripts.Player.Guild.DepositsAmount", player.Name, amount), eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+			}
+
+			ChangeBank(newBank, true);
+			InventoryLogging.LogInventoryAction(player, $"(GUILD;{Name})", eInventoryActionType.Other, amount);
+			player.SaveIntoDatabase();
 			return;
 		}
-		public void WithdrawGuildBank(GamePlayer withdraw, double amount)
+
+		public void WithdrawFromBank(GamePlayer player, long amount)
 		{
-            if (amount < 0)
-			{
-				withdraw.Out.SendMessage(LanguageMgr.GetTranslation(withdraw.Client, "Scripts.Player.Guild.WithdrawInvalid"), eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
+			if (player == null || player.Guild == null)
 				return;
-			}
-			else if ((withdraw.Guild.GetGuildBank() - amount) < 0)
+
+			amount = Math.Abs(amount);
+
+			if (!ValidateAddToBankAmount(-amount, out double newBank, out ChangeBankResult changeBankResult))
 			{
-				withdraw.Out.SendMessage(LanguageMgr.GetTranslation(withdraw.Client, "Scripts.Player.Guild.WithdrawTooMuch"), eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
-				return;
+				switch (changeBankResult)
+				{
+					case ChangeBankResult.INVALID:
+					{
+						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.WithdrawInvalid"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+						return;
+					}
+					case ChangeBankResult.FULL:
+					{
+						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.WithdrawTooMuch"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+						return;
+					}
+				}
 			}
 
-            withdraw.Out.SendMessage(LanguageMgr.GetTranslation(withdraw.Client, "Scripts.Player.Guild.Withdrawamount", Money.GetString(long.Parse(amount.ToString()))), eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
-			withdraw.Guild.UpdateGuildWindow();
-			m_DBguild.Bank -= amount;
+			string stringAmount = Money.GetString(amount);
+			player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client, "Scripts.Player.Guild.WithdrawAmount", stringAmount), eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
 
-		    var amt = long.Parse(amount.ToString());
-            withdraw.AddMoney(amt);
-            InventoryLogging.LogInventoryAction("(GUILD;" + Name + ")", withdraw, eInventoryActionType.Other, amt);
-            withdraw.Out.SendUpdatePlayer();
-            withdraw.SaveIntoDatabase();
-            withdraw.Guild.SaveIntoDatabase();
+			foreach (GamePlayer guildPlayer in GetListOfOnlineMembers())
+			{
+				if (guildPlayer != player)
+					guildPlayer.Out.SendMessage(LanguageMgr.GetTranslation(guildPlayer.Client.Account.Language, "Scripts.Player.Guild.WithdrawsAmount", player.Name, stringAmount), eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+			}
+
+			ChangeBank(newBank, true);
+			player.AddMoney(amount);
+			InventoryLogging.LogInventoryAction($"(GUILD;{Name})", player, eInventoryActionType.Other, amount);
+			player.SaveIntoDatabase();
 			return;
+		}
+
+		public bool AddToBank(long amount, bool save)
+		{
+			if (!ValidateAddToBankAmount(amount, out double newBank, out _))
+				return false;
+
+			ChangeBank(newBank, save);
+			return true;
+		}
+
+		private void ChangeBank(double newBank, bool save)
+		{
+			// `newBank` should have been validated by `ValidateChangeBankAmount`.
+			m_DBguild.Bank = newBank;
 		}
 
 		// Used by the hack to make pets untargetable with tab on a PvP server. Effectively creates a dummy guild to get a unique ID.
@@ -301,7 +333,7 @@ namespace DOL.GS
 
 		static Guild()
 		{
-			if (GameServer.Instance.Configuration.ServerType == EGameServerType.GST_PvP)
+			if (GameServer.Instance.Configuration.ServerType is EGameServerType.GST_PvP)
 				DummyGuild = GuildMgr.CreateGuild(0, "DummyGuildToMakePetsUntargetable") ?? GuildMgr.GetGuildByName("DummyGuildToMakePetsUntargetable");
 		}
 
@@ -311,8 +343,9 @@ namespace DOL.GS
 		/// </summary>
 		public Guild(DbGuild dbGuild)
 		{
-			this.m_DBguild = dbGuild;
+			m_DBguild = dbGuild;
 			bannerStatus = "None";
+			TryStartGuildBuffTimer();
 		}
 
 		public int Emblem
@@ -324,7 +357,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.Emblem = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -337,7 +369,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.GuildBanner = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -345,17 +376,11 @@ namespace DOL.GS
 		{
 			get
 			{
-				if (m_DBguild.GuildBannerLostTime == null)
-				{
-					return new DateTime(2010, 1, 1);
-				}
-
 				return m_DBguild.GuildBannerLostTime;
 			}
 			set
 			{
 				this.m_DBguild.GuildBannerLostTime = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -368,7 +393,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.oMotd = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -381,7 +405,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.Motd = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -394,7 +417,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.AllianceID = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -425,22 +447,21 @@ namespace DOL.GS
 			set 
 			{
 				m_DBguild.GuildID = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
 		/// <summary>
 		/// Gets or sets the runtime guild id
 		/// </summary>
-		public ushort ID
+		public int ID
 		{
-			get 
-			{ 
-				return m_id; 
+			get
+			{
+				return m_id;
 			}
-			set 
-			{ 
-				m_id = value; 
+			set
+			{
+				m_id = value;
 			}
 		}
 
@@ -456,7 +477,6 @@ namespace DOL.GS
 			set 
 			{
 				m_DBguild.GuildName = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -469,7 +489,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.RealmPoints = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -482,7 +501,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.BountyPoints = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -495,7 +513,6 @@ namespace DOL.GS
 			set
 			{
 				m_DBguild.IsStartingGuild = value;
-				SaveIntoDatabase();
 			}
 		}
 
@@ -528,20 +545,21 @@ namespace DOL.GS
 		/// <returns>true if added successfully</returns>
 		public bool AddOnlineMember(GamePlayer player)
 		{
-			if(player==null) return false;
+			if (player==null)
+				return false;
+
 			lock (m_memberListLock)
 			{
-				if (!m_onlineGuildPlayers.ContainsKey(player.InternalID))
-				{
-					if (!player.IsAnonymous)
-						NotifyGuildMembers(player);
+				if (!m_onlineGuildPlayers.TryAdd(player.InternalID, player))
+					return false;
 
-					m_onlineGuildPlayers.Add(player.InternalID, player);
-					return true;
-				}
+				if (!player.IsAnonymous)
+					NotifyGuildMembers(player);
+
+				GuildMgr.RefreshPersonalHouseEmblem(player, this);
 			}
 
-			return false;
+			return true;
 		}
 
 		private void NotifyGuildMembers(GamePlayer member)
@@ -563,22 +581,19 @@ namespace DOL.GS
 		{
 			lock (m_memberListLock)
 			{
-				if (m_onlineGuildPlayers.ContainsKey(player.InternalID))
-				{
-					m_onlineGuildPlayers.Remove(player.InternalID);
+				if (!m_onlineGuildPlayers.Remove(player.InternalID))
+					return false;
 
-					// now update the all member list to display lastonline time instead of zone
-					Dictionary<string, GuildMgr.GuildMemberDisplay> memberList = GuildMgr.GetAllGuildMembers(player.GuildID);
+				// now update the all member list to display lastonline time instead of zone
+				Dictionary<string, GuildMgr.GuildMemberView> memberList = GuildMgr.GetGuildMemberViews(player.Guild);
 
-					if (memberList != null && memberList.ContainsKey(player.InternalID))
-					{
-						memberList[player.InternalID].ZoneOrOnline = DateTime.Now.ToShortDateString();
-					}
+				if (memberList != null && memberList.TryGetValue(player.InternalID, out GuildMgr.GuildMemberView guildMemberDisplay))
+					guildMemberDisplay.ZoneOrOnline = DateTime.Now.ToShortDateString();
 
-					return true;
-				}
+				GuildMgr.RefreshPersonalHouseEmblem(player, null);
 			}
-			return false;
+
+			return true;
 		}
 
 		/// <summary>
@@ -600,11 +615,8 @@ namespace DOL.GS
 		{
 			lock (m_memberListLock)
 			{
-				if (m_onlineGuildPlayers.ContainsKey(memberID))
-					return m_onlineGuildPlayers[memberID];
+				return m_onlineGuildPlayers.TryGetValue(memberID, out GamePlayer value) ? value : null;
 			}
-
-			return null;
 		}
 
 		/// <summary>
@@ -614,7 +626,7 @@ namespace DOL.GS
 		/// <returns></returns>
 		public bool AddPlayer(GamePlayer addPlayer)
 		{
-			return AddPlayer(addPlayer, GetRankByID(9));
+			return AddPlayer(addPlayer, GetRankByID(IsStartingGuild ? 8 : 9));
 		}
 
 		/// <summary>
@@ -641,7 +653,7 @@ namespace DOL.GS
 				addPlayer.GuildRank = rank;
 				addPlayer.Guild = this;
 				addPlayer.SaveIntoDatabase();
-				GuildMgr.AddPlayerToAllGuildPlayersList(addPlayer);
+				GuildMgr.AddPlayerToGuildMemberViews(addPlayer);
 				addPlayer.Out.SendMessage("You have agreed to join " + this.Name + "!", eChatType.CT_Group, eChatLoc.CL_SystemWindow);
 				addPlayer.Out.SendMessage("Your current rank is " + addPlayer.GuildRank.Title + "!", eChatType.CT_Group, eChatLoc.CL_SystemWindow);
 				SendMessageToGuildMembers(addPlayer.Name + " has joined the guild!", eChatType.CT_Group, eChatLoc.CL_SystemWindow);
@@ -666,11 +678,11 @@ namespace DOL.GS
 		{
 			try
 			{
-				GuildMgr.RemovePlayerFromAllGuildPlayersList(member);
+				GuildMgr.RemovePlayerFromGuildMemberViews(member);
 				RemoveOnlineMember(member);
-				member.GuildName = "";
-				member.GuildNote = "";
-				member.GuildID = "";
+				member.GuildName = string.Empty;
+				member.GuildNote = string.Empty;
+				member.GuildID = string.Empty;
 				member.GuildRank = null;
 				member.Guild = null;
 				member.SaveIntoDatabase();
@@ -849,9 +861,11 @@ namespace DOL.GS
 		/// Returns a list of all online members.
 		/// </summary>
 		/// <returns>ArrayList of members</returns>
-		public IList<GamePlayer> GetListOfOnlineMembers()
+		public List<GamePlayer> GetListOfOnlineMembers()
 		{
-			return new List<GamePlayer>(m_onlineGuildPlayers.Values);
+			var list = GameLoop.GetListForTick<GamePlayer>();
+			list.AddRange(m_onlineGuildPlayers.Values);
+			return list;
 		}
 
 		/// <summary>
@@ -860,23 +874,22 @@ namespace DOL.GS
 		/// <param name="msg">message string</param>
 		/// <param name="type">message type</param>
 		/// <param name="loc">message location</param>
-		public void SendMessageToGuildMembers(string msg, PacketHandler.eChatType type, PacketHandler.eChatLoc loc)
+		public void SendMessageToGuildMembers(string msg, eChatType type, eChatLoc loc)
 		{
-			List<GamePlayer> guildPlayers = new List<GamePlayer>();
+			var guildPlayers = GameLoop.GetListForTick<GamePlayer>();
 			lock (m_memberListLock)
 			{
-				guildPlayers = m_onlineGuildPlayers.Values.ToList();
+				guildPlayers.AddRange(m_onlineGuildPlayers.Values);
 			}
 			
 			foreach (GamePlayer pl in guildPlayers)
 			{
-				if (!HasRank(pl, Guild.eRank.GcHear))
+				if (!HasRank(pl, eRank.GcHear))
 				{
 					continue;
 				}
 				pl.Out.SendMessage(msg, type, loc);
 			}
-			
 		}
 
 		/// <summary>
@@ -891,7 +904,6 @@ namespace DOL.GS
 				return false;
 			}
 			this.m_DBguild.BountyPoints -= amount;
-			this.SaveIntoDatabase();
 			return true;
 		}
 
@@ -907,7 +919,6 @@ namespace DOL.GS
 			set 
 			{
 				this.m_DBguild.MeritPoints = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -934,7 +945,6 @@ namespace DOL.GS
 			set 
 			{
 				this.m_DBguild.BonusType = (byte)value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -943,19 +953,10 @@ namespace DOL.GS
 		/// </summary>
 		public DateTime BonusStartTime
 		{
-			get 
+			get => m_DBguild.BonusStartTime;
+			set
 			{
-				if (m_DBguild.BonusStartTime == null)
-				{
-					return new DateTime(2010, 1, 1);
-				}
-
-				return this.m_DBguild.BonusStartTime; 
-			}
-			set 
-			{
-				this.m_DBguild.BonusStartTime = value;
-				this.SaveIntoDatabase();
+				m_DBguild.BonusStartTime = value;
 			}
 		}
 
@@ -968,7 +969,6 @@ namespace DOL.GS
 			set
 			{
 				this.m_DBguild.Email = value;
-				this.SaveIntoDatabase();
 			}
 		}
 
@@ -979,7 +979,6 @@ namespace DOL.GS
 		public virtual void GainMeritPoints(long amount)
 		{
 			MeritPoints += amount;
-			UpdateGuildWindow();
 		}
 
 		/// <summary>
@@ -991,7 +990,6 @@ namespace DOL.GS
 			if (amount > MeritPoints)
 				amount = MeritPoints;
 			MeritPoints -= amount;
-			UpdateGuildWindow();
 		}
 
 		public bool AddToDatabase()
@@ -1039,47 +1037,54 @@ namespace DOL.GS
 			return bannerStatus;
 		}
 
-		public void UpdateMember(GamePlayer player)
+		public void TryStartGuildBuffTimer()
 		{
-			if (player.Guild != this)
+			if (IsStartingGuild || ShouldGuildBuffExpire())
 				return;
-			int housenum;
-			if (player.Guild.GuildOwnsHouse)
-			{
-				housenum = player.Guild.GuildHouseNumber;
-			}
-			else
-				housenum = 0;
 
-			string mes = "I";
-			mes += ',' + player.Guild.GuildLevel.ToString(); // Guild Level
-			mes += ',' + player.Guild.GetGuildBank().ToString(); // Guild Bank money
-			mes += ',' + player.Guild.GetGuildDuesPercent().ToString(); // Guild Dues enable/disable
-			mes += ',' + player.Guild.BountyPoints.ToString(); // Guild Bounty
-			mes += ',' + player.Guild.RealmPoints.ToString(); // Guild Experience
-			mes += ',' + player.Guild.MeritPoints.ToString(); // Guild Merit Points
-			mes += ',' + housenum.ToString(); // Guild houseLot ?
-			mes += ',' + (player.Guild.MemberOnlineCount + 1).ToString(); // online Guild member ?
-			mes += ',' + player.Guild.GuildBannerStatus(player); //"Banner available for purchase", "Missing banner buying permissions"
-			mes += ",\"" + player.Guild.Motd + '\"'; // Guild Motd
-			mes += ",\"" + player.Guild.Omotd + '\"'; // Guild oMotd
-			player.Out.SendMessage(mes, eChatType.CT_SocialInterface, eChatLoc.CL_SystemWindow);
+			_guidBuffTimer ??= new(this);
+
+			if (!_guidBuffTimer.IsAlive)
+				_guidBuffTimer.Start(60000);
 		}
 
-		public void UpdateGuildWindow()
+		public bool ShouldGuildBuffExpire()
 		{
-			List<GamePlayer> guildPlayers;
+			return DateTime.Now.Subtract(BonusStartTime).Days > 0;
+		}
 
-			lock (m_memberListLock)
+		public enum ChangeBankResult
+		{
+			INVALID,
+			FULL,
+			SUCCESS
+		}
+
+		public class GuildBuffTimer : ECSGameTimerWrapperBase
+		{
+			private const string MESSAGE = "[Guild Buff] Your guild buff has now worn off!";
+			private Guild _guild;
+
+			public GuildBuffTimer(Guild guild) : base(null)
 			{
-				guildPlayers = m_onlineGuildPlayers.Values.ToList();
+				_guild = guild;
 			}
-			
-			foreach (GamePlayer player in guildPlayers)
-				player.Guild.UpdateMember(player);
 
-			if (guildPlayers.Count > 0 && guildPlayers[0] != null)
-				guildPlayers[0].Guild.SaveIntoDatabase();
+			protected override int OnTick(ECSGameTimer timer)
+			{
+				if (_guild.BonusType is eBonusType.None)
+					return 0;
+
+				if (!_guild.ShouldGuildBuffExpire())
+					return Interval;
+
+				_guild.BonusType = eBonusType.None;
+
+				foreach (GamePlayer player in _guild.GetListOfOnlineMembers())
+					player.Out.SendMessage(MESSAGE, eChatType.CT_Guild, eChatLoc.CL_ChatWindow);
+
+				return 0;
+			}
 		}
 	}
 }

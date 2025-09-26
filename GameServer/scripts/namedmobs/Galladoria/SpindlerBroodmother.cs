@@ -9,8 +9,7 @@ namespace DOL.GS
 {
     public class SpindlerBroodmother : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SpindlerBroodmother()
             : base()
@@ -27,10 +26,7 @@ namespace DOL.GS
             }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MaxHealth
         {
@@ -76,14 +72,6 @@ namespace DOL.GS
 
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60166449);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
 
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
@@ -166,8 +154,7 @@ namespace DOL.AI.Brain
 {
     public class SpindlerBroodmotherBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SpindlerBroodmotherBrain()
             : base()
@@ -448,10 +435,7 @@ namespace DOL.GS
             get { return 8000; }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override short Strength { get => base.Strength; set => base.Strength = 250; }
         public override bool AddToWorld()
@@ -471,9 +455,7 @@ namespace DOL.GS
             return true;
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public override void Die(GameObject killer)
         {
             base.Die(killer); //null to not gain experience
@@ -485,8 +467,7 @@ namespace DOL.AI.Brain
 {
     public class SBAddsBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SBAddsBrain()
             : base()
@@ -497,7 +478,6 @@ namespace DOL.AI.Brain
 
         public override void Think()
         {
-            Body.IsWorthReward = false;
             foreach (GamePlayer player in Body.GetPlayersInRadius(2000))
             {
                 if (player != null && player.IsAlive)
@@ -555,10 +535,7 @@ namespace DOL.GS
             get { return 800; }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override bool AddToWorld()
         {
             Model = 904;
@@ -566,7 +543,6 @@ namespace DOL.GS
             MeleeDamageType = eDamageType.Slash;
             RespawnInterval = -1;
             Strength = 100;
-            IsWorthReward = false; //worth no reward
             Size = (byte) Util.Random(30, 40);
             Level = 50;
             Faction = FactionMgr.GetFactionByID(96);
@@ -584,8 +560,7 @@ namespace DOL.AI.Brain
 {
     public class SBDeadAddsBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SBDeadAddsBrain()
             : base()

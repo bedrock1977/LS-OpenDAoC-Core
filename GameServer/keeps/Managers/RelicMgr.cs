@@ -1,31 +1,10 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
-
+using System.Threading;
 using DOL.Database;
 using DOL.Events;
-using DOL.GS.PacketHandler;
-using System.Collections.Generic;
-using DOL.GS.PacketHandler.Client.v168;
-using log4net;
 
 namespace DOL.GS
 {
@@ -39,26 +18,25 @@ namespace DOL.GS
 		/// table of all relics, id as key
 		/// </summary>
 		private static readonly Hashtable m_relics = new Hashtable();
+		private static readonly Lock _relicsLock = new Lock();
 
+        /// <summary>
+        /// list of all relicPads
+        /// </summary>
+        private static readonly ArrayList m_relicPads = new ArrayList();
+		private static readonly Lock _relicPadsLock = new Lock();
 
-		/// <summary>
-		/// list of all relicPads
-		/// </summary>
-		private static readonly ArrayList m_relicPads = new ArrayList();
-
-
-		/// <summary>
-		/// Defines a logger for this class.
-		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        /// <summary>
+        /// Defines a logger for this class.
+        /// </summary>
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// load all relics from DB
 		/// </summary>
-		/// <returns></returns>
 		public static bool Init()
 		{
-			lock (m_relics.SyncRoot)
+			lock (_relicsLock)
 			{
 				//at first remove all relics
 				foreach (GameRelic rel in m_relics.Values)
@@ -73,7 +51,7 @@ namespace DOL.GS
 				//then we remove all relics from the pads
 				foreach (GameRelicPad pad in m_relicPads)
 				{
-					pad.RemoveRelic();
+					pad.RemoveRelics();
 				}
 
 				// if relics are on the ground during init we will return them to their owners
@@ -126,10 +104,10 @@ namespace DOL.GS
 
 					foreach (GameRelicPad pad in m_relicPads)
 					{
-						if (pad.MountedRelic == null && pad.Realm == returnRealm && pad.PadType == lostRelic.RelicType)
+						if (pad.Realm == returnRealm && pad.PadType == lostRelic.RelicType && lostRelic.RelicPadTakesOver(pad, true))
 						{
-							lostRelic.RelicPadTakesOver(pad, true);
-							log.Debug("Lost Relic: " + lostRelic.Name + " has returned to last pad: " + pad.Name + ".");
+							if (log.IsDebugEnabled)
+								log.Debug($"Lost relic '{lostRelic.Name}' has returned to last pad '{pad.Name}'");
 						}
 					}
 				}
@@ -142,10 +120,10 @@ namespace DOL.GS
 					{
 						foreach (GameRelicPad pad in m_relicPads)
 						{
-							if (pad.MountedRelic == null && pad.PadType == lostRelic.RelicType)
+							if (pad.PadType == lostRelic.RelicType && lostRelic.RelicPadTakesOver(pad, true))
 							{
-								lostRelic.RelicPadTakesOver(pad, true);
-								log.Debug("Lost Relic: " + lostRelic.Name + " auto assigned to pad: " + pad.Name + ".");
+								if (log.IsDebugEnabled)
+									log.Debug($"Lost relic '{lostRelic.Name}' auto assigned to pad '{pad.Name}'");
 							}
 						}
 					}
@@ -163,14 +141,12 @@ namespace DOL.GS
 			return daysPassed.Days;
 		}
 
-
 		/// <summary>
 		/// This is called when the GameRelicPads are added to world
 		/// </summary>
-		/// <param name="pad"></param>
 		public static void AddRelicPad(GameRelicPad pad)
 		{
-			lock (m_relicPads.SyncRoot)
+			lock (_relicPadsLock)
 			{
 				if (!m_relicPads.Contains(pad))
 					m_relicPads.Add(pad);
@@ -183,8 +159,7 @@ namespace DOL.GS
 		/// <returns>null if no GameRelicPad was found at the relic's position.</returns>
 		private static GameRelicPad GetPadAtRelicLocation(GameRelic relic)
 		{
-
-			lock (m_relicPads.SyncRoot)
+			lock (_relicPadsLock)
 			{
 				foreach (GameRelicPad pad in m_relicPads)
 				{
@@ -194,23 +169,15 @@ namespace DOL.GS
 				}
 				return null;
 			}
-
 		}
-
 
 		/// <summary>
 		/// get relic by ID
 		/// </summary>
-		/// <param name="id">id of relic</param>
-		/// <returns> Relic object with relicid = id</returns>
 		public static GameRelic getRelic(int id)
 		{
 			return m_relics[id] as GameRelic;
 		}
-
-
-
-
 
 		#region Helpers
 
@@ -227,8 +194,6 @@ namespace DOL.GS
 		/// <summary>
 		/// Returns an enumeration with all mounted Relics of an realm
 		/// </summary>
-		/// <param name="Realm"></param>
-		/// <returns></returns>
 		public static IEnumerable getRelics(eRealm Realm)
 		{
 			ArrayList realmRelics = new ArrayList();
@@ -243,13 +208,9 @@ namespace DOL.GS
 			return realmRelics;
 		}
 
-
 		/// <summary>
 		/// Returns an enumeration with all mounted Relics of an realm by a specified RelicType
 		/// </summary>
-		/// <param name="Realm"></param>
-		/// <param name="RelicType"></param>
-		/// <returns></returns>
 		public static IEnumerable getRelics(eRealm Realm, eRelicType RelicType)
 		{
 			ArrayList realmTypeRelics = new ArrayList();
@@ -261,17 +222,13 @@ namespace DOL.GS
 			return realmTypeRelics;
 		}
 
-
-
 		/// <summary>
 		/// get relic count by realm
 		/// </summary>
-		/// <param name="realm"></param>
-		/// <returns></returns>
 		public static int GetRelicCount(eRealm realm)
 		{
 			int index = 0;
-			lock (m_relics.SyncRoot)
+			lock (_relicsLock)
 			{
 				foreach (GameRelic relic in m_relics.Values)
 				{
@@ -283,15 +240,12 @@ namespace DOL.GS
 		}
 
 		/// <summary>
-        /// get relic count by realm and relictype
+		/// get relic count by realm and relictype
 		/// </summary>
-		/// <param name="realm"></param>
-		/// <param name="type"></param>
-		/// <returns></returns>
 		public static int GetRelicCount(eRealm realm, eRelicType type)
 		{
 			int index = 0;
-			lock (m_relics.SyncRoot)
+			lock (_relicsLock)
 			{
 				foreach (GameRelic relic in m_relics.Values)
 				{
@@ -300,61 +254,32 @@ namespace DOL.GS
 				}
 			}
 			return index;
-
 		}
-
 
 		/// <summary>
 		/// Gets the bonus modifier for a realm/relictype.
 		/// </summary>
-		/// <param name="realm"></param>
-		/// <param name="type"></param>
-		/// <returns></returns>
 		public static double GetRelicBonusModifier(eRealm realm, eRelicType type)
 		{
 			double bonus = 0.0;
 			bool owningSelf = false;
+
 			//only playerrealms can get bonus
 			foreach (GameRelic rel in getRelics(realm, type))
 			{
 				if (rel.Realm == rel.OriginalRealm)
-				{
 					owningSelf = true;
-				}
 				else
-				{
-					var cache = bonus;
-					switch (GetDaysSinceCapture(rel))
-					{
-						case <1:
-							bonus += ServerProperties.Properties.RELIC_OWNING_BONUS*0.01 * 2;
-							break;
-						case <3:
-							bonus += ServerProperties.Properties.RELIC_OWNING_BONUS*0.01 * 1.5;
-							break;
-						case < 7:
-							bonus += ServerProperties.Properties.RELIC_OWNING_BONUS * 0.01;
-							break;
-						default:
-							bonus += ServerProperties.Properties.RELIC_OWNING_BONUS*0.01 * 0.5;
-							break;
-					}
-				}
+					bonus += ServerProperties.Properties.RELIC_OWNING_BONUS * 0.01;
 			}
 
 			// Bonus apply only if owning original relic
-			if (owningSelf)
-				return bonus;
-			
-			return 0.0;
+			return owningSelf ? bonus : 0.0;
 		}
 
 		/// <summary>
 		/// Returns if a player is allowed to pick up a mounted relic (depends if they own their own relic of the same type)
 		/// </summary>
-		/// <param name="player"></param>
-		/// <param name="relic"></param>
-		/// <returns></returns>
 		public static bool CanPickupRelicFromShrine(GamePlayer player, GameRelic relic)
 		{
 			//debug: if (player == null || relic == null) return false;
@@ -371,20 +296,18 @@ namespace DOL.GS
 			return false;
 		}
 
-
 		/// <summary>
 		/// Gets a copy of the current relics table, keyvalue is the relicId
 		/// </summary>
-		/// <returns></returns>
 		public static Hashtable GetAllRelics()
 		{
-			lock (m_relics.SyncRoot)
+			lock (_relicsLock)
 			{
 				return (Hashtable)m_relics.Clone();
 			}
 		}
-		#endregion
 
+		#endregion
 
 		[ScriptLoadedEvent]
 		private static void ScriptLoaded(DOLEvent e, object sender, EventArgs args)

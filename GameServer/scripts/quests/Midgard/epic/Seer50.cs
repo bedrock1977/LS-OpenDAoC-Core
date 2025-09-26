@@ -41,7 +41,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Midgard
 {
@@ -50,7 +49,7 @@ namespace DOL.GS.Quests.Midgard
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "The Desire of a God";
 		protected const int minimumLevel = 50;
@@ -118,7 +117,7 @@ namespace DOL.GS.Quests.Midgard
 				Inaksha = new GameNPC();
 				Inaksha.Model = 193;
 				Inaksha.Name = "Inaksha";
-				Inaksha.GuildName = "";
+				Inaksha.GuildName = string.Empty;
 				Inaksha.Realm = eRealm.Midgard;
 				Inaksha.CurrentRegionID = 100;
 				Inaksha.Size = 50;
@@ -152,7 +151,7 @@ namespace DOL.GS.Quests.Midgard
 				Loken = new Loken();
 				Loken.Model = 212;
 				Loken.Name = "Loken";
-				Loken.GuildName = "";
+				Loken.GuildName = string.Empty;
 				Loken.Realm = eRealm.None;
 				Loken.CurrentRegionID = 100;
 				Loken.Size = 50;
@@ -186,7 +185,7 @@ namespace DOL.GS.Quests.Midgard
 				Miri = new GameNPC();
 				Miri.Model = 220;
 				Miri.Name = "Miri";
-				Miri.GuildName = "";
+				Miri.GuildName = string.Empty;
 				Miri.Realm = eRealm.Midgard;
 				Miri.CurrentRegionID = 101;
 				Miri.Size = 50;
@@ -339,7 +338,7 @@ namespace DOL.GS.Quests.Midgard
 				HealerEpicHelm.Bonus3Type = (int) eResist.Slash;
 
 				HealerEpicHelm.Bonus4 = 6;
-				HealerEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				HealerEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -383,7 +382,7 @@ namespace DOL.GS.Quests.Midgard
 				HealerEpicGloves.Bonus3Type = (int) eResist.Crush;
 
 				HealerEpicGloves.Bonus4 = 6;
-				HealerEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				HealerEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -595,7 +594,7 @@ namespace DOL.GS.Quests.Midgard
 				ShamanEpicHelm.Bonus3Type = (int) eResist.Thrust;
 
 				ShamanEpicHelm.Bonus4 = 6;
-				ShamanEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				ShamanEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -638,7 +637,7 @@ namespace DOL.GS.Quests.Midgard
 				ShamanEpicGloves.Bonus3Type = (int) eResist.Crush;
 
 				ShamanEpicGloves.Bonus4 = 6;
-				ShamanEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				ShamanEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{

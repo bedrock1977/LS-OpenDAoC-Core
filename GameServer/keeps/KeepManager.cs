@@ -1,29 +1,10 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using DOL.Database;
-using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Keeps
 {
@@ -38,6 +19,7 @@ namespace DOL.GS.Keeps
 		/// list of all keeps
 		/// </summary>
 		protected Hashtable m_keepList = new Hashtable();
+		private readonly Lock _lock = new();
 
 		public virtual Hashtable Keeps
 		{
@@ -55,9 +37,9 @@ namespace DOL.GS.Keeps
 			get { return m_frontierRegionsList; }
 		}
 
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-		public ILog Log
+		public Logging.Logger Log
 		{
 			get { return log; }
 		}
@@ -72,18 +54,12 @@ namespace DOL.GS.Keeps
 			foreach (Region r in WorldMgr.Regions.Values)
 			{
 				if (r.IsFrontier)
-				{
 					m_frontierRegionsList.Add(r.ID);
-				}
 			}
 
 			// default to NF if no frontier regions found
 			if (m_frontierRegionsList.Count == 0)
-			{
-				m_frontierRegionsList.Add(1);
-				m_frontierRegionsList.Add(100);
-				m_frontierRegionsList.Add(200);
-			}
+				m_frontierRegionsList.Add(DEFAULT_FRONTIERS_REGION);
 
 			ClothingMgr.LoadTemplates();
 
@@ -93,7 +69,7 @@ namespace DOL.GS.Keeps
 			if (!ServerProperties.Properties.LOAD_KEEPS)
 				return true;
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				m_keepList.Clear();
 
@@ -151,7 +127,7 @@ namespace DOL.GS.Keeps
 				if (ServerProperties.Properties.USE_NEW_KEEPS == 0 || ServerProperties.Properties.USE_NEW_KEEPS == 2)
 					keepcomponents = DOLDB<DbKeepComponent>.SelectObjects(DB.Column("Skin").IsLessThan(20));
 				else if (ServerProperties.Properties.USE_NEW_KEEPS == 1)
-					keepcomponents = DOLDB<DbKeepComponent>.SelectObjects(DB.Column("Skin").IsGreatherThan(20));
+					keepcomponents = DOLDB<DbKeepComponent>.SelectObjects(DB.Column("Skin").IsGreaterThan(20));
 
 				if (keepcomponents != null)
 				{
@@ -225,10 +201,15 @@ namespace DOL.GS.Keeps
 			{
 				List<DbKeepHookPoint> currentArray;
 				string key = dbhookPoint.KeepComponentSkinID + "H:" + dbhookPoint.Height;
-				if (!hookPointList.ContainsKey(key))
-					hookPointList.Add(key, currentArray = new List<DbKeepHookPoint>());
+
+				if (!hookPointList.TryGetValue(key, out List<DbKeepHookPoint> hookPoints))
+				{
+					currentArray = [];
+					hookPointList.Add(key, currentArray);
+				}
 				else
-					currentArray = hookPointList[key];
+					currentArray = hookPoints;
+
 				currentArray.Add(dbhookPoint);
 			}
 			foreach (AbstractGameKeep keep in m_keepList.Values)
@@ -236,19 +217,21 @@ namespace DOL.GS.Keeps
 				foreach (GameKeepComponent component in keep.KeepComponents)
 				{
 					string key = component.Skin + "H:" + component.Height;
-					if ((hookPointList.ContainsKey(key)))
+
+					if (hookPointList.TryGetValue(key, out List<DbKeepHookPoint> hookPoints))
 					{
-						List<DbKeepHookPoint> HPlist = hookPointList[key];
-						if ((HPlist != null) && (HPlist.Count != 0))
+						if (hookPoints != null && hookPoints.Count != 0)
 						{
-							foreach (DbKeepHookPoint dbhookPoint in hookPointList[key])
+							foreach (DbKeepHookPoint dbhookPoint in hookPoints)
 							{
 								GameKeepHookPoint myhookPoint = new GameKeepHookPoint(dbhookPoint, component);
 								component.HookPoints.Add(dbhookPoint.HookPointID, myhookPoint);
 							}
+
 							continue;
 						}
 					}
+
 					//add this to keep hookpoint system until DB is not full
 					for (int i = 0; i < 38; i++)
 						component.HookPoints.Add(i, new GameKeepHookPoint(i, component));
@@ -405,9 +388,6 @@ namespace DOL.GS.Keeps
 			{
 				if (keep.CurrentRegion.ID != region)
 					continue;
-				
-				if (keep.Name.Contains("Portal"))
-					continue;
 
 				regionKeeps.Add(keep);
 			}
@@ -429,7 +409,7 @@ namespace DOL.GS.Keeps
 			List<AbstractGameKeep> closeKeeps = new List<AbstractGameKeep>();
 			long radiussqrt = radius * radius;
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
@@ -462,7 +442,7 @@ namespace DOL.GS.Keeps
 		{
 			AbstractGameKeep closestKeep = null;
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				long radiussqrt = radius * radius;
 				long lastKeepDistance = radiussqrt;
@@ -498,7 +478,7 @@ namespace DOL.GS.Keeps
 		public virtual int GetTowerCountByRealm(eRealm realm)
 		{
 			int index = 0;
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
@@ -521,7 +501,7 @@ namespace DOL.GS.Keeps
 			realmXTower.Add(eRealm.Hibernia, 0);
 			realmXTower.Add(eRealm.Midgard, 0);
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
@@ -547,7 +527,7 @@ namespace DOL.GS.Keeps
 			realmXTower.Add(eRealm.Midgard, 0);
 			realmXTower.Add(eRealm.None, 0);
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
@@ -569,19 +549,35 @@ namespace DOL.GS.Keeps
 		public virtual int GetKeepCountByRealm(eRealm realm)
 		{
 			int index = 0;
-			lock (m_keepList.SyncRoot)
+
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
-					if (m_frontierRegionsList.Contains(keep.Region) == false) continue;
-					if (GetBattleground(keep.CurrentRegion.ID) != null) continue;
-					if (keep.Name.ToLower().Contains("dagda") || keep.Name.ToLower().Contains("lamfotha") || keep.Name.ToLower().Contains("grallarhorn") || keep.Name.ToLower().Contains("mjollner") || keep.Name.ToLower().Contains("myrddin") || keep.Name.ToLower().Contains("excalibur") || keep.Name.ToLower().Contains("portal"))
-						continue; // relic keeps
-					if (keep.Region is (250 or 251 or 252 or 253 or 165)) continue; // battlegrounds
+					if (!m_frontierRegionsList.Contains(keep.Region))
+						continue;
 
-					if ((keep.Realm == realm) && (keep is GameKeep)) 
-						index++;
+					// Redundant battleground check?
+					if (GetBattleground(keep.CurrentRegion.ID) != null || keep.Region is 250 or 251 or 252 or 253 or 165)
+						continue;
+
+					if (keep.Realm != realm || keep is not GameKeep || keep.IsPortalKeep)
+						continue;
+
+					if (keep.Name.Contains("dagda", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("lamfotha", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("grallarhorn", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("mjollner", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("myrddin", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("excalibur", StringComparison.OrdinalIgnoreCase) ||
+						keep.Name.Contains("portal", StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+
+					index++;
 				}
+
 				return index;
 			}
 		}
@@ -711,69 +707,66 @@ namespace DOL.GS.Keeps
 			return 0;
 		}
 
-		public virtual void GetBorderKeepLocation(int keepid, out int x, out int y, out int z, out ushort heading)
+		public virtual bool GetBorderKeepLocation(int keepid, out int x, out int y, out int z, out ushort heading)
 		{
 			x = 0;
 			y = 0;
 			z = 0;
 			heading = 0;
+
 			switch (keepid)
 			{
-				//sauvage
-				case 1:
-					{
-						x = 653811;
-						y = 616998;
-						z = 9560;
-						heading = 2040;
-						break;
-					}
-				//snowdonia
-				case 2:
-					{
-						x = 616149;
-						y = 679042;
-						z = 9560;
-						heading = 1611;
-						break;
-					}
-				//svas
-				case 3:
-					{
-						x = 651460;
-						y = 313758;
-						z = 9432;
-						heading = 1004;
-						break;
-					}
-				//vind
-				case 4:
-					{
-						x = 715179;
-						y = 365101;
-						z = 9432;
-						heading = 314;
-						break;
-					}
-				//ligen
-				case 5:
-					{
-						x = 396519;
-						y = 618017;
-						z = 9838;
-						heading = 2159;
-						break;
-					}
-				//cain
-				case 6:
-					{
-						x = 432841;
-						y = 680032;
-						z = 9747;
-						heading = 2585;
-						break;
-					}
+				case 1: // Castle Sauvage.
+				{
+					x = 653811;
+					y = 616998;
+					z = 9560;
+					heading = 2040;
+					return true;
+				}
+				case 2: // Snowdonia Fortress.
+				{
+					x = 616149;
+					y = 679042;
+					z = 9560;
+					heading = 1611;
+					return true;
+				}
+				case 3: // Svasud Faste.
+				{
+					x = 651460;
+					y = 313758;
+					z = 9432;
+					heading = 1004;
+					return true;
+				}
+				case 4: // Vindsaul Faste.
+				{
+					x = 715179;
+					y = 365101;
+					z = 9432;
+					heading = 314;
+					return true;
+				}
+				case 5: // Druim Ligen.
+				{
+					x = 396519;
+					y = 618017;
+					z = 9838;
+					heading = 2159;
+					return true;
+				}
+				case 6: // Druim Cain.
+				{
+					x = 432841;
+					y = 680032;
+					z = 9747;
+					heading = 2585;
+					return true;
+				}
 			}
+
+			return false;
 		}
 
 		public virtual int GetRealmKeepBonusLevel(eRealm realm)
@@ -790,7 +783,7 @@ namespace DOL.GS.Keeps
 
 		public virtual void UpdateBaseLevels()
 		{
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{
@@ -841,7 +834,7 @@ namespace DOL.GS.Keeps
 
 		public virtual void ExitBattleground(GamePlayer player)
 		{
-			string location = "";
+			string location = string.Empty;
 			switch (player.Realm)
 			{
 				case eRealm.Albion: location = "Castle Sauvage"; break;
@@ -849,7 +842,7 @@ namespace DOL.GS.Keeps
 				case eRealm.Hibernia: location = "Druim Ligen"; break;
 			}
 
-			if (location != "")
+			if (location != string.Empty)
 			{
 				DbTeleport t = DOLDB<DbTeleport>.SelectObject(DB.Column("TeleportID").IsEqualTo(location));
 				if (t != null)
@@ -864,7 +857,7 @@ namespace DOL.GS.Keeps
 		public virtual AbstractGameKeep GetKeepsShortName(string shortname)
 		{
 
-			lock (m_keepList.SyncRoot)
+			lock (_lock)
 			{
 				foreach (AbstractGameKeep keep in m_keepList.Values)
 				{

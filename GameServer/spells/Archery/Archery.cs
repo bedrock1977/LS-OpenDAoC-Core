@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using DOL.AI.Brain;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandler("Archery")]
+	[SpellHandler(eSpellType.Archery)]
 	public class Archery : ArrowSpellHandler
 	{
 		public enum eShotType
@@ -19,9 +18,8 @@ namespace DOL.GS.Spells
 			Rapid = 4
 		}
 
-		/// <summary>
-		/// Does this spell break stealth on start?
-		/// </summary>
+		public override SpellCostType CostType => SpellCostType.Endurance;
+
 		public override bool UnstealthCasterOnStart
 		{
 			get { return false; }
@@ -68,99 +66,77 @@ namespace DOL.GS.Spells
 			MessageToCaster("You prepare a " + Spell.Name, eChatType.CT_YouHit);
 		}
 
-
-		public override int CalculateToHitChance(GameLiving target)
+		public override double CalculateToHitChance(GameLiving target)
 		{
-			int bonustohit = Caster.GetModified(eProperty.ToHitBonus);
-
 			// miss rate is 0 on same level opponent
-			int hitchance = 100 + bonustohit;
+			double hitChance = 100 + Caster.GetModified(eProperty.ToHitBonus);
 
-			if ((Caster is GamePlayer && target is GamePlayer) == false)
+			if (Caster is not GamePlayer || target is not GamePlayer)
 			{
-				hitchance -= (int)(Caster.GetConLevel(target) * ServerProperties.Properties.PVE_SPELL_CONHITPERCENT);
-				hitchance += Math.Max(0, target.attackComponent.Attackers.Count - 1) * ServerProperties.Properties.MISSRATE_REDUCTION_PER_ATTACKERS;
+				// 1.33 per level difference.
+				hitChance += (Caster.EffectiveLevel - target.EffectiveLevel) * (1 + 1 / 3.0);
+				hitChance += Math.Max(0, target.attackComponent.AttackerTracker.Count - 1) * ServerProperties.Properties.MISSRATE_REDUCTION_PER_ATTACKERS;
 			}
 
-			return hitchance;
+			return hitChance;
 		}
 
 		/// <summary>
 		/// Adjust damage based on chance to hit.
 		/// </summary>
-		/// <param name="damage"></param>
-		/// <param name="hitChance"></param>
-		/// <returns></returns>
-		public override int AdjustDamageForHitChance(int damage, int hitChance)
+		public override double AdjustDamageForHitChance(double damage, double hitChance)
 		{
-			int adjustedDamage = damage;
-
 			if (hitChance < 85)
-			{
-				adjustedDamage += (int)(adjustedDamage * (hitChance - 85) * 0.038);
-			}
+				damage *= (hitChance - 85) * 0.038;
 
-			return adjustedDamage;
+			return damage;
 		}
-
-
-		/// <summary>
-		/// Level mod for effect between target and caster if there is any
-		/// </summary>
-		/// <returns></returns>
-		public override double GetLevelModFactor()
-		{
-			return 0.025;
-		}
-
 
 		public override AttackData CalculateDamageToTarget(GameLiving target)
 		{
 			AttackData ad = base.CalculateDamageToTarget(target);
 			GamePlayer player;
 			//GameSpellEffect bladeturn = FindEffectOnTarget(target, "Bladeturn");
-            target.effectListComponent.Effects.TryGetValue(eEffect.Bladeturn, out var bladeturn);
+			ECSGameEffect bladeturn = EffectListService.GetEffectOnTarget(target, eEffect.Bladeturn);
 			if (bladeturn != null)
 			{
 				switch (Spell.LifeDrainReturn)
 				{
 					case (int)eShotType.Critical:
-						{
-							if (target is GamePlayer)
-							{
-								player = target as GamePlayer;
-								player.Out.SendMessage("A shot penetrated your magic barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
-							}
-							ad.AttackResult = eAttackResult.HitUnstyled;
-						}
-						break;
-
-					case (int)eShotType.Power:
+					{
+						if (target is GamePlayer)
 						{
 							player = target as GamePlayer;
 							player.Out.SendMessage("A shot penetrated your magic barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
-							ad.AttackResult = eAttackResult.HitUnstyled;
-                            EffectService.RequestImmediateCancelEffect(bladeturn.FirstOrDefault());
-                        }
-                        break;
-
+						}
+						ad.AttackResult = eAttackResult.HitUnstyled;
+						break;
+					}
+					case (int)eShotType.Power:
+					{
+						player = target as GamePlayer;
+						player.Out.SendMessage("A shot penetrated your magic barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
+						ad.AttackResult = eAttackResult.HitUnstyled;
+						bladeturn.Stop();
+						break;
+					}
 					case (int)eShotType.Other:
 					default:
+					{
+						if (Caster is GamePlayer)
 						{
-							if (Caster is GamePlayer)
-							{
-								player = Caster as GamePlayer;
-								player.Out.SendMessage("Your strike was absorbed by a magical barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
-							}
-							if (target is GamePlayer)
-							{
-								player = target as GamePlayer;
-								player.Out.SendMessage("The blow was absorbed by a magical barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
-								ad.AttackResult = eAttackResult.Missed;
-								EffectService.RequestImmediateCancelEffect(bladeturn.FirstOrDefault());
-							}
+							player = Caster as GamePlayer;
+							player.Out.SendMessage("Your strike was absorbed by a magical barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
+						}
+						if (target is GamePlayer)
+						{
+							player = target as GamePlayer;
+							player.Out.SendMessage("The blow was absorbed by a magical barrier!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
+							ad.AttackResult = eAttackResult.Missed;
+							bladeturn.Stop();
 						}
 						break;
+					}
 				}
 			}
 
@@ -201,27 +177,6 @@ namespace DOL.GS.Spells
 			{
 				return eDamageType.Slash;
 			}
-		}
-
-		/// <summary>
-		/// Calculates the base 100% spell damage which is then modified by damage variance factors
-		/// </summary>
-		/// <returns></returns>
-		public override double CalculateDamageBase(GameLiving target)
-		{
-			double spellDamage = Spell.Damage;
-			GamePlayer player = Caster as GamePlayer;
-
-			if (player != null)
-			{
-				int manaStatValue = player.GetModified((eProperty)player.CharacterClass.ManaStat);
-				spellDamage *= (manaStatValue + 300) / 275.0;
-			}
-
-			if (spellDamage < 0)
-				spellDamage = 0;
-
-			return spellDamage;
 		}
 
 		public override void FinishSpellCast(GameLiving target)
@@ -265,45 +220,9 @@ namespace DOL.GS.Spells
 			base.FinishSpellCast(target);
 		}
 
-		/// <summary>
-		/// Calculates the effective casting time
-		/// </summary>
-		/// <returns>effective casting time in milliseconds</returns>
 		public override int CalculateCastingTime()
 		{
-			if (Spell.LifeDrainReturn == (int)eShotType.Power) return 6000;
-
-			int ticks = m_spell.CastTime;
-
-			double percent = 1.0;
-			int dex = Caster.GetModified(eProperty.Dexterity);
-
-			if (dex < 60)
-			{
-				//do nothing.
-			}
-			else if (dex < 250)
-			{
-				percent = 1.0 - (dex - 60) * 0.15 * 0.01;
-			}
-			else
-			{
-				percent = 1.0 - ((dex - 60) * 0.15 + (dex - 250) * 0.05) * 0.01;
-			}
-
-			GamePlayer player = m_caster as GamePlayer;
-
-			if (player != null)
-			{
-				percent *= 1.0 - m_caster.GetModified(eProperty.CastingSpeed) * 0.01;
-			}
-
-			ticks = (int)(ticks * Math.Max(m_caster.CastingSpeedReductionCap, percent));
-
-			if (ticks < m_caster.MinimumCastingSpeed)
-				ticks = m_caster.MinimumCastingSpeed;
-
-			return ticks;
+			return (eShotType) Spell.LifeDrainReturn is eShotType.Power ? 6000 : base.CalculateCastingTime();
 		}
 
 		public override int PowerCost(GameLiving target) { return 0; }
@@ -328,11 +247,9 @@ namespace DOL.GS.Spells
 			if (Spell.Uninterruptible)
 				return false;
 
-			if (IsInCastingPhase && Stage < 2)
+			if (IsInCastingPhase)
 			{
-				int mod = Caster.GetConLevel(attacker);
 				double chance = 65;
-				chance += mod * 10;
 				chance = Math.Max(1, chance);
 				chance = Math.Min(99, chance);
 				if (attacker is GamePlayer) chance = 100;
@@ -340,7 +257,7 @@ namespace DOL.GS.Spells
 				{
 					Caster.TempProperties.SetProperty(INTERRUPT_TIMEOUT_PROPERTY, GameLoop.GameLoopTime + Caster.SpellInterruptDuration);
 					MessageToLiving(Caster, attacker.GetName(0, true) + " attacks you and your shot is interrupted!", eChatType.CT_SpellResisted);
-					InterruptCasting();
+					InterruptCasting(false);
 					return true;
 				}
 			}
@@ -352,9 +269,9 @@ namespace DOL.GS.Spells
 			get
 			{
 				var list = new List<string>();
-				//list.Add("Function: " + (Spell.SpellType == "" ? "(not implemented)" : Spell.SpellType));
+				//list.Add("Function: " + (Spell.SpellType == string.Empty ? "(not implemented)" : Spell.SpellType));
 				//list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
 				if (Spell.InstrumentRequirement != 0)
 					list.Add("Instrument require: " + GlobalConstants.InstrumentTypeToName(Spell.InstrumentRequirement));

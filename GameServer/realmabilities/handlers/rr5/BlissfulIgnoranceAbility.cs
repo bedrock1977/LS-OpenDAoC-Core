@@ -11,7 +11,7 @@ namespace DOL.GS.RealmAbilities
     /// </summary>
     public class BlissfulIgnoranceAbility : RR5RealmAbility
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public const int DURATION = 30 * 1000;
 
@@ -66,16 +66,16 @@ namespace DOL.GS.RealmAbilities
 						db.Duration = spell.Duration / 1000;
                         db.Power = 0;
 						db.Value = spell.Value;
-	                    db.Message1 = "";
-	                    db.Message2 = "";
-	                    db.Message3 = "";
-	                    db.Message4 = "";
+	                    db.Message1 = string.Empty;
+	                    db.Message2 = string.Empty;
+	                    db.Message3 = string.Empty;
+	                    db.Message4 = string.Empty;
                         db.Type = (spell.SpellType).ToString();
                         db.Target = "Self";
                         db.MoveCast = true;
                         db.Uninterruptible = true;
 						
-						SpellHandler handler = new SpellHandler(player, new Spell(db, 0), SkillBase.GetSpellLine("Savagery"));
+						SpellHandler handler = ScriptMgr.CreateSpellHandler(player, new Spell(db, 0), SkillBase.GetSpellLine("Savagery")) as SpellHandler;
                         if(handler!=null)
                             handler.StartSpell(player);
 					}

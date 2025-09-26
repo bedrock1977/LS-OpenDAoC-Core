@@ -210,7 +210,7 @@ namespace DOL.GS.RealmAbilities
                 }
             }
 
-            if (_player.IsBeingInterruptedIgnoreSelfInterrupt)
+            if (_player.IsBeingInterruptedByOther)
             {
                 GameObject attacker = _player.LastInterrupter;
 
@@ -222,7 +222,7 @@ namespace DOL.GS.RealmAbilities
                 return;
             }
 
-            new AtlasOF_VolleyECSEffect(new ECSGameEffectInitParams(_player, 0, 1));
+            ECSGameEffectFactory.Create(new(_player, 0, 1), static (in ECSGameEffectInitParams i) => new AtlasOF_VolleyECSEffect(i));
         }
 
         public override void AddEffectsInfo(IList<string> list)

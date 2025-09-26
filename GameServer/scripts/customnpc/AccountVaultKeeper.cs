@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DOL.Database;
 using DOL.GS.Housing;
@@ -22,10 +23,8 @@ namespace DOL.GS
             message += "I am happy to offer you my services.\n\n";
             message += "You can browse the [first] or [second] page of your Account Vault.";
             player.Out.SendMessage(message, eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-            DbItemTemplate vaultItem = GetDummyVaultItem(player);
-            AccountVault vault = new(player, 0, vaultItem);
-            player.ActiveInventoryObject = vault;
-            player.Out.SendInventoryItemsUpdate(vault.GetClientInventory(player), eInventoryWindowType.HouseVault);
+            player.ActiveInventoryObject = player.AccountVault;
+            player.Out.SendInventoryItemsUpdate(player.ActiveInventoryObject.GetClientInventory(player), eInventoryWindowType.HouseVault);
             return true;
         }
 
@@ -54,7 +53,7 @@ namespace DOL.GS
             return true;
         }
 
-        private static DbItemTemplate GetDummyVaultItem(GamePlayer player)
+        public static DbItemTemplate GetDummyVaultItem(GamePlayer player)
         {
             DbItemTemplate vaultItem = new()
             {
@@ -85,7 +84,7 @@ namespace DOL.GS
 
     public class AccountVault : GameHouseVault
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private string _vaultOwner;
         private int _vaultNumber = 0;
@@ -99,6 +98,9 @@ namespace DOL.GS
         /// <param name="dummyTemplate">An ItemTemplate to satisfy the base class's constructor</param>
         public AccountVault(GamePlayer player, int vaultNumber, DbItemTemplate dummyTemplate) : base(dummyTemplate, vaultNumber)
         {
+            if (vaultNumber is < 0 or > 1)
+                throw new ArgumentOutOfRangeException(nameof(vaultNumber), $"{nameof(vaultNumber)} must be either 0 or 1.");
+
             _vaultOwner = GetOwner(player);
             _vaultNumber = vaultNumber;
 
@@ -113,26 +115,6 @@ namespace DOL.GS
             };
 
             CurrentHouse = new House(dbHouse);
-        }
-
-        public override bool Interact(GamePlayer player)
-        {
-            if (!CanView(player))
-            {
-                player.Out.SendMessage("You don't have permission to view this vault!", eChatType.CT_System, eChatLoc.CL_SystemWindow);
-                return false;
-            }
-
-            player.ActiveInventoryObject?.RemoveObserver(player);
-
-            lock (LockObject)
-            {
-                _observers.TryAdd(player.Name, player);
-            }
-
-            player.ActiveInventoryObject = this;
-            player.Out.SendInventoryItemsUpdate(GetClientInventory(player), eInventoryWindowType.HouseVault);
-            return true;
         }
 
         /// <summary>
@@ -167,23 +149,13 @@ namespace DOL.GS
         /// <summary>
         /// List of items in the vault.
         /// </summary>
-        public override IList<DbInventoryItem> DBItems(GamePlayer player = null)
+        public override IList<DbInventoryItem> GetDbItems(GamePlayer player)
         {
             return GameServer.Database.SelectObjects<DbInventoryItem>(DB.Column("OwnerID").IsEqualTo(GetOwner(player)).And(DB.Column("SlotPosition").IsGreaterOrEqualTo(FirstDbSlot).And(DB.Column("SlotPosition").IsLessOrEqualTo(LastDbSlot))));
         }
 
-        public override int FirstDbSlot => _vaultNumber switch
-        {
-            0 => 2500,
-            1 => 2600,
-            _ => 0,
-        };
+        public override int FirstDbSlot => (int) eInventorySlot.AccountVault_First + VaultSize * _vaultNumber;
 
-        public override int LastDbSlot => _vaultNumber switch
-        {
-            0 => 2599,
-            1 => 2699,
-            _ => 0,
-        };
+        public override int LastDbSlot => FirstDbSlot + (VaultSize -1);
     }
 }

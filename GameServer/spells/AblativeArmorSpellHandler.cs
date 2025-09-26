@@ -6,9 +6,11 @@ using DOL.Language;
 namespace DOL.GS.Spells
 {
 	// Melee ablative.
-	[SpellHandlerAttribute("AblativeArmor")]
+	[SpellHandler(eSpellType.AblativeArmor)]
 	public class AblativeArmorSpellHandler : SpellHandler
 	{
+		public override string ShortDescription => $"The target gains a temporary health buffer that absorbs {(Spell.Damage > 0 ? Spell.Damage : 25)}% of the physical damage dealt, up to a maximum of {Spell.Value} damage.";
+
 		public AblativeArmorSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
 		// Spell damage represent the absorb% of the ablative buff, but can't be superior to 100 and 0 must default to 25.
@@ -17,9 +19,9 @@ namespace DOL.GS.Spells
 			return spellDamage > 100 ? 100 : spellDamage < 1 ? 25 : spellDamage;
 		}
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new AblativeArmorECSGameEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new AblativeArmorECSGameEffect(i));
 		}
 
 		public override void OnEffectStart(GameSpellEffect effect) { }
@@ -29,14 +31,8 @@ namespace DOL.GS.Spells
 			m_caster.Mana -= PowerCost(target);
 			base.FinishSpellCast(target);
 		}
-		
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+
+		protected override int CalculateEffectDuration(GameLiving target)
 		{
 			double duration = Spell.Duration;
 			duration *= 1.0 + m_caster.GetModified(eProperty.SpellDuration) * 0.01;
@@ -78,7 +74,7 @@ namespace DOL.GS.Spells
 				{
 					LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "AblativeArmor.DelveInfo.Function"),
 					"",
-					Spell.Description,
+					ShortDescription,
 					""
 				};
 
@@ -143,11 +139,13 @@ namespace DOL.GS.Spells
 	}
 
 	// Magic Ablative.
-	[SpellHandlerAttribute("MagicAblativeArmor")]
+	[SpellHandler(eSpellType.MagicAblativeArmor)]
 	public class MagicAblativeArmorSpellHandler : AblativeArmorSpellHandler
 	{
+		public override string ShortDescription => $"The target gains a temporary health buffer that absorbs {(Spell.Damage > 0 ? Spell.Damage : 25)}% of the magical damage dealt, up to a maximum of {Spell.Value} damage.";
+
 		public MagicAblativeArmorSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-		
+
 		// Check if Melee
 		public override bool MatchingDamageType(ref AttackData ad)
 		{
@@ -159,7 +157,7 @@ namespace DOL.GS.Spells
 
 			return true;
 		}
-		
+
 		// For delve info.
 		protected override string GetAblativeType()
 		{
@@ -168,9 +166,11 @@ namespace DOL.GS.Spells
 	}
 
 	// Both magic and melee ablative.
-	[SpellHandlerAttribute("BothAblativeArmor")]
+	[SpellHandler(eSpellType.BothAblativeArmor)]
 	public class BothAblativeArmorSpellHandler : AblativeArmorSpellHandler
 	{
+		public override string ShortDescription => $"The target gains a temporary health buffer that absorbs {(Spell.Damage > 0 ? Spell.Damage : 25)}% of all damage dealt, up to a maximum of {Spell.Value} damage.";
+
 		public BothAblativeArmorSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
 		public override bool MatchingDamageType(ref AttackData ad)

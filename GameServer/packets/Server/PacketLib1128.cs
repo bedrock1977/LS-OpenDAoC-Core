@@ -8,7 +8,7 @@
         public override void SendVersionAndCryptKey()
         {
             //Construct the new packet
-            using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.CryptKey)))
+            using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.CryptKey)))
             {
                 pak.WriteIntLowEndian(0); // Disable encryption (1110+ always encrypts).
                 pak.WriteString($"{(int) m_gameClient.Version / 1000}.{(int) m_gameClient.Version - 1000}", 5); // Version.
@@ -17,7 +17,7 @@
                 pak.WriteByte(0x00); // Build number.
                 pak.WriteByte(0x00); // Build number.
                 SendTCP(pak);
-                m_gameClient.PacketProcessor.ProcessTcpQueue();
+                m_gameClient.PacketProcessor.SendPendingPackets();
             }
         }
     }

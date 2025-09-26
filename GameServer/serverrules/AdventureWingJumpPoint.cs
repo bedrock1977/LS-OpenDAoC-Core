@@ -32,7 +32,7 @@ namespace DOL.GS.ServerRules
 	public class AdventureWingJumpPoint : IJumpPointHandler
 	{
 
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Decides whether player can jump to the target point.
@@ -102,7 +102,9 @@ namespace DOL.GS.ServerRules
             		}
             		else 
             		{
-            			log.Warn("Player : "+ player.Name +" requested new Instance, destroying instance " + previousInstance.Description + ", ID: " + previousInstance.ID + ", type=" + previousInstance.GetType().ToString() + ".");
+                        if (log.IsWarnEnabled)
+                            log.Warn("Player : "+ player.Name +" requested new Instance, destroying instance " + previousInstance.Description + ", ID: " + previousInstance.ID + ", type=" + previousInstance.GetType().ToString() + ".");
+
                 		WorldMgr.RemoveInstance(previousInstance);
                 		previousInstance = null;
             		}
@@ -139,13 +141,6 @@ namespace DOL.GS.ServerRules
 	
 				previousInstance.LoadFromDatabase(previousInstance.RegionData.Mobs, ref mobs, ref merchants, ref items, ref bindpoints);
 
-				if (log.IsInfoEnabled)
-				{
-					log.Info("Total Mobs: " + mobs);
-					log.Info("Total Merchants: " + merchants);
-					log.Info("Total Items: " + items);
-				}
-				
 				//Attach Loot Generator
 				LootMgr.RegisterLootGenerator(new LootGeneratorAurulite(), null, null, null, previousInstance.ID);
 				
@@ -184,7 +179,9 @@ namespace DOL.GS.ServerRules
             	//enumerate to_delete
             	foreach(Region region in to_delete) 
             	{
-            		log.Warn("Player : "+ player.Name +" has provoked an instance cleanup - " + region.Description + ", ID: " + region.ID + ", type=" + region.GetType().ToString() + ".");
+                    if (log.IsWarnEnabled)
+                        log.Warn("Player : "+ player.Name +" has provoked an instance cleanup - " + region.Description + ", ID: " + region.ID + ", type=" + region.GetType().ToString() + ".");
+
             		WorldMgr.RemoveInstance((BaseInstance)region);
             	}
            	}

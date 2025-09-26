@@ -17,7 +17,7 @@ namespace DOL.GS.Commands
             if (IsSpammingCommand(client.Player, "adviceteam"))
                 return;
 
-            string msg = "";
+            string msg = string.Empty;
 
             if (args.Length >= 2)
             {
@@ -25,7 +25,7 @@ namespace DOL.GS.Commands
                     msg += $"{args[i]} ";
             }
 
-            foreach (GamePlayer otherPlayer in ClientService.GetPlayersForRealmWideChatMessage(client.Player))
+            foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersForRealmWideChatMessage(client.Player))
             {
                 var name = "STAFF";
                 // Message: [ADVICE {0}] {1}: {2}

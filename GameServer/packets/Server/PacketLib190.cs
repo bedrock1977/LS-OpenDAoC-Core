@@ -3,7 +3,6 @@ using System.Collections;
 using System.IO;
 using System.Reflection;
 using DOL.GS.Effects;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -13,7 +12,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected byte icons;
 		public byte Icons {
@@ -35,7 +34,7 @@ namespace DOL.GS.PacketHandler
 		{
 			if (m_gameClient.Player == null)
 				return;
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.CharacterPointsUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.CharacterPointsUpdate)))
 			{
 				pak.WriteInt((uint)m_gameClient.Player.RealmPoints);
 				pak.WriteShort(m_gameClient.Player.LevelPermill);
@@ -55,7 +54,7 @@ namespace DOL.GS.PacketHandler
 		{
 			if (m_gameClient.Player == null)
 				return;
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.CharacterStatusUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.CharacterStatusUpdate)))
 			{
 				pak.WriteByte(m_gameClient.Player.HealthPercent);
 				pak.WriteByte(m_gameClient.Player.ManaPercent);
@@ -82,7 +81,7 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.UpdateIcons)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.UpdateIcons)))
 			{
 				long initPos = pak.Position;
 
@@ -186,7 +185,7 @@ namespace DOL.GS.PacketHandler
 				mlXPPercent = 100.0; // ML10 has no MLXP, so always 100%
 			}
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut((byte)eServerPackets.MasterLevelWindow))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.MasterLevelWindow)))
 			{
 				pak.WriteByte((byte)mlXPPercent); // MLXP (blue bar)
 				pak.WriteByte((byte)Math.Min(mlStepPercent, 100)); // Step percent (red bar)

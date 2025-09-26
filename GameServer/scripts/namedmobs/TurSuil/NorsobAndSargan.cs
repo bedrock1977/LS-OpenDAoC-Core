@@ -67,10 +67,7 @@ namespace DOL.GS
 				}
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -122,7 +119,7 @@ namespace DOL.AI.Brain
 {
 	public class NorsobAnnihilatorBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public NorsobAnnihilatorBrain() : base()
 		{
 			AggroLevel = 100;
@@ -209,10 +206,7 @@ namespace DOL.GS
 				}
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -264,7 +258,7 @@ namespace DOL.AI.Brain
 {
     public class SarganConquerorBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public SarganConquerorBrain() : base()
 		{
 			AggroLevel = 100;

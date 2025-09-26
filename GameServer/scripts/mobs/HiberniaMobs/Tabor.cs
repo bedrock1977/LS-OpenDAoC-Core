@@ -20,13 +20,6 @@ namespace DOL.GS
             }
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60166738);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
 			template.AddNPCEquipment(eInventorySlot.RightHandWeapon, 315, 0, 0);
@@ -45,7 +38,7 @@ namespace DOL.GS
 		}
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -72,7 +65,7 @@ namespace DOL.AI.Brain
 {
     public class TaborBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public TaborBrain() : base()
 		{
 			AggroLevel = 100;
@@ -240,7 +233,7 @@ namespace DOL.GS
 		public TaborGhost() : base() { }
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Say, eChatLoc.CL_ChatWindow);
 			}
@@ -250,13 +243,6 @@ namespace DOL.GS
 			BroadcastMessage("Ghost of Tabor says, \"You thought the fight was over did you ? \"");
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60161293);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
 			template.AddNPCEquipment(eInventorySlot.RightHandWeapon, 445, 0, 0);
@@ -286,7 +272,7 @@ namespace DOL.AI.Brain
 {
     public class TaborGhostBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public TaborGhostBrain() : base()
 		{
 			AggroLevel = 100;
@@ -521,7 +507,7 @@ namespace DOL.AI.Brain
 {
     public class SwirlDirtBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public SwirlDirtBrain() : base()
 		{
 			AggroLevel = 0;

@@ -20,7 +20,7 @@ namespace DOL.GS
 		}
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -35,10 +35,7 @@ namespace DOL.GS
 				default: return 40;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -64,13 +61,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(9916);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(779);
@@ -115,7 +105,7 @@ namespace DOL.AI.Brain
 {
 	public class SpiritmasterArosBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public SpiritmasterArosBrain() : base()
 		{
@@ -125,7 +115,7 @@ namespace DOL.AI.Brain
 		}
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -459,9 +449,7 @@ namespace DOL.GS
 			--ArosPetCount;
             base.Die(killer);
         }
-        public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+        public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 		private Spell m_SpiritChampion_stun;
 		private Spell SpiritChampion_stun
@@ -496,7 +484,7 @@ namespace DOL.AI.Brain
 {
 	public class SpiritmasterArosPetBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public SpiritmasterArosPetBrain()
 		{

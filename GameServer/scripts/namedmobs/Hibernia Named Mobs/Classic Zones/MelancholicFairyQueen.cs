@@ -27,10 +27,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -97,7 +94,7 @@ namespace DOL.AI.Brain
 {
 	public class MelancholicFairyQueenBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MelancholicFairyQueenBrain() : base()
 		{
 			AggroLevel = 100;
@@ -109,7 +106,7 @@ namespace DOL.AI.Brain
 		bool changed;
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -236,10 +233,7 @@ namespace DOL.GS
 				default: return 15;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MaxHealth
 		{
 			get { return 2200; }
@@ -277,7 +271,7 @@ namespace DOL.AI.Brain
 {
 	public class MFQGuardsBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public MFQGuardsBrain() : base()
 		{
 			AggroLevel = 100;

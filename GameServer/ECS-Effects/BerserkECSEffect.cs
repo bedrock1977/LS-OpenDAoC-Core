@@ -1,20 +1,14 @@
 ﻿using DOL.GS.PacketHandler;
 using DOL.Language;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DOL.GS
 {
     public class BerserkECSGameEffect : ECSGameAbilityEffect
     {
-        public BerserkECSGameEffect(ECSGameEffectInitParams initParams)
+        public BerserkECSGameEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.Berserk;
-            EffectService.RequestStartEffect(this);
         }
 
         protected ushort m_startModel = 0;

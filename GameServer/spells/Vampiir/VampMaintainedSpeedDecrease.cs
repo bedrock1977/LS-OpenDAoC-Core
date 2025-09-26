@@ -1,21 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using DOL.Events;
 using DOL.GS.Effects;
@@ -26,10 +8,10 @@ namespace DOL.GS.Spells
     /// <summary>
     /// Spell handler for speed decreasing spells.  Special for vampiirs
     /// </summary>
-    [SpellHandler("VampSpeedDecrease")]
+    [SpellHandler(eSpellType.VampSpeedDecrease)]
     public class VampMaintainedSpeedDecrease : SpeedDecreaseSpellHandler
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected GameLiving m_originalTarget = null;
 		protected bool m_isPulsing = false;
@@ -47,7 +29,7 @@ namespace DOL.GS.Spells
 			m_originalTarget = target;
 
 			// this acts like a pulsing spell effect, but with 0 frequency.
-            return new GameSpellEffect(this, CalculateEffectDuration(target, effectiveness), 0, effectiveness);
+            return new GameSpellEffect(this, CalculateEffectDuration(target), 0, effectiveness);
         }
 
 		/// <summary>
@@ -75,7 +57,7 @@ namespace DOL.GS.Spells
 				return;
 			}
 
-			if (!Caster.IsWithinRadius(m_originalTarget, CalculateSpellRange()))
+			if (!Caster.IsWithinRadius(m_originalTarget, Spell.CalculateEffectiveRange(Caster)))
 			{
 				MessageToCaster("Your target is no longer in range.", eChatType.CT_SpellExpires);
 				effect.Cancel(false);
@@ -97,6 +79,5 @@ namespace DOL.GS.Spells
         {
             // Spell can be used in combat, do nothing
         }
-
     }
 }

@@ -73,10 +73,7 @@ namespace DOL.GS
                 }
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 150;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -102,13 +99,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(7716);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Humanoid;
 
@@ -184,8 +174,7 @@ namespace DOL.AI.Brain
 {
     public class LieutenantMeadeBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public LieutenantMeadeBrain()
             : base()
@@ -203,23 +192,10 @@ namespace DOL.AI.Brain
                 FSM.SetCurrentState(eFSMStateType.RETURN_TO_SPAWN);
                 this.Body.Health = this.Body.MaxHealth;              
                 CanWalk = false;
-                lock (Body.effectListComponent.EffectsLock)
-                {
-                    var effects = Body.effectListComponent.GetAllPulseEffects();
-                    for (int i = 0; i < effects.Count; i++)
-                    {
-                        ECSPulseEffect effect = effects[i];
-                        if (effect == null)
-                            continue;
+                var effects = Body.effectListComponent.GetPulseEffects();
 
-                        if (effect == null)
-                            continue;
-                        if (effect.SpellHandler.Spell.Pulse == 1)
-                        {
-                            EffectService.RequestCancelConcEffect(effect);//cancel here all pulse effect
-                        }
-                    }
-                }
+                for (int i = 0; i < effects.Count; i++)
+                    effects[i].Stop();//cancel here all pulse effect
             }
             if (Body.InCombat && HasAggro)
             {

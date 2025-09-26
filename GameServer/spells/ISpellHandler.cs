@@ -6,11 +6,11 @@ namespace DOL.GS.Spells
 {
 	public interface ISpellHandler
 	{
-		eCastState CastState { get; set; }
-		GameLiving Target { get; set; }
-		bool HasLos { get; set; }
+		string ShortDescription { get; }
 
-		ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams);
+		GameLiving Target { get; }
+
+		ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams);
 
 		/// <summary>
 		/// Starts the spell, without displaying cast message etc.
@@ -23,12 +23,6 @@ namespace DOL.GS.Spells
 		/// Should be used with spells attached to items (procs, /use, etc)
 		/// </summary>
 		bool StartSpell(GameLiving target, DbInventoryItem item);
-
-		/// <summary>
-		/// Whenever the current casting sequence is to be interrupted
-		/// this callback is called
-		/// </summary>
-		void InterruptCasting();
 
 		/// <summary>
 		/// Has to be called when the caster moves
@@ -85,22 +79,10 @@ namespace DOL.GS.Spells
 		ECSPulseEffect PulseEffect { get; }
 
 		/// <summary>
-		/// Determines wether new spell is better than existing one
-		/// important for overwriting
+		/// Determines whether effects created by this and compare are allowed to stack.
 		/// </summary>
-		/// <param name="oldeffect"></param>
-		/// <param name="neweffect"></param>
-		/// <returns>true if new spell is better version</returns>
-		bool IsNewEffectBetter(GameSpellEffect oldeffect, GameSpellEffect neweffect);
+		bool HasConflictingEffectWith(ISpellHandler compare);
 
-		/// <summary>
-		/// Determines wether this spell is compatible with given spell
-		/// and therefore overwritable by better versions
-		/// spells that are overwritable do not stack
-		/// </summary>
-		/// <param name="compare"></param>
-		/// <returns></returns>
-		bool IsOverwritable(ECSGameSpellEffect compare);
 		/// <summary>
 		/// Determines wether new spell is better than old spell and should disable it
 		/// </summary>
@@ -122,17 +104,7 @@ namespace DOL.GS.Spells
 		/// </summary>
 		bool AllowCoexisting { get; }
 
-		/// <summary>
-		/// Does this spell ignore all damage caps?
-		/// </summary>
-		bool IgnoreDamageCap { get; set; }
-
-	    long CastStartTick { get; }
-		/// <summary>
-		/// Should this spell use the minimum variance for the type?
-		/// Followup style effects, for example, always use the minimum variance
-		/// </summary>
-		bool UseMinVariance { get; set; }
+		long CastStartTick { get; }
 
 		/// <summary>
 		/// Actions to take when the effect starts
@@ -203,6 +175,8 @@ namespace DOL.GS.Spells
 		/// </summary>
 		SpellLine SpellLine { get; }
 
+		SpellCostType CostType { get; }
+
 		/// <summary>
 		/// The DelveInfo
 		/// </summary>
@@ -217,13 +191,7 @@ namespace DOL.GS.Spells
 		void OnEffectRestored(GameSpellEffect effect, int[] RestoreVars);
 		int OnRestoredEffectExpires(GameSpellEffect effect, int[] RestoreVars, bool noMessages);
 		bool CheckBeginCast(GameLiving selectedTarget);
-		
-		/// <summary>
-		/// Calculates the range to target needed to cast the spell
-		/// </summary>
-		/// <returns>Modified Spell Range</returns>
-		int CalculateSpellRange();
-		void TooltipDelve(ref DOL.GS.PacketHandler.MiniDelveWriter dw);
+		bool CheckConcentrationCost(bool quiet);
 	}
 
 	/// <summary>

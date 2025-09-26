@@ -13,13 +13,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60165135);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RainbowSpriteTanBrain sbrain = new RainbowSpriteTanBrain();
 			if (NPCTemplate != null)
@@ -37,7 +30,7 @@ namespace DOL.AI.Brain
 {
 	public class RainbowSpriteTanBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public RainbowSpriteTanBrain() : base()
 		{
 			ThinkInterval = 1500;
@@ -84,13 +77,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(50024);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RainbowSpriteWhiteBrain sbrain = new RainbowSpriteWhiteBrain();
 			if (NPCTemplate != null)
@@ -108,7 +94,7 @@ namespace DOL.AI.Brain
 {
 	public class RainbowSpriteWhiteBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public RainbowSpriteWhiteBrain() : base()
 		{
 			ThinkInterval = 1500;
@@ -155,13 +141,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60165136);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RainbowSpriteBlueBrain sbrain = new RainbowSpriteBlueBrain();
 			if (NPCTemplate != null)
@@ -179,7 +158,7 @@ namespace DOL.AI.Brain
 {
 	public class RainbowSpriteBlueBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public RainbowSpriteBlueBrain() : base()
 		{
 			ThinkInterval = 1500;
@@ -226,13 +205,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(50018);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RainbowSpriteGreenBrain sbrain = new RainbowSpriteGreenBrain();
 			if (NPCTemplate != null)
@@ -250,7 +222,7 @@ namespace DOL.AI.Brain
 {
 	public class RainbowSpriteGreenBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public RainbowSpriteGreenBrain() : base()
 		{
 			ThinkInterval = 1500;

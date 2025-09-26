@@ -3,7 +3,6 @@ using System.Reflection;
 using DOL.Database;
 using DOL.GS.Housing;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -13,7 +12,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Constructs a new PacketLib for Version 1.76 clients
@@ -28,7 +27,7 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.FindGroupUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.FindGroupUpdate)))
 			{
 				if (list != null)
 				{
@@ -78,7 +77,7 @@ namespace DOL.GS.PacketHandler
 			if (obj.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.ObjectCreate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.ObjectCreate)))
 			{
 				pak.WriteShort((ushort)obj.ObjectID);
 
@@ -137,16 +136,16 @@ namespace DOL.GS.PacketHandler
 				if (obj is GameDoorBase door)
 				{
 					pak.WriteByte(4);
-					pak.WriteInt((uint) door.DoorID);
+					pak.WriteInt((uint) door.DoorId);
 				}
 				else pak.WriteByte(0x00);
 				SendTCP(pak);
 			}
 		}
 
-		protected override void SendInventorySlotsUpdateRange(ICollection<int> slots, eInventoryWindowType windowType)
+		protected override void SendInventorySlotsUpdateRange(ICollection<eInventorySlot> slots, eInventoryWindowType windowType)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.InventoryUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.InventoryUpdate)))
 			{
 				pak.WriteByte((byte)(slots == null ? 0 : slots.Count));
 				pak.WriteByte((byte)((m_gameClient.Player.IsCloakHoodUp ? 0x01 : 0x00) | (int)m_gameClient.Player.rangeAttackComponent.ActiveQuiverSlot)); //bit0 is hood up bit4 to 7 is active quiver
@@ -269,7 +268,7 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null || living.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.EquipmentUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.EquipmentUpdate)))
 			{
 				ICollection<DbInventoryItem> items = null;
 				if (living.Inventory != null)
@@ -322,8 +321,8 @@ namespace DOL.GS.PacketHandler
 		 * public override void SendPlayerBanner(GamePlayer player, int GuildEmblem)
 		{
 			if (player == null) return;
-			GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.VisualEffect));
-			pak.WriteShort((ushort) player.ObjectID);
+			GSTCPPacketOut pak = GSTCPPacketOut.Rent(p => p.Init(GetPacketCode(eServerPackets.VisualEffect)));
+			pak.WriteShort(player.ObjectID);
 			pak.WriteByte(12);
 			if (GuildEmblem == 0)
 			{
@@ -342,7 +341,7 @@ namespace DOL.GS.PacketHandler
 
 		public override void SendHouse(House house)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.HouseCreate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.HouseCreate)))
 			{
 				pak.WriteShort((ushort)house.HouseNumber);
 				pak.WriteShort((ushort)house.Z);
@@ -368,7 +367,7 @@ namespace DOL.GS.PacketHandler
 
 		public override void SendEnterHouse(House house)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.HouseEnter)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.HouseEnter)))
 			{
 
 				pak.WriteShort((ushort)house.HouseNumber);
@@ -436,7 +435,7 @@ namespace DOL.GS.PacketHandler
 			//cannot show banners for players that have no guild.
 			if (show && player.Guild == null)
 				return;
-			GSTCPPacketOut pak = new GSTCPPacketOut((byte)eServerPackets.VisualEffect);
+			using var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.VisualEffect));
 			pak.WriteShort((ushort)player.ObjectID);
 			pak.WriteByte(0xC); // show Banner
 			pak.WriteByte((byte)((show) ? 0 : 1)); // 0-enable, 1-disable

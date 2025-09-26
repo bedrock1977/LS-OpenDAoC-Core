@@ -44,7 +44,7 @@ namespace DOL.GS
 			globulespawn.Heading = Heading;
 			globulespawn.Realm = 0;
 			globulespawn.MaxSpeedBase = 191;
-			globulespawn.GuildName = "";
+			globulespawn.GuildName = string.Empty;
 			globulespawn.X = X;
 			globulespawn.Y = Y;
 			globulespawn.Z = 3083;
@@ -55,7 +55,7 @@ namespace DOL.GS
 			brain.AggroLevel = 70;
 			brain.AggroRange = 500;
 			globulespawn.SetOwnBrain(brain);
-			globulespawn.AutoSetStats();
+			globulespawn.SetStats();
 			globulespawn.AddToWorld();
 			GlobuleNumber++;
 			brain.WalkFromSpawn();

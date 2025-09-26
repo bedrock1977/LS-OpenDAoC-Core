@@ -1,28 +1,10 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
+using System.Globalization;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Reflection;
 using System.Linq;
-
+using System.Net;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using DOL.Config;
 using DOL.Database.Connection;
 
@@ -54,7 +36,7 @@ namespace DOL.GS
 		/// The assemblies to include when compiling the scripts
 		/// </summary>
 		protected string m_scriptAssemblies;
-		
+
 		/// <summary>
 		/// Enable/Disable Startup Script Compilation
 		/// </summary>
@@ -81,11 +63,6 @@ namespace DOL.GS
 		protected string m_ServerNameShort;
 
 		/// <summary>
-		/// The count of server cpu
-		/// </summary>
-		protected int m_cpuCount;
-		
-		/// <summary>
 		/// The max client count.
 		/// </summary>
 		protected int m_maxClientCount;
@@ -94,6 +71,21 @@ namespace DOL.GS
 		/// The endpoint to send UDP packets from.
 		/// </summary>
 		protected IPEndPoint m_udpOutEndpoint;
+
+        /// <summary>
+        /// Whether collecting of Metrics is enbaled or not
+        /// </summary>
+        public bool MetricsEnabled { get; protected set; } = false;
+
+        /// <summary>
+        /// The interval in which Metrics are calculted/exported
+        /// </summary>
+        public int MetricsExportInterval { get; protected set; } = 0;
+
+        /// <summary>
+        /// The OpenTelemetry Protocol Endpoint to push the metrics to
+        /// </summary>
+        public Uri OtlpEndpoint { get; protected set; }
 
 		#endregion
 		#region Logging
@@ -106,7 +98,7 @@ namespace DOL.GS
 		/// The logger name where to log cheat attempts
 		/// </summary>
 		protected string m_cheatLoggerName;
-		
+
 		/// <summary>
 		/// The logger name where to log duplicate IP connections
 		/// </summary>
@@ -115,7 +107,7 @@ namespace DOL.GS
 		/// <summary>
 		/// The file name of the invalid names file
 		/// </summary>
-		protected string m_invalidNamesFile = "";
+		protected string m_invalidNamesFile = string.Empty;
 
 		#endregion
 		#region Database
@@ -142,111 +134,137 @@ namespace DOL.GS
 
 		#endregion
 		#region Load/Save
-		
-		/// <summary>
-		/// Loads the config values from a specific config element
-		/// </summary>
-		/// <param name="root">the root config element</param>
-		protected override void LoadFromConfig(ConfigElement root)
-		{
-			base.LoadFromConfig(root);
 
-			// Removed to not confuse users
+        /// <summary>
+        /// Loads the config values from a specific config element
+        /// </summary>
+        /// <param name="root">the root config element</param>
+        protected override void LoadFromConfig(ConfigElement root)
+        {
+            base.LoadFromConfig(root);
+
+            // Removed to not confuse users
 //			m_rootDirectory = root["Server"]["RootDirectory"].GetString(m_rootDirectory);
 
-			m_logConfigFile = root["Server"]["LogConfigFile"].GetString(m_logConfigFile);
+            m_logConfigFile = root["Server"]["LogConfigFile"].GetString(m_logConfigFile);
 
-			m_scriptCompilationTarget = root["Server"]["ScriptCompilationTarget"].GetString(m_scriptCompilationTarget);
-			m_scriptAssemblies = root["Server"]["ScriptAssemblies"].GetString(m_scriptAssemblies);
-			m_enableCompilation = root["Server"]["EnableCompilation"].GetBoolean(true);
-			m_autoAccountCreation = root["Server"]["AutoAccountCreation"].GetBoolean(m_autoAccountCreation);
+            m_scriptCompilationTarget = root["Server"]["ScriptCompilationTarget"].GetString(m_scriptCompilationTarget);
+            m_scriptAssemblies = root["Server"]["ScriptAssemblies"].GetString(m_scriptAssemblies);
+            m_enableCompilation = root["Server"]["EnableCompilation"].GetBoolean(true);
+            m_autoAccountCreation = root["Server"]["AutoAccountCreation"].GetBoolean(m_autoAccountCreation);
 
-			string serverType = root["Server"]["GameType"].GetString("Normal");
-			switch (serverType.ToLower())
-			{
-				case "normal":
-					m_serverType = EGameServerType.GST_Normal;
-					break;
-				case "casual":
-					m_serverType = EGameServerType.GST_Casual;
-					break;
-				case "roleplay":
-					m_serverType = EGameServerType.GST_Roleplay;
-					break;
-				case "pve":
-					m_serverType = EGameServerType.GST_PvE;
-					break;
-				case "pvp":
-					m_serverType = EGameServerType.GST_PvP;
-					break;
-				case "test":
-					m_serverType = EGameServerType.GST_Test;
-					break;
-				default:
-					m_serverType = EGameServerType.GST_Normal;
-					break;
-			}
+            string serverType = root["Server"]["GameType"].GetString("Normal");
+            switch (serverType.ToLower())
+            {
+                case "normal":
+                    m_serverType = EGameServerType.GST_Normal;
+                    break;
+                case "casual":
+                    m_serverType = EGameServerType.GST_Casual;
+                    break;
+                case "roleplay":
+                    m_serverType = EGameServerType.GST_Roleplay;
+                    break;
+                case "pve":
+                    m_serverType = EGameServerType.GST_PvE;
+                    break;
+                case "pvp":
+                    m_serverType = EGameServerType.GST_PvP;
+                    break;
+                case "test":
+                    m_serverType = EGameServerType.GST_Test;
+                    break;
+                default:
+                    m_serverType = EGameServerType.GST_Normal;
+                    break;
+            }
 
-			m_ServerName = root["Server"]["ServerName"].GetString(m_ServerName);
-			m_ServerNameShort = root["Server"]["ServerNameShort"].GetString(m_ServerNameShort);
-			m_dualIPLoggerName  = root["Server"]["DualIPLoggerName"].GetString(m_dualIPLoggerName);
-			m_cheatLoggerName = root["Server"]["CheatLoggerName"].GetString(m_cheatLoggerName);
-			m_gmActionsLoggerName = root["Server"]["GMActionLoggerName"].GetString(m_gmActionsLoggerName);
-			m_invalidNamesFile = root["Server"]["InvalidNamesFile"].GetString(m_invalidNamesFile);
+            m_ServerName = root["Server"]["ServerName"].GetString(m_ServerName);
+            m_ServerNameShort = root["Server"]["ServerNameShort"].GetString(m_ServerNameShort);
+            m_dualIPLoggerName = root["Server"]["DualIPLoggerName"].GetString(m_dualIPLoggerName);
+            m_cheatLoggerName = root["Server"]["CheatLoggerName"].GetString(m_cheatLoggerName);
+            m_gmActionsLoggerName = root["Server"]["GMActionLoggerName"].GetString(m_gmActionsLoggerName);
+            m_invalidNamesFile = root["Server"]["InvalidNamesFile"].GetString(m_invalidNamesFile);
 
-			string db = root["Server"]["DBType"].GetString("XML");
-			switch (db.ToLower())
-			{
-				case "xml":
-					m_dbType = EConnectionType.DATABASE_XML;
-					break;
-				case "mysql":
-					m_dbType = EConnectionType.DATABASE_MYSQL;
-					break;
-				case "sqlite":
-					m_dbType = EConnectionType.DATABASE_SQLITE;
-					break;
-				case "mssql":
-					m_dbType = EConnectionType.DATABASE_MSSQL;
-					break;
-				case "odbc":
-					m_dbType = EConnectionType.DATABASE_ODBC;
-					break;
-				case "oledb":
-					m_dbType = EConnectionType.DATABASE_OLEDB;
-					break;
-				default:
-					m_dbType = EConnectionType.DATABASE_XML;
-					break;
-			}
-			m_dbConnectionString = root["Server"]["DBConnectionString"].GetString(m_dbConnectionString);
-			m_autoSave = root["Server"]["DBAutosave"].GetBoolean(m_autoSave);
-			m_saveInterval = root["Server"]["DBAutosaveInterval"].GetInt(m_saveInterval);
-			m_maxClientCount = root["Server"]["MaxClientCount"].GetInt(m_maxClientCount);
-			m_cpuCount = root["Server"]["CpuCount"].GetInt(m_cpuCount);
-			
-			if (m_cpuCount < 1)
-				m_cpuCount = 1;
-			
-			m_cpuUse = root["Server"]["CpuUse"].GetInt(m_cpuUse);
-			if (m_cpuUse < 1)
-				m_cpuUse = 1; 
-			
-			// Parse UDP out endpoint
-			IPAddress	address = null;
-			int			port = -1;
-			string		addressStr = root["Server"]["UDPOutIP"].GetString(string.Empty);
-			string		portStr = root["Server"]["UDPOutPort"].GetString(string.Empty);
-			if (IPAddress.TryParse(addressStr, out address)
-				&& int.TryParse(portStr, out port)
-				&& IPEndPoint.MaxPort >= port
-				&& IPEndPoint.MinPort <= port)
-			{
-				m_udpOutEndpoint = new IPEndPoint(address, port);
-			}
-		}
+            string db = root["Server"]["DBType"].GetString("XML");
+            switch (db.ToLower())
+            {
+                case "xml":
+                    m_dbType = EConnectionType.DATABASE_XML;
+                    break;
+                case "mysql":
+                    m_dbType = EConnectionType.DATABASE_MYSQL;
+                    break;
+                case "sqlite":
+                    m_dbType = EConnectionType.DATABASE_SQLITE;
+                    break;
+                case "mssql":
+                    m_dbType = EConnectionType.DATABASE_MSSQL;
+                    break;
+                case "odbc":
+                    m_dbType = EConnectionType.DATABASE_ODBC;
+                    break;
+                case "oledb":
+                    m_dbType = EConnectionType.DATABASE_OLEDB;
+                    break;
+                default:
+                    m_dbType = EConnectionType.DATABASE_XML;
+                    break;
+            }
 
-		/// <summary>
+            m_dbConnectionString = root["Server"]["DBConnectionString"].GetString(m_dbConnectionString);
+            m_autoSave = root["Server"]["DBAutosave"].GetBoolean(m_autoSave);
+            m_saveInterval = root["Server"]["DBAutosaveInterval"].GetInt(m_saveInterval);
+
+            // Parse UDP out endpoint
+            IPAddress address = null;
+            int port = -1;
+            string addressStr = root["Server"]["UDPOutIP"].GetString(string.Empty);
+            string portStr = root["Server"]["UDPOutPort"].GetString(string.Empty);
+            if (IPAddress.TryParse(addressStr, out address)
+                && int.TryParse(portStr, out port)
+                && IPEndPoint.MaxPort >= port
+                && IPEndPoint.MinPort <= port)
+            {
+                m_udpOutEndpoint = new IPEndPoint(address, port);
+            }
+
+            this.MetricsEnabled = root["Server"]["MetricsEnabled"].GetBoolean(false);
+            this.OtlpEndpoint = new Uri(root["Server"]["OtlpEndpoint"].GetString("http://localhost:4317/"));
+            string durationFromConfig = root["Server"]["MetricsExportInterval"].GetString("60s");
+            this.MetricsExportInterval = ParseDurationToMilliseconds(durationFromConfig);
+        }
+
+        /// <summary>
+        /// Parse a string like 10s, 2m or 4h to
+        /// </summary>
+        /// <param name="durationString">The string containing the value</param>
+        /// <returns>The duartion in milliseconds</returns>
+        /// <exception cref="FormatException"></exception>
+        private static int ParseDurationToMilliseconds(string durationString)
+        {
+            string pattern = @"^(\d+)([smh])$"; // Matches digits followed by s, m, or h
+            Match match = Regex.Match(durationString, pattern, RegexOptions.IgnoreCase);
+
+            if (!match.Success) throw new FormatException("Invalid duration format.");
+
+            if (!int.TryParse(match.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out int value)) // Parse with InvariantCulture
+                throw new FormatException("Invalid numeric value.");
+
+            char unit = char.ToLower(match.Groups[2].Value[0]);
+
+            TimeSpan timeSpan = unit switch
+            {
+                's' => TimeSpan.FromSeconds(value),
+                'm' => TimeSpan.FromMinutes(value),
+                'h' => TimeSpan.FromHours(value),
+                _ => TimeSpan.FromSeconds(value)
+            };
+
+            return (int)timeSpan.TotalMilliseconds;
+        }
+
+        /// <summary>
 		/// Saves the values into a specific config element
 		/// </summary>
 		/// <param name="root">the root config element</param>
@@ -298,7 +316,7 @@ namespace DOL.GS
 			root["Server"]["InvalidNamesFile"].Set(m_invalidNamesFile);
 
 			string db = "XML";
-			
+
 			switch (m_dbType)
 			{
 			case EConnectionType.DATABASE_XML:
@@ -327,7 +345,6 @@ namespace DOL.GS
 			root["Server"]["DBConnectionString"].Set(m_dbConnectionString);
 			root["Server"]["DBAutosave"].Set(m_autoSave);
 			root["Server"]["DBAutosaveInterval"].Set(m_saveInterval);
-			root["Server"]["CpuUse"].Set(m_cpuUse);
 
 			// Store UDP out endpoint
 			if (m_udpOutEndpoint != null)
@@ -345,7 +362,7 @@ namespace DOL.GS
 		{
 			m_ServerName = "Dawn Of Light";
 			m_ServerNameShort = "DOLSERVER";
-			
+
 			if (Assembly.GetEntryAssembly() != null)
 				m_rootDirectory = new FileInfo(Assembly.GetEntryAssembly().Location).DirectoryName;
 			else
@@ -370,26 +387,7 @@ namespace DOL.GS
 			                                     Path.Combine(m_rootDirectory, "dol.sqlite3.db"));
 			m_autoSave = true;
 			m_saveInterval = 10;
-			m_maxClientCount = 5000;
-
-			// Get count of CPUs
-			m_cpuCount = Environment.ProcessorCount;
-			if (m_cpuCount < 1)
-			{
-				try
-				{
-					m_cpuCount = int.Parse(Environment.GetEnvironmentVariable("NUMBER_OF_PROCESSORS"));
-				}
-				catch { m_cpuCount = -1; }
-			}
-			
-			if (m_cpuCount < 1)
-			{
-				m_cpuCount = 1;
-			}
-			
-			m_cpuUse = m_cpuCount;
-		}
+        }
 
 		#endregion
 
@@ -507,7 +505,7 @@ namespace DOL.GS
 			get { return m_cheatLoggerName; }
 			set { m_cheatLoggerName = value; }
 		}
-		
+
 		/// <summary>
 		/// Gets or sets the cheat logger name
 		/// </summary>
@@ -517,10 +515,10 @@ namespace DOL.GS
 			set { m_dualIPLoggerName = value; }
 		}
 
-        /// <summary>
-        /// Gets or sets the trade logger name
-        /// </summary>
-        public string InventoryLoggerName { get; set; }
+		/// <summary>
+		/// Gets or sets the trade logger name
+		/// </summary>
+		public string InventoryLoggerName { get; set; }
 
 		/// <summary>
 		/// Gets or sets the invalid name filename
@@ -571,41 +569,6 @@ namespace DOL.GS
 		{
 			get { return m_saveInterval; }
 			set { m_saveInterval = value; }
-		}
-
-		/// <summary>
-		/// Gets or sets the server cpu count
-		/// </summary>
-		public int CpuCount
-		{
-			get { return m_cpuCount; }
-			set { m_cpuCount = value; }
-		}
-		
-		/// <summary>
-		/// Gets or sets the max cout of clients allowed
-		/// </summary>
-		public int MaxClientCount
-		{
-			get { return m_maxClientCount; }
-			set { m_maxClientCount = value; }
-		}
-		
-		/// <summary>
-		/// Gets or sets UDP address and port to send UDP packets from.
-		/// If <code>null</code> then <see cref="Socket"/> decides where to bind.
-		/// </summary>
-		public IPEndPoint UDPOutEndpoint
-		{
-			get { return m_udpOutEndpoint; }
-			set { m_udpOutEndpoint = value; }
-		}
-
-		private int m_cpuUse;
-		public int CPUUse
-		{
-			get { return m_cpuUse; }
-			set { m_cpuUse = value; }
 		}
 	}
 }

@@ -10,7 +10,7 @@ namespace DOL.GS
 {
     public class Yar : GameEpicBoss
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Yar()
             : base()
@@ -43,10 +43,7 @@ namespace DOL.GS
         {
             get { return 40000; }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
 
         public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
@@ -60,15 +57,7 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60168093);
             LoadTemplate(npcTemplate);
-            
-            Strength = npcTemplate.Strength;
-            Constitution = npcTemplate.Constitution;
-            Dexterity = npcTemplate.Dexterity;
-            Quickness = npcTemplate.Quickness;
-            Empathy = npcTemplate.Empathy;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            
+
             Faction = FactionMgr.GetFactionByID(154);
             RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
@@ -95,7 +84,7 @@ namespace DOL.AI.Brain
 {
     public class YarBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public YarBrain()
             : base()
         {
@@ -107,7 +96,7 @@ namespace DOL.AI.Brain
         
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -210,17 +199,14 @@ namespace DOL.GS
 {
     public class YarAdd : GameNPC
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public YarAdd()
             : base()
         {
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
 
         public override int MaxHealth
         {
@@ -275,17 +261,14 @@ namespace DOL.GS
     }
     public class YarAdd2 : GameNPC
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public YarAdd2()
             : base()
         {
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
 
         public override int MaxHealth
         {
@@ -340,17 +323,14 @@ namespace DOL.GS
     }
     public class YarAdd3 : GameNPC
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public YarAdd3()
             : base()
         {
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
 
         public override int MaxHealth
         {
@@ -408,7 +388,7 @@ namespace DOL.AI.Brain
 {
     public class YarAddBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public YarAddBrain()
             : base()
         {

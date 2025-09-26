@@ -1,6 +1,3 @@
-using System;
-using DOL.Database;
-using DOL.GS.PacketHandler;
 using DOL.GS.Spells;
 
 namespace DOL.GS.Effects
@@ -8,11 +5,10 @@ namespace DOL.GS.Effects
     public class AtlasOF_ShadowRunECSEffect : ECSGameAbilityEffect
     {
         public new SpellHandler SpellHandler;
-        public AtlasOF_ShadowRunECSEffect(ECSGameEffectInitParams initParams)
+        public AtlasOF_ShadowRunECSEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.ShadowRun;
-            EffectService.RequestStartEffect(this);
         }
 
         public override void OnStartEffect()

@@ -1,23 +1,4 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 using System.Reflection;
-using DOL.Database;
-using log4net;
 
 namespace DOL.GS.PacketHandler.Client.v168
 {
@@ -27,7 +8,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public void HandlePacket(GameClient client, GSPacketIn packet)
 		{
@@ -39,33 +20,6 @@ namespace DOL.GS.PacketHandler.Client.v168
 			}
 
 			client.ClientState = GameClient.eClientState.CharScreen;
-			if (client.Player != null)
-			{
-				try
-				{
-					// find the cached character and force it to update with the latest saved character
-					DbCoreCharacter cachedCharacter = null;
-					foreach (DbCoreCharacter accountChar in client.Account.Characters)
-					{
-						if (accountChar.ObjectId == client.Player.InternalID)
-						{
-							cachedCharacter = accountChar;
-							break;
-						}
-					}
-
-					if (cachedCharacter != null)
-					{
-						cachedCharacter = client.Player.DBCharacter;
-					}
-				}
-				catch (System.Exception ex)
-				{
-					log.ErrorFormat("Error attempting to update cached player. {0}", ex.Message);
-				}
-			}
-
-			client.Player = null;
 
 			//reset realm if no characters
 			if((client.Account.Characters == null || client.Account.Characters.Length <= 0) && client.Account.Realm != (int)eRealm.None)
@@ -135,32 +89,6 @@ namespace DOL.GS.PacketHandler.Client.v168
 		private void _HandlePacket1124(GameClient client, GSPacketIn packet)
 		{
 			client.ClientState = GameClient.eClientState.CharScreen;
-
-			if (client.Player != null)
-			{
-				try
-				{
-					// find the cached character and force it to update with the latest saved character
-					DbCoreCharacter cachedCharacter = null;
-					foreach (DbCoreCharacter accountChar in client.Account.Characters)
-					{
-						if (accountChar.ObjectId == client.Player.InternalID)
-						{
-							cachedCharacter = accountChar;
-							break;
-						}
-					}
-
-					if (cachedCharacter != null)
-						cachedCharacter = client.Player.DBCharacter;
-				}
-				catch (System.Exception ex)
-				{
-					log.ErrorFormat("Error attempting to update cached player. {0}", ex.Message);
-				}
-			}
-
-			client.Player = null;
 
 			//reset realm if no characters
 			if ((client.Account.Characters == null || client.Account.Characters.Length <= 0) && client.Account.Realm != (int)eRealm.None)

@@ -3,7 +3,6 @@ using System.Reflection;
 using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Commands
 {
@@ -18,7 +17,7 @@ namespace DOL.GS.Commands
 	)]
 	public class BanCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public void OnCommand(GameClient client, string[] args)
 		{
@@ -34,8 +33,8 @@ namespace DOL.GS.Commands
 			{
 				try
 				{
-					int sessionID = Convert.ToInt32(args[1][1..]);
-					gc = ClientService.GetClientFromId(sessionID);
+					int sessionID = Convert.ToInt32(args[2][1..]);
+					gc = ClientService.Instance.GetClientBySessionId(sessionID);
 				}
 				catch
 				{
@@ -44,7 +43,7 @@ namespace DOL.GS.Commands
 			}
 			else
 			{
-				gc = ClientService.GetPlayerByExactName(args[1])?.Client;
+				gc = ClientService.Instance.GetPlayerByExactName(args[2])?.Client;
 			}
 
 			var acc = gc != null ? gc.Account : DOLDB<DbAccount>.SelectObject(DB.Column("Name").IsLike(args[2]));

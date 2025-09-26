@@ -1,15 +1,13 @@
-using System.Linq;
 using System.Reflection;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.SkillHandler
 {
     [SkillHandlerAttribute(Abilities.Protect)]
     public class ProtectAbilityHandler : IAbilityActionHandler
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         public const int PROTECT_DISTANCE = 1000;
 
@@ -25,10 +23,10 @@ namespace DOL.GS.SkillHandler
 
             if (player.TargetObject is not GameLiving target)
             {
-                foreach (ProtectECSGameEffect protect in player.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Protect))
+                foreach (ProtectECSGameEffect protect in player.effectListComponent.GetAbilityEffects(eEffect.Protect))
                 {
                     if (protect.Source == player)
-                        EffectService.RequestCancelEffect(protect);
+                        protect.Stop();
                 }
 
                 player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "Skill.Ability.Protect.CancelTargetNull"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
@@ -68,14 +66,14 @@ namespace DOL.GS.SkillHandler
             foundOurEffect = false;
             effectFromAnotherSource = null;
 
-            foreach (ProtectECSGameEffect protect in target.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Protect))
+            foreach (ProtectECSGameEffect protect in target.effectListComponent.GetAbilityEffects(eEffect.Protect))
             {
                 if (protect.Source == source)
                 {
                     foundOurEffect = true;
 
                     if (cancelOurs)
-                        EffectService.RequestCancelEffect(protect);
+                        protect.Stop();
                 }
 
                 if (protect.Target == target)
@@ -85,13 +83,13 @@ namespace DOL.GS.SkillHandler
 
         public static void CancelOurEffectThenAddOnTarget(GameLiving source, GameLiving target)
         {
-            foreach (ProtectECSGameEffect protect in source.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Protect))
+            foreach (ProtectECSGameEffect protect in source.effectListComponent.GetAbilityEffects(eEffect.Protect))
             {
                 if (protect.Source == source)
-                    EffectService.RequestCancelEffect(protect);
+                    protect.Stop();
             }
 
-            new ProtectECSGameEffect(new ECSGameEffectInitParams(source, 0, 1, null), source, target);
+            ECSGameEffectFactory.Create(new(source, 0, 1), source, target, static (in ECSGameEffectInitParams i, GameLiving source, GameLiving target) => new ProtectECSGameEffect(i, source, target));
         }
     }
 }

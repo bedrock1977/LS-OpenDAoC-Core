@@ -1,415 +1,178 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
-using DOL.AI;
 using DOL.AI.Brain;
 using DOL.Database;
-using DOL.Events;
+using DOL.GS.PlayerClass;
 using DOL.GS.ServerProperties;
 
 namespace DOL.GS
 {
-	public class GameSummonedPet : GameNPC
-	{
-		private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    public class GameSummonedPet : GameNPC
+    {
+        public GameLiving Owner => Brain is IControlledBrain petBrain ? petBrain.Owner : null;
+        public GameLiving RootOwner => Brain is IControlledBrain petBrain ? petBrain.GetLivingOwner() : null;
 
-		private bool m_targetInView;
+        public bool CountsTowardsPetLimit { get; set; }
 
-		public override bool TargetInView
-		{
-			get
-			{
-				return m_targetInView;
-			}
-			set { m_targetInView = value; }
-		}
+        // Used to calculate pet level.
+        public double SummonSpellDamage { get; set; } = -88.0;
+        public double SummonSpellValue { get; set; } = 44.0;
 
-		public GameSummonedPet(INpcTemplate template) : base(template)
-		{
-			ScalingFactor = 14;
-		}
+        public override byte Level
+        {
+            get => base.Level;
+            set
+            {
+                // Don't set the pet level until the owner is set.
+                // This skips unnecessary calls to code in base.Level
+                if (Owner != null)
+                    base.Level = value;
+            }
+        }
 
-		public GameSummonedPet(ABrain brain) : base(brain) { }
+        public GameSummonedPet(INpcTemplate template) : base(template) { }
 
-		/// <summary>
-		/// The owner of this pet
-		/// </summary>
-		public GameLiving Owner
-		{
-			get
-			{
-				if (Brain is IControlledBrain)
-					return (Brain as IControlledBrain).Owner;
+        public virtual bool SetPetLevel()
+        {
+            byte newLevel = 0;
 
-				return null;
-			}
-		}
+            if (SummonSpellDamage >= 0)
+                newLevel = (byte) SummonSpellDamage;
+            else if (Owner is not GameSummonedPet)
+                newLevel = (byte) ((Owner?.Level ?? 0) * SummonSpellDamage * -0.01);
+            else if (RootOwner is GameLiving summoner)
+                newLevel = (byte) (summoner?.Level * SummonSpellDamage * -0.01);
 
-		/// <summary>
-		/// The root owner of this pet, the person at the top of the owner chain.
-		/// </summary>
-		public GameLiving RootOwner
-		{
-			get
-			{
-				if (Brain is IControlledBrain petBrain)
-					return petBrain.GetLivingOwner();
+            if (SummonSpellValue > 0  && newLevel > SummonSpellValue)
+                newLevel = (byte) SummonSpellValue;
 
-				return null;
-			}
-		}
+            if (newLevel < 1)
+                newLevel = 1;
 
-		/// <summary>
-		/// Gets or sets the level of this NPC
-		/// </summary>
-		public override byte Level
-		{
-			get { return base.Level; }
-			set
-			{
-				// Don't set the pet level until the owner is set
-				// This skips unnecessary calls to code in base.Level
-				if (Owner != null)
-					base.Level = value;
-			}
-		}
+            if (Level == newLevel)
+                return false;
 
-		// Store the info we need from the summoning spell to calculate pet level.
-		public double SummonSpellDamage { get; set; } = -88.0;
-		public double SummonSpellValue { get; set; } = 44.0;
+            Level = newLevel;
+            return true;
+        }
 
-		/// <summary>
-		/// Set the pet's level based on owner's level.  Make sure Owner brain has been assigned before calling!
-		/// </summary>
-		/// <returns>Did the pet's level change?</returns>
-		public virtual bool SetPetLevel()
-		{
-			// Changing Level calls additional code, so only do it at the end
-			byte newLevel = 0;
+        public override void SortSpells()
+        {
+            if (Spells.Count < 1 || Level < 1)
+                return;
 
-			if (SummonSpellDamage >= 0)
-				newLevel = (byte)SummonSpellDamage;
-			else if (!(Owner is GameSummonedPet))
-				newLevel = (byte)((Owner?.Level ?? 0) * SummonSpellDamage * -0.01);
-			else if (RootOwner is GameLiving summoner)
-				newLevel = (byte)(summoner?.Level * SummonSpellDamage * -0.01);
+            base.SortSpells();
 
-			if (SummonSpellValue > 0  && newLevel > SummonSpellValue)
-				newLevel = (byte)SummonSpellValue;
+            // Most summoned pets need to have their spell be scaled, since they share the same NPC template, or use different NPC templates but with the same spells.
+            // Currently, it should be the pets of the following classes: Theurgist, Cabalist, Spiritmaster, Bonedancer, Enchanter, Druid.
+            // Only Animist pets are excluded (they also store their spells differently).
+            // Necromancer and Hunter pets don't possess any spell.
+            if ((Brain as IControlledBrain)?.GetPlayerOwner()?.CharacterClass is ClassTheurgist or ClassCabalist or ClassSpiritmaster or ClassBonedancer or ClassEnchanter or ClassDruid)
+                ScalSpells();
+        }
 
-			if (newLevel < 1)
-				newLevel = 1;
+        private void ScalSpells()
+        {
+            if (CanCastHarmfulSpells)
+            {
+                for (int i = 0; i < HarmfulSpells.Count; i++)
+                    HarmfulSpells[i] = GetScaledSpell(HarmfulSpells[i]);
+            }
 
-			if (Level == newLevel)
-				return false;
+            if (CanCastInstantHarmfulSpells)
+            {
+                for (int i = 0; i < InstantHarmfulSpells.Count; i++)
+                    InstantHarmfulSpells[i] = GetScaledSpell(InstantHarmfulSpells[i]);
+            }
 
-			Level = newLevel;
-			return true;
-		}
+            if (CanCastHealSpells)
+            {
+                for (int i = 0; i < HealSpells.Count; i++)
+                    HealSpells[i] = GetScaledSpell(HealSpells[i]);
+            }
 
-		#region Spells
+            if (CanCastInstantHealSpells)
+            {
+                for (int i = 0; i < InstantHealSpells.Count; i++)
+                    InstantHealSpells[i] = GetScaledSpell(InstantHealSpells[i]);
+            }
 
-		/// <summary>
-		/// Sort spells into specific lists
-		/// </summary>
-		public override void SortSpells()
-		{
-			if (Spells.Count < 1 || Level < 1 || this is TurretPet)
-				return;
+            if (CanCastInstantMiscSpells)
+            {
+                for (int i = 0; i < InstantMiscSpells.Count; i++)
+                    InstantMiscSpells[i] = GetScaledSpell(InstantMiscSpells[i]);
+            }
 
-			base.SortSpells();
+            if (CanCastMiscSpells)
+            {
+                for (int i = 0; i < MiscSpells.Count; i++)
+                    MiscSpells[i] = GetScaledSpell(MiscSpells[i]);
+            }
+        }
 
-			if (Properties.PET_SCALE_SPELL_MAX_LEVEL > 0)
-				ScaleSpells(Level);
-		}
+        public override double GetSpellScalingFactor()
+        {
+            return Level / (double) Properties.PET_SCALE_SPELL_MAX_LEVEL;
+        }
 
-		/// <summary>
-		/// Sort spells into specific lists, scaling spells by scaleLevel
-		/// </summary>
-		/// <param name="casterLevel">The level to scale the pet spell to, 0 to use pet level</param>
-		protected virtual void ScaleSpells(int scaleLevel)
-		{
-			if (scaleLevel <= 0)
-				scaleLevel = Level;
+        public override void SetStats(DbMob dbMob = null)
+        {
+            // Summoned pets use their template differently from standard NPCs.
+            // Stats are always automatically set based on the server properties and their level, then scaled using their template.
 
-			// Need to make copies of spells to scale or else it will affect every other pet with the same spell on the server.
-			// Enchanter, Cabalist, Spiritmaster and Theurgist pets need to have their spells scaled.
-			if (Properties.PET_LEVELS_WITH_OWNER || 
-				(this is BDSubPet && Properties.PET_CAP_BD_MINION_SPELL_SCALING_BY_SPEC) ||
-				Name.Contains("underhill") || Name.Contains("simulacrum") || Name.Contains("spirit") || this is TheurgistPet)
-			{
-				if (CanCastHarmfulSpells)
-				{
-					for (int i = 0; i < HarmfulSpells.Count; i++)
-					{
-						HarmfulSpells[i] = HarmfulSpells[i].Copy();
-						ScalePetSpell(HarmfulSpells[i], scaleLevel);
-					}
-				}
+            Strength = Properties.PET_AUTOSET_STR_BASE;
+            Constitution = Properties.PET_AUTOSET_CON_BASE;
+            Dexterity = Properties.PET_AUTOSET_DEX_BASE;
+            Quickness = Properties.PET_AUTOSET_QUI_BASE;
+            Intelligence = Properties.PET_AUTOSET_INT_BASE;
+            Empathy = 30;
+            Piety = 30;
+            Charisma = 30;
 
-				if (CanCastInstantHarmfulSpells)
-				{
-					for (int i = 0; i < InstantHarmfulSpells.Count; i++)
-					{
-						InstantHarmfulSpells[i] = InstantHarmfulSpells[i].Copy();
-						ScalePetSpell(InstantHarmfulSpells[i], scaleLevel);
-					}
-				}
+            if (Level > 1)
+            {
+                int levelMinusOne = Level - 1;
+                Strength += (short) Math.Max(1, levelMinusOne * Properties.PET_AUTOSET_STR_MULTIPLIER);
+                Constitution += (short) Math.Max(1, levelMinusOne * Properties.PET_AUTOSET_CON_MULTIPLIER);
+                Dexterity += (short) Math.Max(1, levelMinusOne * Properties.PET_AUTOSET_DEX_MULTIPLIER);
+                Quickness += (short) Math.Max(1, levelMinusOne * Properties.PET_AUTOSET_QUI_MULTIPLIER);
+                Intelligence += (short) Math.Max(1, levelMinusOne * Properties.PET_AUTOSET_INT_MULTIPLIER);
+            }
 
-				if (CanCastHealSpells)
-				{
-					for (int i = 0; i < HealSpells.Count; i++)
-					{
-						HealSpells[i] = HealSpells[i].Copy();
-						ScalePetSpell(HealSpells[i], scaleLevel);
-					}
-				}
+            if (NPCTemplate != null)
+            {
+                if (NPCTemplate.Strength > 0)
+                    Strength = (short) Math.Max(1, Strength * (NPCTemplate.Strength / 100.0));
 
-				if (CanCastInstantHealSpells)
-				{
-					for (int i = 0; i < InstantHealSpells.Count; i++)
-					{
-						InstantHealSpells[i] = InstantHealSpells[i].Copy();
-						ScalePetSpell(InstantHealSpells[i], scaleLevel);
-					}
-				}
+                if (NPCTemplate.Constitution > 0)
+                    Constitution = (short) Math.Max(1, Constitution * (NPCTemplate.Constitution / 100.0));
 
-				if (CanCastInstantMiscSpells)
-				{
-					for (int i = 0; i < InstantMiscSpells.Count; i++)
-					{
-						InstantMiscSpells[i] = InstantMiscSpells[i].Copy();
-						ScalePetSpell(InstantMiscSpells[i], scaleLevel);
-					}
-				}
+                if (NPCTemplate.Dexterity > 0)
+                    Dexterity = (short) Math.Max(1, Dexterity * (NPCTemplate.Dexterity / 100.0));
 
-				if (CanCastMiscSpells)
-				{
-					for (int i = 0; i < MiscSpells.Count; i++)
-					{
-						MiscSpells[i] = MiscSpells[i].Copy();
-						ScalePetSpell(MiscSpells[i], scaleLevel);
-					}
-				}
-			}
-		}
+                if (NPCTemplate.Quickness > 0)
+                    Quickness = (short) Math.Max(1, Quickness * (NPCTemplate.Quickness / 100.0));
 
-		/// <summary>
-		/// Scale the passed spell according to PET_SCALE_SPELL_MAX_LEVEL
-		/// </summary>
-		/// <param name="spell">The spell to scale</param>
-		/// <param name="casterLevel">The level to scale the pet spell to, 0 to use pet level</param>
-		public virtual void ScalePetSpell(Spell spell, int casterLevel = 0)
-		{
-			if (Properties.PET_SCALE_SPELL_MAX_LEVEL < 1 || spell == null || Level < 1 || spell.ScaledToPetLevel)
-				return;
+                if (NPCTemplate.Intelligence > 0)
+                    Intelligence = (short) Math.Max(1, Intelligence * (NPCTemplate.Intelligence / 100.0));
 
-			if (casterLevel < 1)
-				casterLevel = Level;
+                if (NPCTemplate.Empathy > 0)
+                    Empathy = NPCTemplate.Empathy;
 
-			double scalingFactor = (double) casterLevel / Properties.PET_SCALE_SPELL_MAX_LEVEL;
+                if (NPCTemplate.Piety > 0)
+                    Piety = NPCTemplate.Piety;
 
-			switch (spell.SpellType)
-			{
-				// Scale Damage
-				case eSpellType.DamageOverTime:
-				case eSpellType.DamageShield:
-				case eSpellType.DamageAdd:
-				case eSpellType.DirectDamage:
-				case eSpellType.Lifedrain:
-				case eSpellType.DamageSpeedDecrease:
-				case eSpellType.StyleBleeding: // Style bleed effect
-					spell.Damage *= scalingFactor;
-					spell.ScaledToPetLevel = true;
-					break;
-				// Scale Value
-				case eSpellType.EnduranceRegenBuff:
-				case eSpellType.Heal:
-				case eSpellType.StormEnduDrain:
-				case eSpellType.PowerRegenBuff:
-				case eSpellType.PowerHealthEnduranceRegenBuff:
-				case eSpellType.CombatSpeedBuff:
-				case eSpellType.HasteBuff:
-				case eSpellType.CelerityBuff:
-				case eSpellType.CombatSpeedDebuff:
-				case eSpellType.StyleCombatSpeedDebuff:
-				case eSpellType.CombatHeal:
-				case eSpellType.HealthRegenBuff:
-				case eSpellType.HealOverTime:
-				case eSpellType.ConstitutionBuff:
-				case eSpellType.DexterityBuff:
-				case eSpellType.StrengthBuff:
-				case eSpellType.ConstitutionDebuff:
-				case eSpellType.DexterityDebuff:
-				case eSpellType.StrengthDebuff:
-				case eSpellType.ArmorFactorDebuff:
-				case eSpellType.ArmorFactorBuff:
-				case eSpellType.ArmorAbsorptionBuff:
-				case eSpellType.ArmorAbsorptionDebuff:
-				case eSpellType.DexterityQuicknessBuff:
-				case eSpellType.StrengthConstitutionBuff:
-				case eSpellType.DexterityQuicknessDebuff:
-				case eSpellType.StrengthConstitutionDebuff:
-				case eSpellType.Taunt:
-				case eSpellType.SpeedDecrease:
-				case eSpellType.SavageCombatSpeedBuff:
-				//case eSpellType.OffensiveProc:
-					spell.Value *= scalingFactor;
-					spell.ScaledToPetLevel = true;
-					break;
-				// Scale Duration
-				case eSpellType.Disease:
-				case eSpellType.Stun:
-				case eSpellType.UnrresistableNonImunityStun:
-				case eSpellType.Mesmerize:
-				case eSpellType.StyleStun: // Style stun effet
-				case eSpellType.StyleSpeedDecrease: // Style hinder effet
-					spell.Duration = (int) Math.Ceiling(spell.Duration * scalingFactor);
-					spell.ScaledToPetLevel = true;
-					break;
-				// Scale Damage and value
-				case eSpellType.DirectDamageWithDebuff:
-					/* Patch 1.123: For Cabalist, Enchanter, and Spiritmaster pets
-					 * The debuff component of its nuke has been as follows:
-					 *	For pet level 1-23, the debuff is now 10%.
-					 *	For pet level 24-43, the debuff is now 20%.
-					 *	For pet level 44-50, the debuff is now 30%.  */
-					spell.Value *= (double) scalingFactor;
-					spell.Damage *= (double) scalingFactor;
-					spell.Duration = (int) Math.Ceiling(spell.Duration * scalingFactor);
-					spell.ScaledToPetLevel = true;
-					break;
-				case eSpellType.StyleTaunt: // Style taunt effects already scale with damage
-				case eSpellType.CurePoison:
-				case eSpellType.CureDisease:
-					break;
-				default:
-					break; // Don't mess with types we don't know
-			}
-		}
+                if (NPCTemplate.Charisma > 0)
+                    Charisma = NPCTemplate.Charisma;
+            }
+        }
 
-		#endregion
+        protected override void BuildAmbientTexts()
+        {
+            base.BuildAmbientTexts();
 
-		#region Stats
-		/// <summary>
-		/// Set stats according to PET_AUTOSET values, then scale them according to the npcTemplate
-		/// </summary>
-		public override void AutoSetStats(DbMob dbMob = null)
-		{
-			Strength = Properties.PET_AUTOSET_STR_BASE;
-			Constitution = Properties.PET_AUTOSET_CON_BASE;
-			Quickness = Properties.PET_AUTOSET_QUI_BASE;
-			Dexterity = Properties.PET_AUTOSET_DEX_BASE;
-			Intelligence = Properties.PET_AUTOSET_INT_BASE;
-			Empathy = 30;
-			Piety = 30;
-			Charisma = 30;
-			if (Level > 1)
-			{
-				int levelMinusOne = Level - 1;
-				Strength += (short) Math.Round(levelMinusOne * Properties.PET_AUTOSET_STR_MULTIPLIER);
-				Constitution += (short) Math.Round(levelMinusOne * Properties.PET_AUTOSET_CON_MULTIPLIER);
-				Quickness += (short) Math.Round(levelMinusOne * Properties.PET_AUTOSET_QUI_MULTIPLIER);
-				Dexterity += (short) Math.Round(levelMinusOne * Properties.PET_AUTOSET_DEX_MULTIPLIER);
-				Intelligence += (short) Math.Round(levelMinusOne * Properties.PET_AUTOSET_INT_MULTIPLIER);
-			}
-
-			// Stats are scaled using the current template.
-			if (NPCTemplate != null)
-			{
-				if (NPCTemplate.Strength > 0)
-					Strength = (short) Math.Round(Strength * (NPCTemplate.Strength / 100.0));
-				if (NPCTemplate.Constitution > 0)
-					Constitution = (short) Math.Round(Constitution * (NPCTemplate.Constitution / 100.0));
-				if (NPCTemplate.Quickness > 0)
-					Quickness = (short) Math.Round(Quickness * (NPCTemplate.Quickness / 100.0));
-				if (NPCTemplate.Dexterity > 0)
-					Dexterity = (short) Math.Round(Dexterity * (NPCTemplate.Dexterity / 100.0));
-				if (NPCTemplate.Intelligence > 0)
-					Intelligence = (short) Math.Round(Intelligence * (NPCTemplate.Intelligence / 100.0));
-				if (NPCTemplate.Empathy > 0)
-					Empathy = NPCTemplate.Empathy;
-				if (NPCTemplate.Piety > 0)
-					Piety = NPCTemplate.Piety;
-				if (NPCTemplate.Charisma > 0)
-					Charisma = NPCTemplate.Charisma;
-			}
-		}
-		#endregion
-
-		#region Melee
-
-		/// <summary>
-		/// Calculate how fast this pet can cast a given spell
-		/// </summary>
-		/// <param name="spell"></param>
-		/// <returns></returns>
-		public override int CalculateCastingTime(SpellLine line, Spell spell)
-		{
-			int ticks = spell.CastTime;
-
-			double percent = DexterityCastTimeReduction;
-			percent -= GetModified(eProperty.CastingSpeed) * .01;
-
-			ticks = (int)(ticks * Math.Max(CastingSpeedReductionCap, percent));
-			if (ticks < MinimumCastingSpeed)
-				ticks = MinimumCastingSpeed;
-
-			return ticks;
-		}
-		#endregion
-
-		public override void Die(GameObject killer)
-		{
-			try
-			{
-				GameEventMgr.Notify(GameLivingEvent.PetReleased, this);
-			}
-			finally
-			{
-				base.Die(killer);
-			}
-		}
-
-		/// <summary>
-		/// Spawn texts are in database
-		/// </summary>
-		protected override void BuildAmbientTexts()
-		{
-			base.BuildAmbientTexts();
-			
-			// also add the pet specific ambient texts if none found
-			if (ambientTexts.Count == 0)
-				ambientTexts = GameServer.Instance.NpcManager.AmbientBehaviour["pet"];
-		}
-
-		public override bool IsObjectGreyCon(GameObject obj)
-		{
-			GameObject tempobj = obj;
-			if (Brain is IControlledBrain)
-			{
-				GameLiving player = (Brain as IControlledBrain).GetLivingOwner();
-				if (player != null)
-					tempobj = player;
-			}
-			return base.IsObjectGreyCon(tempobj);
-		}
-	}
+            // Add the pet specific ambient texts if none found.
+            if (ambientTexts.Count == 0)
+                ambientTexts = GameServer.Instance.NpcManager.AmbientBehaviour["pet"];
+        }
+    }
 }

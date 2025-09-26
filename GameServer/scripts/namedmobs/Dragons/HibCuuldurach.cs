@@ -73,7 +73,7 @@ namespace DOL.GS
 		}
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -110,7 +110,6 @@ namespace DOL.GS
 			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.KillsDragon++;
-				player.Achieve(AchievementUtils.AchievementNames.Dragon_Kills);
 				count++;
 			}
 			return count;
@@ -173,10 +172,7 @@ namespace DOL.GS
 
 			return base.HasAbility(keyName);
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
@@ -212,13 +208,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(678903);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			RespawnInterval = Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 			#region All bools here
 			HibCuuldurachBrain.ResetChecks = false;
@@ -258,7 +247,7 @@ namespace DOL.GS
 		{
 			if (enemy is GamePlayer player)
 			{
-				foreach (GamePlayer otherPlayer in ClientService.GetPlayersOfZone(CurrentZone))
+				foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersOfZone(CurrentZone))
 					otherPlayer.Out.SendMessage($"{Name} laughs at the {player.CharacterClass.Name} who has fallen beneath his crushing blow.", eChatType.CT_Say, eChatLoc.CL_ChatWindow);
 			}
 
@@ -272,7 +261,7 @@ namespace DOL.AI.Brain
 {
 	public class HibCuuldurachBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public HibCuuldurachBrain()
 			: base()
 		{
@@ -423,7 +412,7 @@ namespace DOL.AI.Brain
 				_lastRoamIndex = 0;
 				LockEndRoute = false;
 
-				foreach (GamePlayer player in ClientService.GetPlayersOfZone(Body.CurrentZone))
+				foreach (GamePlayer player in ClientService.Instance.GetPlayersOfZone(Body.CurrentZone))
 				{
 					player.Out.SendSoundEffect(2467, 0, 0, 0, 0, 0);//play sound effect for every player in boss currentregion
 					player.Out.SendMessage($"{Body.Name} bellows from the skies, 'Let all who intrude into my domain pay heed. I will seek you out and cast you into the arms of Death if you remain here!'", eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
@@ -514,7 +503,7 @@ namespace DOL.AI.Brain
 		List<GamePlayer> randomlyPickedPlayers = new List<GamePlayer>();
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -1056,9 +1045,7 @@ namespace DOL.GS
 			base.AddToWorld();
 			return true;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 	}
 }
@@ -1067,7 +1054,7 @@ namespace DOL.AI.Brain
 {
 	public class CuuldurachMessengerBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public CuuldurachMessengerBrain()
 		{
@@ -1344,10 +1331,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override double GetArmorAF(eArmorSlot slot)
 		{
 			return 200;
@@ -1357,9 +1341,7 @@ namespace DOL.GS
 			// 85% ABS is cap.
 			return 0.15;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override void ReturnToSpawnPoint(short speed)
 		{
 			return;
@@ -1406,7 +1388,7 @@ namespace DOL.AI.Brain
 {
 	public class CuuldurachSpawnedAdBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public CuuldurachSpawnedAdBrain() : base()
 		{

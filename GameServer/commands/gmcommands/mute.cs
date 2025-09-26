@@ -12,7 +12,7 @@ namespace DOL.GS.Commands
 		"/mute <playername or #ClientID> remove - remove all mutes from this players account")]
 	public class MuteCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public void OnCommand(GameClient client, string[] args)
 		{
@@ -29,7 +29,7 @@ namespace DOL.GS.Commands
 				try
 				{
 					int sessionID = Convert.ToInt32(args[1][1..]);
-					playerClient = ClientService.GetClientFromId(sessionID);
+					playerClient = ClientService.Instance.GetClientBySessionId(sessionID);
 				}
 				catch
 				{
@@ -38,7 +38,7 @@ namespace DOL.GS.Commands
 			}
 			else
 			{
-				playerClient = ClientService.GetPlayerByExactName(args[1])?.Client;
+				playerClient = ClientService.Instance.GetPlayerByExactName(args[1])?.Client;
 			}
 
 			if (playerClient == null)

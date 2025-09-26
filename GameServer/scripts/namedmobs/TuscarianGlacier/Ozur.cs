@@ -10,8 +10,7 @@ namespace DOL.GS.Scripts
 {
     public class Ozur : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Ozur()
             : base()
@@ -23,22 +22,12 @@ namespace DOL.GS.Scripts
             get { return ServerProperties.Properties.SET_DIFFICULTY_ON_EPIC_ENCOUNTERS; }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override bool AddToWorld()
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60159452);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
             Name = "Council Ozur";
@@ -47,8 +36,6 @@ namespace DOL.GS.Scripts
             Level = 77;
             // Giant
             BodyType = 5;
-            ScalingFactor = 45;
-
             OzurBrain sBrain = new OzurBrain();
             SetOwnBrain(sBrain);
             LoadedFromScript = false;//load from database
@@ -107,8 +94,7 @@ namespace DOL.AI.Brain
 {
     public class OzurBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private static int _GettingFirstPlayerStage = 50;
         private static int _GettingSecondPlayerStage = 100;
@@ -125,7 +111,7 @@ namespace DOL.AI.Brain
 
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
             }
@@ -135,27 +121,27 @@ namespace DOL.AI.Brain
         {
             if (isNotZerked)
             {
-                Body.AbilityBonus[(int) eProperty.Resist_Body] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Heat] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Cold] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Matter] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Energy] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Spirit] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Slash] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Crush] = m_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Thrust] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Body] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Heat] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Cold] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Matter] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Energy] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Spirit] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Slash] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Crush] = m_value;
+                Body.AbilityBonus[eProperty.Resist_Thrust] = m_value;
             }
             else
             {
-                Body.AbilityBonus[(int) eProperty.Resist_Body] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Heat] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Cold] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Matter] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Energy] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Spirit] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Slash] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Crush] = min_value;
-                Body.AbilityBonus[(int) eProperty.Resist_Thrust] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Body] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Heat] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Cold] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Matter] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Energy] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Spirit] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Slash] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Crush] = min_value;
+                Body.AbilityBonus[eProperty.Resist_Thrust] = min_value;
             }
         }
 
@@ -163,15 +149,15 @@ namespace DOL.AI.Brain
         {
             if (weak)
             {
-                Body.AbilityBonus[(int) eProperty.Resist_Body] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Heat] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Cold] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Matter] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Energy] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Spirit] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Slash] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Crush] = min_value - 20;
-                Body.AbilityBonus[(int) eProperty.Resist_Thrust] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Body] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Heat] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Cold] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Matter] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Energy] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Spirit] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Slash] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Crush] = min_value - 20;
+                Body.AbilityBonus[eProperty.Resist_Thrust] = min_value - 20;
             }
         }
 
@@ -186,7 +172,7 @@ namespace DOL.AI.Brain
             if (Body.TargetObject != null && Body.InCombat && Body.Health != Body.MaxHealth && HasAggro)
             {
                 int countPlayer = 0;
-                foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+                foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
                 {
                     countPlayer++;
                 }
@@ -198,14 +184,12 @@ namespace DOL.AI.Brain
 
                 if (countPlayer >= _GettingFirstPlayerStage && countPlayer < _GettingSecondPlayerStage)
                 {
-                    Body.ScalingFactor += 10;
                     Body.Strength = 200;
                     Resists(false);
                 }
 
                 if (countPlayer >= _GettingSecondPlayerStage)
                 {
-                    Body.ScalingFactor += 25;
                     Body.Strength = 350;
                     Weak(true);
                 }

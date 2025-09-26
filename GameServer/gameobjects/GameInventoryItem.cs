@@ -5,7 +5,6 @@ using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.Spells;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
@@ -13,7 +12,7 @@ namespace DOL.GS
     /// This class represents an inventory item
     /// </summary>
     public class GameInventoryItem : DbInventoryItem, IGameInventoryItem, ITranslatableObject {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected GamePlayer m_owner = null;
 
@@ -47,7 +46,7 @@ namespace DOL.GS
         /// <summary>
         /// Holds the translation id.
         /// </summary>
-        protected string m_translationId = "";
+        protected string m_translationId = string.Empty;
 
         /// <summary>
         /// Gets or sets the translation id.
@@ -203,7 +202,7 @@ namespace DOL.GS
         /// <returns></returns>
         public virtual WorldInventoryItem Drop(GamePlayer player)
         {
-            WorldInventoryItem worldItem = new WorldInventoryItem(this);
+            PlayerDiscardedWorldInventoryItem worldItem = new(this);
 
             Point2D itemloc = player.GetPointFromHeading(player.Heading, 30);
             worldItem.X = itemloc.X;
@@ -288,7 +287,7 @@ namespace DOL.GS
                             player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GamePlayer.Attack.NeedRepairDire", Name), eChatType.CT_System, eChatLoc.CL_SystemWindow);
 
                         player.Out.SendUpdateWeaponAndArmorStats();
-                        player.Out.SendInventorySlotsUpdate(new int[] { SlotPosition });
+                        player.Out.SendInventorySlotsUpdate([(eInventorySlot) SlotPosition]);
                     }
                 }
             }
@@ -329,7 +328,7 @@ namespace DOL.GS
                             player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GamePlayer.Attack.NeedRepairDire", Name), eChatType.CT_System, eChatLoc.CL_SystemWindow);
 
                         player.Out.SendUpdateWeaponAndArmorStats();
-                        player.Out.SendInventorySlotsUpdate(new int[] { SlotPosition });
+                        player.Out.SendInventorySlotsUpdate([(eInventorySlot) SlotPosition]);
                     }
                 }
             }
@@ -375,7 +374,7 @@ namespace DOL.GS
                 delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.HandlePacket.CrafterName", Creator));
                 delve.Add(" ");
             }
-            else if (Description != null && Description != "")
+            else if (Description != null && Description != string.Empty)
             {
                 delve.Add(Description);
                 delve.Add(" ");
@@ -428,22 +427,6 @@ namespace DOL.GS
                     case 31052:
                         // regen barrel
                         WritePotionInfo(delve, AllRegenBuff.RegenList, player.Client);
-                        break;
-                    case 31053:
-                        // summon merchant
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.ChargedMagic"));
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.Charges", Charges));
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.MaxCharges", MaxCharges));
-                        break;
-                    case 31054:
-                        // bead regen gem
-                        WritePotionInfo(delve, BeadRegen.BeadRegenList, player.Client);
-                        break;
-                    case 34000:
-                        // summon vaultkeeper
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.ChargedMagic"));
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.Charges", Charges));
-                        delve.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "DetailDisplayHandler.WritePotionInfo.MaxCharges", MaxCharges));
                         break;
                     default:
                         WritePotionInfo(delve, player.Client);
@@ -600,7 +583,7 @@ namespace DOL.GS
                 #region Proc1
                 if (ProcSpellID != 0)
                 {
-                    string spellNote = "";
+                    string spellNote = string.Empty;
                     output.Add(LanguageMgr.GetTranslation(client.Account.Language, "DetailDisplayHandler.WriteMagicalBonuses.MagicAbility"));
                     if (GlobalConstants.IsWeapon(Object_Type))
                     {
@@ -647,7 +630,7 @@ namespace DOL.GS
                 #region Proc2
                 if (ProcSpellID1 != 0)
                 {
-                    string spellNote = "";
+                    string spellNote = string.Empty;
                     output.Add(LanguageMgr.GetTranslation(client.Account.Language, "DetailDisplayHandler.WriteMagicalBonuses.MagicAbility"));
                     if (GlobalConstants.IsWeapon(Object_Type))
                     {

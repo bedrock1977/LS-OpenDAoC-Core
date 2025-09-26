@@ -53,10 +53,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -98,13 +95,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60166165);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			LoadEquipmentTemplateFromDatabase("d39e7d76-c7f3-4f79-a074-1eb441e83271");
 			if (!Styles.Contains(taunt))
 				Styles.Add(taunt);
@@ -153,7 +143,7 @@ namespace DOL.AI.Brain
 {
 	public class SkeaghsheeBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public SkeaghsheeBrain() : base()
 		{
 			AggroLevel = 0;//he is neutral

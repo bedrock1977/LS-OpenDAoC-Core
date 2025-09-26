@@ -1,26 +1,7 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 using System;
 using System.Collections.Generic;
 using DOL.Database;
 using DOL.GS.PacketHandler;
-using DOL.GS.PacketHandler.Client.v168;
-using DOL.GS.Spells;
 using DOL.Language;
 
 namespace DOL.GS.Commands
@@ -90,7 +71,7 @@ namespace DOL.GS.Commands
 	     "/item loadspells - Read each item spell from the database and update the global spell list")]
 	public class ItemCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger Log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public void OnCommand(GameClient client, string[] args)
 		{
@@ -218,7 +199,7 @@ namespace DOL.GS.Commands
 							}
 
 							client.Out.SendInventoryItemsUpdate(new DbInventoryItem[] { item });
-							client.Player.UpdateEncumberance();
+							client.Player.UpdateEncumbrance();
 							break;
 						}
 						#endregion Count
@@ -1816,7 +1797,6 @@ namespace DOL.GS.Commands
                                         {
                                             Id_nb = idnb
                                         };
-                                        GameServer.Database.AddObject(unique);
 										Log.Debug("Added New ItemUnique: " + unique.Id_nb + " (" + unique.ObjectId + ")");
 										DisplayMessage(client, "Added New ItemUnique: " + unique.Id_nb + " (" + unique.ObjectId + ")");
 										GameInventoryItem newItem = GameInventoryItem.Create(unique);
@@ -1851,7 +1831,7 @@ namespace DOL.GS.Commands
 					case "findid":
 						{
 							string name = string.Join(" ", args, 2, args.Length - 2);
-							if (name != "")
+							if (name != string.Empty)
 							{
 								var items = DOLDB<DbItemTemplate>.SelectObjects(DB.Column("id_nb").IsLike($"%{name}%"));
 								DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "GMCommands.Item.FindID.MatchingIDsForX", name, items.Count), new object[] { });
@@ -1867,7 +1847,7 @@ namespace DOL.GS.Commands
 					case "findname":
 						{
 							string name = string.Join(" ", args, 2, args.Length - 2);
-							if (name != "")
+							if (name != string.Empty)
 							{
 								var items = DOLDB<DbItemTemplate>.SelectObjects(DB.Column("name").IsLike($"%{name}%"));
 								DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "GMCommands.Item.FindName.MatchingNamesForX", name, items.Count), new object[] { });
@@ -1918,7 +1898,7 @@ namespace DOL.GS.Commands
 						#region LoadPackage
 					case "loadpackage":
 						{
-							if (args[2] != "")
+							if (args[2] != string.Empty)
 							{
 								if (args[2] == "**all**") args[2] = String.Empty;
 

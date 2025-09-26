@@ -1,36 +1,14 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
-using System.Collections;
 using System.Collections.Generic;
-
-using DOL.GS.Effects;
-using DOL.GS;
 using DOL.Events;
+using DOL.GS.Effects;
 
 namespace DOL.GS.Spells
 {
 	/// <summary>
 	/// Summary description for ReanimateCorpe.
 	/// </summary>
-	[SpellHandlerAttribute("ReanimateCorpse")]
+	[SpellHandler(eSpellType.ReanimateCorpse)]
 	public class MonsterRez : ResurrectSpellHandler
 	{
 		// Constructor
@@ -60,7 +38,7 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Summary description for ReanimateCorpe.
 	/// </summary>
-	[SpellHandlerAttribute("SummonMonster")]
+	[SpellHandler(eSpellType.SummonMonster)]
 	public class SummonMonster : SpellHandler
 	{
 		private ushort m_model = 0;
@@ -109,8 +87,8 @@ namespace DOL.GS.Spells
 			m_model = player.Model;
 			player.Model = (ushort)Spell.Value;
 
-            player.BaseBuffBonusCategory[(int)eProperty.MagicAbsorption] += (int)Spell.LifeDrainReturn;
-            player.BaseBuffBonusCategory[(int)eProperty.ArmorAbsorption] += (int)Spell.LifeDrainReturn;
+            player.BaseBuffBonusCategory[eProperty.MagicAbsorption] += (int)Spell.LifeDrainReturn;
+            player.BaseBuffBonusCategory[eProperty.ArmorAbsorption] += (int)Spell.LifeDrainReturn;
 			player.Out.SendCharStatsUpdate();
 			player.Health = player.MaxHealth;
 			GameEventMgr.AddHandler(player, GameLivingEvent.Dying, new DOLEventHandler(EventRaised));
@@ -143,8 +121,8 @@ namespace DOL.GS.Spells
 
 			player.Model = m_model;
 
-            player.BaseBuffBonusCategory[(int)eProperty.MagicAbsorption] -= (int)Spell.LifeDrainReturn ;
-            player.BaseBuffBonusCategory[(int)eProperty.ArmorAbsorption] -= (int)Spell.LifeDrainReturn ;
+            player.BaseBuffBonusCategory[eProperty.MagicAbsorption] -= (int)Spell.LifeDrainReturn ;
+            player.BaseBuffBonusCategory[eProperty.ArmorAbsorption] -= (int)Spell.LifeDrainReturn ;
 			player.Out.SendCharStatsUpdate();
 
 			int leftHealth = Convert.ToInt32(player.MaxHealth * 0.10);
@@ -176,12 +154,12 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Summary description for MonsterDoT.
 	/// </summary>
-	[SpellHandlerAttribute("MonsterDoT")]
+	[SpellHandler(eSpellType.MonsterDoT)]
 	public class MonsterDoT : DirectDamageSpellHandler
 	{
-		public override IList<GameLiving> SelectTargets(GameObject castTarget)
+		public override List<GameLiving> SelectTargets(GameObject castTarget)
 		{
-			var list = new List<GameLiving>(8);
+			var list = GameLoop.GetListForTick<GameLiving>();
 			GameLiving target = castTarget as GameLiving;
 
 			//if (target == null || Spell.Range == 0)
@@ -213,12 +191,12 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Summary description for MonsterDoT.
 	/// </summary>
-	[SpellHandlerAttribute("MonsterDisease")]
+	[SpellHandler(eSpellType.MonsterDisease)]
 	public class MonsterDisease : DiseaseSpellHandler
 	{
-		public override IList<GameLiving> SelectTargets(GameObject castTarget)
+		public override List<GameLiving> SelectTargets(GameObject castTarget)
 		{
-			var list = new List<GameLiving>(8);
+			var list = GameLoop.GetListForTick<GameLiving>();
 			GameLiving target = castTarget as GameLiving;
 
 			if (target == null || Spell.Range == 0)

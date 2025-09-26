@@ -21,10 +21,7 @@ namespace DOL.GS.Scripts
 			return 350;
 		}
 
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-		}
+
 		
 		public override double GetArmorAbsorb(eArmorSlot slot)
 		{
@@ -64,13 +61,6 @@ namespace DOL.GS.Scripts
 
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60167787);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
 			WarlordDorinakkaBrain adds = new WarlordDorinakkaBrain();
@@ -84,8 +74,7 @@ namespace DOL.AI.Brain
 {
     public class WarlordDorinakkaBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public WarlordDorinakkaBrain()
             : base()

@@ -1,7 +1,6 @@
 using DOL.GS.PacketHandler;
 using DOL.Language;
 using JNogueira.Discord.Webhook.Client;
-using log4net;
 
 namespace DOL.GS.Keeps
 {
@@ -29,7 +28,7 @@ namespace DOL.GS.Keeps
 	/// </summary>
 	public class PlayerMgr
 	{
-		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Sends a message to all players to notify them of the keep capture
@@ -37,7 +36,7 @@ namespace DOL.GS.Keeps
 		/// <param name="keep">The keep object</param>
 		public static void BroadcastCapture(AbstractGameKeep keep)
 		{
-			string message = "";
+			string message = string.Empty;
 			if (keep.Realm != eRealm.None)
 			{
 				message = string.Format(LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "PlayerManager.BroadcastCapture.Captured", GlobalConstants.RealmToName((eRealm)keep.Realm), keep.Name));
@@ -57,7 +56,7 @@ namespace DOL.GS.Keeps
 					}
 				case eGameServerType.GST_PvP:
 					{
-						string defeatersStr = "";
+						string defeatersStr = string.Empty;
 						message = string.Format("The forces of {0} have defeated the defenders of {1}!", defeatersStr, keep.Name);
 						break;
 					}
@@ -130,7 +129,7 @@ namespace DOL.GS.Keeps
 		/// <param name="realm">The realm</param>
 		public static void BroadcastMessage(string message, eRealm realm)
 		{
-			foreach (GamePlayer player in ClientService.GetPlayersOfRealm(realm))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRealm(realm))
 				player.Out.SendMessage(message, eChatType.CT_Important, eChatLoc.CL_SystemWindow);
 		}
 
@@ -142,7 +141,7 @@ namespace DOL.GS.Keeps
 		/// <param name="capturingrealm">The realm that captured the keep</param>
 		public static void BroadcastKeepTakeMessage(string message, eRealm capturingrealm)
 		{
-			foreach (GamePlayer player in ClientService.GetPlayers())
+			foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 			{
 				player.Out.SendMessage(message, eChatType.CT_Important, eChatLoc.CL_SystemWindow);
 				player.Out.SendMessage(message, eChatType.CT_ScreenCenter,  eChatLoc.CL_SystemWindow);
@@ -170,20 +169,20 @@ namespace DOL.GS.Keeps
 		public static void BroadcastDiscordRvR(string message, eRealm realm, string keepName)
 		{
 			int color = 0;
-			string avatarUrl = "";
+			string avatarUrl = string.Empty;
 			switch (realm)
 			{
 				case eRealm._FirstPlayerRealm:
 					color = 16711680;
-					avatarUrl = "";
+					avatarUrl = string.Empty;
 					break;
 				case eRealm._LastPlayerRealm:
 					color = 32768;
-					avatarUrl = "";
+					avatarUrl = string.Empty;
 					break;
 				default:
 					color = 255;
-					avatarUrl = "";
+					avatarUrl = string.Empty;
 					break;
 			}
 			var client = new DiscordWebhookClient(ServerProperties.Properties.DISCORD_RVR_WEBHOOK_ID);
@@ -294,24 +293,16 @@ namespace DOL.GS.Keeps
 		/// <param name="lord">The lord object</param>
 		public static void UpdateStats(GuardLord lord)
 		{
-			lock (lord.XPGainers.SyncRoot)
+			lock (lord.XpGainersLock)
 			{
-				foreach (System.Collections.DictionaryEntry de in lord.XPGainers)
+				foreach (var pair in lord.XPGainers)
 				{
-					GameObject obj = (GameObject)de.Key;
-					if (obj is GamePlayer)
+					if (pair.Key is GamePlayer player)
 					{
-						GamePlayer player = obj as GamePlayer;
 						if (lord.Component.Keep != null && lord.Component.Keep is GameKeep)
-						{
 							player.CapturedKeeps++;
-							player.Achieve(AchievementUtils.AchievementNames.Keeps_Taken);
-						}
-							
+
 						else player.CapturedTowers++;
-						
-						if(player.CapturedKeeps % 25 == 0)
-							player.RaiseRealmLoyaltyFloor(1);
 					}
 				}
 			}

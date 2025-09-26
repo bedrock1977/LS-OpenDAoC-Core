@@ -7,29 +7,16 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Pve Resurrection Illness
 	/// </summary>
-	[SpellHandler("PveResurrectionIllness")]
+	[SpellHandler(eSpellType.PveResurrectionIllness)]
 	public class PveResurrectionIllness : AbstractIllnessSpellHandler
 	{
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
-		{
-			GamePlayer targetPlayer = Target as GamePlayer;
-			if (targetPlayer != null)
-            {
-                // Higher level rez spells reduce duration of rez sick.
-                if (targetPlayer.TempProperties.GetAllProperties().Contains(GamePlayer.RESURRECT_REZ_SICK_EFFECTIVENESS))
-                {
-					double rezSickEffectiveness = targetPlayer.TempProperties.GetProperty<double>(GamePlayer.RESURRECT_REZ_SICK_EFFECTIVENESS);
-                    targetPlayer.TempProperties.RemoveProperty(GamePlayer.RESURRECT_REZ_SICK_EFFECTIVENESS);
-                    initParams.Duration = (int)(initParams.Duration * rezSickEffectiveness);
-                }
-                
-                if (targetPlayer.GetModified(eProperty.ResIllnessReduction) > 0)
-                {
-	                initParams.Duration = initParams.Duration * (100-targetPlayer.GetModified(eProperty.ResIllnessReduction))/100;
-                }
-            }
+		public override string ShortDescription => string.Empty;
 
-			return new ResurrectionIllnessECSGameEffect(initParams);
+		public PveResurrectionIllness(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
+		{
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new ResurrectionIllnessECSGameEffect(i));
 		}
 
 		/// <summary>
@@ -87,7 +74,7 @@ namespace DOL.GS.Spells
 				var list = new List<string>();
 
 				list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
 				list.Add("- Effectiveness penality: "+Spell.Value+"%");
 				return list;
@@ -109,7 +96,7 @@ namespace DOL.GS.Spells
 
         /// <summary>
         /// Restart the effects of resurrection illness
-        /// </summary>        
+        /// </summary>
         public override void OnEffectRestored(GameSpellEffect effect, int[] vars)
 		{
 			OnEffectStart(effect);
@@ -117,13 +104,11 @@ namespace DOL.GS.Spells
 
         /// <summary>
         /// Remove the effects of resurrection illness 
-        /// </summary>        
+        /// </summary>
 		public override int OnRestoredEffectExpires(GameSpellEffect effect, int[] vars, bool noMessages)
 		{
 			return OnEffectExpires(effect, false);
-		}		
-
-		public PveResurrectionIllness(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}	
+		}
 	}
 
 	/// <summary>
@@ -139,18 +124,12 @@ namespace DOL.GS.Spells
 			}
 		}
 
-		public override int CalculateSpellResistChance(GameLiving target)
+		public override double CalculateSpellResistChance(GameLiving target)
 		{
 			return 0;
 		}
 
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+		protected override int CalculateEffectDuration(GameLiving target)
 		{
 			double modifier = 1.0;
 			RealmAbilities.VeilRecoveryAbility ab = target.GetAbility<RealmAbilities.VeilRecoveryAbility>();
@@ -161,6 +140,5 @@ namespace DOL.GS.Spells
 		}
 
 		public AbstractIllnessSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	
 	}
 }

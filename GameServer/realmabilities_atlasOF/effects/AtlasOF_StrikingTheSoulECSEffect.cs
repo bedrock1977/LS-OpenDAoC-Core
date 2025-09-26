@@ -1,13 +1,11 @@
-
 namespace DOL.GS.Effects
 {
     // It looks like the real name should be "Strike the Soul", but renaming it requires updating the database.
     public class StrikingTheSoulECSEffect : ECSGameAbilityEffect
     {
-        public StrikingTheSoulECSEffect(ECSGameEffectInitParams initParams) : base(initParams)
+        public StrikingTheSoulECSEffect(in ECSGameEffectInitParams initParams) : base(initParams)
         {
             EffectType = eEffect.StrikingTheSoul;
-            EffectService.RequestStartEffect(this);
         }
 
         public override ushort Icon => 4271;
@@ -26,7 +24,7 @@ namespace DOL.GS.Effects
             if (_necromancerPet == null)
                 return;
 
-            _necromancerPet.BuffBonusCategory4[(int)eProperty.ToHitBonus] += (int)Effectiveness;
+            _necromancerPet.OtherBonus[eProperty.ToHitBonus] += (int)Effectiveness;
             base.OnStartEffect();
         }
 
@@ -35,7 +33,7 @@ namespace DOL.GS.Effects
             if (OwnerPlayer == null || _necromancerPet == null)
                 return;
 
-            _necromancerPet.BuffBonusCategory4[(int)eProperty.ToHitBonus] -= (int)Effectiveness;
+            _necromancerPet.OtherBonus[eProperty.ToHitBonus] -= (int)Effectiveness;
             base.OnStopEffect();
         }
     }

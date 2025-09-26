@@ -8,10 +8,10 @@ namespace DOL.GS.Spells
     /// <summary>
     /// Zo' Arkat summoning
     /// </summary>
-    [SpellHandlerAttribute("ZoSummon")]
+    [SpellHandler(eSpellType.ZoSummon)]
     public class BracerOfZo : SpellHandler
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public override bool IsUnPurgeAble { get { return true; } }
 		
@@ -48,7 +48,7 @@ namespace DOL.GS.Spells
                 deamons[i].Level = 36;
                 deamons[i].Flags |= GameNPC.eFlags.FLYING;
                 deamons[i].AddToWorld();
-				(deamons[i].Brain as IOldAggressiveBrain).AddToAggroList(Caster.TargetObject as GameLiving, 1);
+				(deamons[i].Brain as IOldAggressiveBrain).AddToAggroList(Caster.TargetObject as GameLiving);
 				(deamons[i].Brain as ProcPetBrain).Think();
             }			
 		}
@@ -66,11 +66,12 @@ namespace DOL.GS.Spells
             }
             return base.OnEffectExpires(effect,noMessages);
         }
-        public override int CalculateSpellResistChance(GameLiving target) { return 0; }
+
+        public override double CalculateSpellResistChance(GameLiving target) { return 0; }
         public BracerOfZo(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
     }
-    
-    [SpellHandlerAttribute("Bedazzlement")]
+
+    [SpellHandler(eSpellType.Bedazzlement)]
     public class ZoDebuffSpellHandler : DualStatDebuff
     {
 		public override eProperty Property1 { get { return eProperty.FumbleChance; } }

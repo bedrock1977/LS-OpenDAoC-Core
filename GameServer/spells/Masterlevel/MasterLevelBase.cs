@@ -22,7 +22,7 @@ namespace DOL.GS.Spells
             get { return true; }
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -30,19 +30,16 @@ namespace DOL.GS.Spells
         /// <summary>
         /// Calculates the effect duration in milliseconds
         /// </summary>
-        /// <param name="target">The effect target</param>
-        /// <param name="effectiveness">The effect effectiveness</param>
-        /// <returns>The effect duration in milliseconds</returns>
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
 
         #region Targets
 
-        public static IList<GameLiving> SelectTargets(SpellHandler spellHandler, GameLiving target)
+        public static List<GameLiving> SelectTargets(SpellHandler spellHandler, GameLiving target)
         {
-            var list = new List<GameLiving>(8);
+            var list = GameLoop.GetListForTick<GameLiving>();
             Spell spell = spellHandler.Spell;
             GameLiving caster = spellHandler.Caster;
 
@@ -135,7 +132,7 @@ namespace DOL.GS.Spells
                 case eSpellTarget.GROUP:
                 {
                     Group group = caster.Group;
-                    int spellRange = spellHandler.CalculateSpellRange();
+                    int spellRange = spell.CalculateEffectiveRange(caster);
 
                     if (spellRange == 0)
                         spellRange = spell.Radius;
@@ -181,7 +178,7 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="castTarget"></param>
         /// <returns></returns>
-        public override IList<GameLiving> SelectTargets(GameObject castTarget)
+        public override List<GameLiving> SelectTargets(GameObject castTarget)
         {
             return SelectTargets(this, castTarget as GameLiving);
         }
@@ -195,7 +192,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -205,7 +202,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Stylhandler
-    [SpellHandlerAttribute("MLStyleHandler")]
+    [SpellHandler(eSpellType.MLStyleHandler)]
     public class MLStyleHandler : MasterlevelHandling
     {
         public MLStyleHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -231,18 +228,12 @@ namespace DOL.GS.Spells
             get { return true; }
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
-        /// <summary>
-        /// Calculates the effect duration in milliseconds
-        /// </summary>
-        /// <param name="target">The effect target</param>
-        /// <param name="effectiveness">The effect effectiveness</param>
-        /// <returns>The effect duration in milliseconds</returns>
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
@@ -253,7 +244,7 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="castTarget"></param>
         /// <returns></returns>
-        public override IList<GameLiving> SelectTargets(GameObject castTarget)
+        public override List<GameLiving> SelectTargets(GameObject castTarget)
         {
             return MasterlevelHandling.SelectTargets(this, castTarget as GameLiving);
         }
@@ -267,7 +258,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -285,18 +276,12 @@ namespace DOL.GS.Spells
         // bonus category
         public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
-        /// <summary>
-        /// Calculates the effect duration in milliseconds
-        /// </summary>
-        /// <param name="target">The effect target</param>
-        /// <param name="effectiveness">The effect effectiveness</param>
-        /// <returns>The effect duration in milliseconds</returns>
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
@@ -307,7 +292,7 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="castTarget"></param>
         /// <returns></returns>
-        public override IList<GameLiving> SelectTargets(GameObject castTarget)
+        public override List<GameLiving> SelectTargets(GameObject castTarget)
         {
             return MasterlevelHandling.SelectTargets(this, castTarget as GameLiving);
         }
@@ -321,7 +306,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -340,18 +325,12 @@ namespace DOL.GS.Spells
         public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
         public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.SpecBuff; } }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
-        /// <summary>
-        /// Calculates the effect duration in milliseconds
-        /// </summary>
-        /// <param name="target">The effect target</param>
-        /// <param name="effectiveness">The effect effectiveness</param>
-        /// <returns>The effect duration in milliseconds</returns>
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
@@ -362,7 +341,7 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="castTarget"></param>
         /// <returns></returns>
-        public override IList<GameLiving> SelectTargets(GameObject castTarget)
+        public override List<GameLiving> SelectTargets(GameObject castTarget)
         {
             return MasterlevelHandling.SelectTargets(this, castTarget as GameLiving);
         }
@@ -376,7 +355,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -403,14 +382,14 @@ namespace DOL.GS.Spells
             get { return true; }
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
         {
-            ECSGameTimer timer = effect.Owner.TempProperties.GetProperty<ECSGameTimer>(EFFECT_PROPERTY, null);
+            ECSGameTimer timer = effect.Owner.TempProperties.GetProperty<ECSGameTimer>(EFFECT_PROPERTY);
             effect.Owner.TempProperties.RemoveProperty(EFFECT_PROPERTY);
             timer.Stop();
 
@@ -423,13 +402,7 @@ namespace DOL.GS.Spells
             return 0;
         }
 
-        /// <summary>
-        /// Calculates the effect duration in milliseconds
-        /// </summary>
-        /// <param name="target">The effect target</param>
-        /// <param name="effectiveness">The effect effectiveness</param>
-        /// <returns>The effect duration in milliseconds</returns>
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
@@ -440,7 +413,7 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="castTarget"></param>
         /// <returns></returns>
-        public override IList<GameLiving> SelectTargets(GameObject castTarget)
+        public override List<GameLiving> SelectTargets(GameObject castTarget)
         {
             return MasterlevelHandling.SelectTargets(this, castTarget as GameLiving);
         }
@@ -454,7 +427,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -476,14 +449,14 @@ namespace DOL.GS.Spells
         protected bool Friendly = true;
         protected ushort sRadius = 350;
 
-        public override bool IsOverwritable(ECSGameSpellEffect compare)
+        public override bool HasConflictingEffectWith(ISpellHandler compare)
         {
             return false;
         }
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if(font != null)
             {
                 font.AddToWorld();
@@ -546,7 +519,7 @@ namespace DOL.GS.Spells
         protected bool DestroyOnEffect = true;
         protected ushort sRadius = 350;
 
-        public override bool IsOverwritable(ECSGameSpellEffect compare)
+        public override bool HasConflictingEffectWith(ISpellHandler compare)
         {
             return false;
         }
@@ -581,7 +554,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             mine.AddToWorld();
             neweffect.Start(mine);
         }
@@ -647,7 +620,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             storm.AddToWorld();
             neweffect.Start(storm.Owner);
         }
@@ -717,7 +690,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region TargetModifier
-    [SpellHandlerAttribute("TargetModifier")]
+    [SpellHandler(eSpellType.TargetModifier)]
     public class TargetModifierSpellHandler : MasterlevelHandling
     {
         public override bool HasPositiveEffect
@@ -729,7 +702,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Passive
-    [SpellHandlerAttribute("PassiveSpell")]
+    [SpellHandler(eSpellType.PassiveSpell)]
     public class PassiveSpellHandler : MasterlevelHandling
     {
         public override bool CheckBeginCast(GameLiving selectedTarget)

@@ -10,7 +10,6 @@ using DOL.GS.Keeps;
 using DOL.GS.PacketHandler;
 using DOL.GS.PlayerTitles;
 using DOL.GS.Quests;
-using log4net;
 
 namespace DOL.GS.MonthlyQuest.Hibernia
 {
@@ -19,7 +18,7 @@ namespace DOL.GS.MonthlyQuest.Hibernia
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private const string questTitle = "[Monthly] Aspiring Relic Guardian";
 		private const int minimumLevel = 50;
@@ -362,7 +361,6 @@ namespace DOL.GS.MonthlyQuest.Hibernia
 				m_questPlayer.ForceGainExperience((m_questPlayer.ExperienceForNextLevel - m_questPlayer.ExperienceForCurrentLevel));
 				m_questPlayer.AddMoney(Money.GetMoney(0,0,m_questPlayer.Level*8,0,Util.Random(50)), "You receive {0} as a reward.");
 				AtlasROGManager.GenerateReward(m_questPlayer, 5000);
-				AtlasROGManager.GenerateBeetleCarapace(m_questPlayer, 2);
 				AtlasROGManager.GenerateJewel(m_questPlayer, 51);
 				_isCaptured = 0;
 				

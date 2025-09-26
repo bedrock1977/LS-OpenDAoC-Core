@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using DOL.GS.Styles;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -12,7 +11,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Constructs a new PacketLib for Version 1.80 clients
@@ -27,7 +26,7 @@ namespace DOL.GS.PacketHandler
 			if (player == null || player.ObjectState != GameObject.eObjectState.Active)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.ControlledHorse)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.ControlledHorse)))
 			{
 				if (player.HasHorse)
 				{
@@ -65,7 +64,7 @@ namespace DOL.GS.PacketHandler
 		{
 			if (player == null || player.ObjectState != GameObject.eObjectState.Active)
 				return;
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.ControlledHorse)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.ControlledHorse)))
 			{
 				if (!flag || !player.HasHorse)
 				{
@@ -130,10 +129,10 @@ namespace DOL.GS.PacketHandler
 			if (playerToCreate.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.PlayerCreate172)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.PlayerCreate172)))
 			{
 
-				pak.WriteShort((ushort)playerToCreate.Client.SessionID);
+				pak.WriteShort(playerToCreate.Client.SessionID);
 				pak.WriteShort((ushort)playerToCreate.ObjectID);
 				pak.WriteShort(playerToCreate.Model);
 				pak.WriteShort((ushort)playerToCreate.Z);
@@ -200,33 +199,13 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
-		public override void CheckLengthHybridSkillsPacket(ref GSTCPPacketOut pak, ref int maxSkills, ref int first)
-		{
-			if (pak.Length > 1500)
-			{
-				pak.Position = 4;
-				pak.WriteByte((byte)(maxSkills - first));
-				pak.WriteByte((byte)(first == 0 ? 99 : 0x03)); //subtype
-				pak.WriteByte((byte)first);
-				SendTCP(pak);
-				pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.VariousUpdate));
-				pak.WriteByte(0x01); //subcode
-				pak.WriteByte((byte)maxSkills); //number of entry
-				pak.WriteByte(0x03); //subtype
-				pak.WriteByte((byte)first);
-				first = maxSkills;
-			}
-			maxSkills++;
-		}
-
-
-		public override void SendUpdatePlayerSkills()
+		public override void SendUpdatePlayerSkills(bool updateInternalCache)
 		{
 			if (m_gameClient.Player == null)
 				return;
 
 			// Get Skills as "Usable Skills" which are in network order ! (with forced update)
-			List<Tuple<Skill, Skill>> usableSkills = m_gameClient.Player.GetAllUsableSkills(true);
+			List<Tuple<Skill, Skill>> usableSkills = m_gameClient.Player.GetAllUsableSkills(updateInternalCache);
 
 			bool sent = false; // set to true once we can't send packet anymore !
 			int index = 0; // index of our position in the list !
@@ -236,7 +215,7 @@ namespace DOL.GS.PacketHandler
 			{
 				int packetEntry = 0; // needed to tell client how much skill we send
 				// using pak
-				using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.VariousUpdate)))
+				using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.VariousUpdate)))
 				{
 					// Write header
 					pak.WriteByte(0x01); //subcode for skill

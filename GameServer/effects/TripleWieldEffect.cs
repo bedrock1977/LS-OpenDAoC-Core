@@ -58,19 +58,11 @@ namespace DOL.GS.Effects
 			if (atkArgs.AttackData.IsOffHand) return; // only react to main hand
 			if (atkArgs.AttackData.Weapon == null) return; // no weapon attack
 
-			int modifier = 100;
 			//double dpsCap = (1.2 + 0.3 * attacker.Level) * 0.7;
 			//double dps = Math.Min(atkArgs.AttackData.Weapon.DPS_AF/10.0, dpsCap);
-			double baseDamage = atkArgs.AttackData.Weapon.DPS_AF/10.0*
-			                    atkArgs.AttackData.WeaponSpeed;
-
-			modifier += 25 * atkArgs.AttackData.Target.GetConLevel(atkArgs.AttackData.Attacker);
-			modifier = Math.Min(300, modifier);
-			modifier = Math.Max(75, modifier);
-			
-			double damage = baseDamage * modifier * 0.001; // attack speed is 10 times higher (2.5spd=25)			
+			double damage = atkArgs.AttackData.Weapon.DPS_AF * atkArgs.AttackData.Interval * 0.001;
 			double damageResisted = damage * target.GetResist(eDamageType.Body) * -0.01;
-			
+
 			AttackData ad = new AttackData();
 			ad.Attacker = attacker;
 			ad.Target = target;
@@ -79,7 +71,7 @@ namespace DOL.GS.Effects
 			ad.DamageType = eDamageType.Body;
 			ad.AttackType = AttackData.eAttackType.MeleeOneHand;
 			ad.AttackResult = eAttackResult.HitUnstyled;
-            ad.WeaponSpeed = atkArgs.AttackData.WeaponSpeed; 
+			ad.Interval = atkArgs.AttackData.Interval;
 
 			GamePlayer owner = attacker as GamePlayer;
 			if (owner != null) {

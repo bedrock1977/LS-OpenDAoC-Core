@@ -3,7 +3,6 @@ using DOL.Language;
 
 namespace DOL.GS
 {
-    // This component will hold all data related to casting spells.
     public class PlayerCastingComponent : CastingComponent
     {
         private GamePlayer _playerOwner;
@@ -13,18 +12,9 @@ namespace DOL.GS
             _playerOwner = playerOwner;
         }
 
-        public override bool RequestStartCastSpell(Spell spell, SpellLine spellLine, ISpellCastingAbilityHandler spellCastingAbilityHandler = null, GameLiving target = null)
+        protected override GamePlayer GetLosChecker(GameLiving target)
         {
-            if (!_playerOwner.ChainedActions.CheckCommandInput(spell, spellLine))
-                return false;
-
-            if (_playerOwner.ChainedActions.Execute(spell))
-            {
-                EntityManager.Add<CastingComponent>(this);
-                return true;
-            }
-
-            return base.RequestStartCastSpell(spell, spellLine, spellCastingAbilityHandler, target);
+            return _playerOwner;
         }
 
         protected override bool CanCastSpell()
@@ -70,6 +60,19 @@ namespace DOL.GS
             }
 
             return true;
+        }
+
+        protected override void SendSpellCancelMessage(bool moving, bool focusSpell)
+        {
+            if (focusSpell)
+            {
+                if (moving)
+                    _playerOwner.Out.SendMessage("You move and interrupt your focus!", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
+                else
+                    _playerOwner.Out.SendMessage($"You lose your focus on your spell.", eChatType.CT_SpellExpires, eChatLoc.CL_SystemWindow);
+            }
+            else if (moving)
+                _playerOwner.Out.SendMessage(LanguageMgr.GetTranslation(_playerOwner.Client, "SpellHandler.CasterMove"), eChatType.CT_Important, eChatLoc.CL_SystemWindow);
         }
     }
 }

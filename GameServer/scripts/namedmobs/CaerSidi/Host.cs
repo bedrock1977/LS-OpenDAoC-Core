@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Timers;
 using DOL.AI.Brain;
-using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.ServerProperties;
@@ -83,7 +82,6 @@ namespace DOL.GS
                 Add.CurrentRegion = this.CurrentRegion;
                 Add.Heading = this.Heading;
                 Add.AddToWorld();
-                Add.OrbsReward = 10;
                 Add.PackageID = "HostCopy" + Host.HostCount;
             }
         }
@@ -118,7 +116,6 @@ namespace DOL.GS
                 {
                     GameNPC RealHost = ChooseHost[Util.Random(0, ChooseHost.Count - 1)];
                     RealHost.PackageID = "HostReal";
-                    RealHost.OrbsReward = Properties.EPICBOSS_ORBS;
                     set_realhost = true;
                 }
             }
@@ -199,8 +196,7 @@ namespace DOL.AI.Brain
 {
     public class HIBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public HIBrain()
             : base()
@@ -224,10 +220,7 @@ namespace DOL.GS
         {
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 150  * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -382,8 +375,7 @@ namespace DOL.AI.Brain
 {
     public class HostBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public HostBrain()
             : base()

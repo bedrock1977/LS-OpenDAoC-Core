@@ -8,12 +8,11 @@ using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Spells
 {
     //handled in HealSpellHandler
-    [SpellHandler("EfficientHealing")]
+    [SpellHandler(eSpellType.EfficientHealing)]
     public class EfficientHealing : SpellHandler
     {
         #region Devle Info
@@ -28,7 +27,7 @@ namespace DOL.GS.Spells
                 list.Add("");
 
                 //Description
-                list.Add("Description: " + Spell.Description);
+                list.Add("Description: " + ShortDescription);
                 list.Add("");
 
                 //SpellType
@@ -61,7 +60,7 @@ namespace DOL.GS.Spells
         }
     }
     //handled in HealSpellHandler
-    [SpellHandler("EfficientEndurance")]
+    [SpellHandler(eSpellType.EfficientEndurance)]
     public class EfficientEndurance : SpellHandler
     {
         #region Devle Info
@@ -76,7 +75,7 @@ namespace DOL.GS.Spells
                 list.Add("");
 
                 //Description
-                list.Add("Description: " + Spell.Description);
+                list.Add("Description: " + ShortDescription);
                 list.Add("");
 
                 //SpellType
@@ -108,7 +107,7 @@ namespace DOL.GS.Spells
         {
         }
     }
-    [SpellHandler("Powershield")]
+    [SpellHandler(eSpellType.Powershield)]
     public class Powershield : SpellHandler
     {
         public void AttackedEvent(DOLEvent e, object sender, EventArgs arguments)
@@ -157,7 +156,7 @@ namespace DOL.GS.Spells
                 list.Add("");
 
                 //Description
-                list.Add("Description: " + Spell.Description);
+                list.Add("Description: " + ShortDescription);
                 list.Add("");
 
                 //SpellType

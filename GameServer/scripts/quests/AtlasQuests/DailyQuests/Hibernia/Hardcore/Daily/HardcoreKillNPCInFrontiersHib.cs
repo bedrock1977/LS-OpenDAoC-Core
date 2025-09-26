@@ -4,7 +4,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS.PacketHandler;
 using DOL.GS.Quests;
-using log4net;
 
 namespace DOL.GS.DailyQuest
 {
@@ -13,7 +12,7 @@ namespace DOL.GS.DailyQuest
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private const string questTitle = "[Hardcore] A Lot Of Bravery";
 		private const int minimumLevel = 1;
@@ -331,14 +330,14 @@ namespace DOL.GS.DailyQuest
 			if (gArgs.Target.XPGainers.Count > 1)
 			{
 				Array gainers = new GameObject[gArgs.Target.XPGainers.Count];
-				lock (gArgs.Target._xpGainersLock)
+				lock (gArgs.Target.XpGainersLock)
 				{
 
 					foreach (GameLiving living in gArgs.Target.XPGainers.Keys)
 					{
 						if (living == player ||
 						    (player.ControlledBrain is {Body: { }} && player.ControlledBrain.Body == living) ||
-						    (living is BDPet bdpet &&
+						    (living is BdPet bdpet &&
 						     (bdpet.Owner == player || bdpet.Owner == player.ControlledBrain?.Body)))
 							continue;
 

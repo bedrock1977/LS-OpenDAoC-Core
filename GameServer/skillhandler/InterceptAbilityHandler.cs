@@ -1,15 +1,13 @@
-using System.Linq;
 using System.Reflection;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.SkillHandler
 {
     [SkillHandlerAttribute(Abilities.Intercept)]
     public class InterceptAbilityHandler : IAbilityActionHandler
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         public const int INTERCEPT_DISTANCE = 128;
         public const int REUSE_TIMER = 60 * 1000;
@@ -26,10 +24,10 @@ namespace DOL.GS.SkillHandler
 
             if (player.TargetObject is not GameLiving target)
             {
-                foreach (InterceptECSGameEffect intercept in player.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Intercept))
+                foreach (InterceptECSGameEffect intercept in player.effectListComponent.GetAbilityEffects(eEffect.Intercept))
                 {
                     if (intercept.Source == player)
-                        EffectService.RequestCancelEffect(intercept);
+                        intercept.Stop();
                 }
 
                 player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "Skill.Ability.Intercept.CancelTargetNull"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
@@ -70,14 +68,14 @@ namespace DOL.GS.SkillHandler
             foundOurEffect = false;
             effectFromAnotherSource = null;
 
-            foreach (InterceptECSGameEffect intercept in target.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Intercept))
+            foreach (InterceptECSGameEffect intercept in target.effectListComponent.GetAbilityEffects(eEffect.Intercept))
             {
                 if (intercept.Source == source)
                 {
                     foundOurEffect = true;
 
                     if (cancelOurs)
-                        EffectService.RequestCancelEffect(intercept);
+                        intercept.Stop();
                 }
 
                 if (intercept.Target == target)
@@ -87,13 +85,13 @@ namespace DOL.GS.SkillHandler
 
         public static void CancelOurEffectThenAddOnTarget(GameLiving source, GameLiving target)
         {
-            foreach (InterceptECSGameEffect intercept in source.effectListComponent.GetAbilityEffects().Where(e => e.EffectType == eEffect.Intercept))
+            foreach (InterceptECSGameEffect intercept in source.effectListComponent.GetAbilityEffects(eEffect.Intercept))
             {
                 if (intercept.Source == source)
-                    EffectService.RequestCancelEffect(intercept);
+                    intercept.Stop();
             }
 
-            new InterceptECSGameEffect(new ECSGameEffectInitParams(source, 0, 1, null), source, target);
+            ECSGameEffectFactory.Create(new(source, 0, 1), source, target, static (in ECSGameEffectInitParams i, GameLiving source, GameLiving target) => new InterceptECSGameEffect(i, source, target));
         }
     }
 }

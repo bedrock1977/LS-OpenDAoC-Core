@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using DOL.Database;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -12,7 +11,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Constructs a new PacketLib for Version 1.72 clients
@@ -44,9 +43,9 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null || playerToCreate.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.PlayerCreate172)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.PlayerCreate172)))
 			{
-				pak.WriteShort((ushort)playerToCreate.Client.SessionID);
+				pak.WriteShort(playerToCreate.Client.SessionID);
 				pak.WriteShort((ushort)playerToCreate.ObjectID);
 				pak.WriteShort(playerToCreate.Model);
 				pak.WriteShort((ushort)playerToCreate.Z);
@@ -85,9 +84,9 @@ namespace DOL.GS.PacketHandler
 			SendObjectGuildID(playerToCreate, playerToCreate.Guild); //used for nearest friendly/enemy object buttons and name colors on PvP server
 		}
 
-		protected override void SendInventorySlotsUpdateRange(ICollection<int> slots, eInventoryWindowType windowType)
+		protected override void SendInventorySlotsUpdateRange(ICollection<eInventorySlot> slots, eInventoryWindowType windowType)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.InventoryUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.InventoryUpdate)))
 			{
 				pak.WriteByte((byte)(slots == null ? 0 : slots.Count));
 				pak.WriteByte((byte)((m_gameClient.Player.IsCloakHoodUp ? 0x01 : 0x00) | (int)m_gameClient.Player.rangeAttackComponent.ActiveQuiverSlot)); //bit0 is hood up bit4 to 7 is active quiver
@@ -201,7 +200,7 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null || living.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.EquipmentUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.EquipmentUpdate)))
 			{
 
 				ICollection<DbInventoryItem> items = null;
@@ -259,9 +258,9 @@ namespace DOL.GS.PacketHandler
 				return;
 			if (m_gameClient.Player.TradeWindow == null)
 				return;
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.TradeWindow)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.TradeWindow)))
 			{
-				lock (m_gameClient.Player.TradeWindow.Sync)
+				lock (m_gameClient.Player.TradeWindow.Lock)
 				{
 					foreach (DbInventoryItem item in m_gameClient.Player.TradeWindow.TradeItems)
 					{

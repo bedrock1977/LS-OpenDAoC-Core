@@ -1,21 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using System.Collections.Generic;
 using DOL.Database;
@@ -112,21 +94,25 @@ namespace DOL.GS
 	{
 		public const string Combat_Styles_Effect = "Combat Style Effects";
 		public const string Mundane_Poisons = "Mundane Poisons";
-		public const string Reserved_Spells = "Reserved Spells"; // Masterlevels
+		public const string Reserved_Spells = "Reserved Spells"; // Masterlevels.
 		public const string SiegeWeapon_Spells = "SiegeWeapon Spells";
 		public const string Item_Effects = "Item Effects";
 		public const string Potions_Effects = "Potions";
 		public const string Mob_Spells = "Mob Spells";
 		public const string Character_Abilities = "Character Abilities"; // dirty tricks, flurry ect...
-		public const string Item_Spells = "Item Spells";	// Combine scroll etc.
+		public const string Item_Spells = "Item Spells"; // Combine scroll, etc.
 		public const string Champion_Lines_StartWith = "Champion ";
-        public const string Realm_Spells = "Realm Spells"; // Resurrection illness, Speed of the realm
-    }
+		public const string Realm_Spells = "Realm Spells"; // Resurrection illness, speed of the realm...
+		public const string Nightshade = "Nightshade"; // Used for variance calculation.
+		public const string Valor = "Valor"; // Used to put debuffs in the correct category.
+
+		public static readonly SpellLine RealmSpellsSpellLine = new(Realm_Spells, Realm_Spells, Realm_Spells, true);
+	}
 
 	public static class GlobalConstants
 	{
 		private static readonly Dictionary<eAttackResult, byte> AttackResultByte = new Dictionary<eAttackResult, byte>()
-	    {
+		{
 			{eAttackResult.Missed, 0},
 			{eAttackResult.Parried, 1},
 			{eAttackResult.Blocked, 2},
@@ -139,14 +125,9 @@ namespace DOL.GS
 		
 		public static byte GetAttackResultByte(eAttackResult attResult)
 		{
-			if (AttackResultByte.ContainsKey(attResult))
-			{
-				return AttackResultByte[attResult];
-			}
-			
-			return 0;
+			return AttackResultByte.TryGetValue(attResult, out byte value) ? value : (byte) 0;
 		}
-		
+
 		public static bool IsExpansionEnabled(int expansion)
 		{
 			bool enabled = true;
@@ -614,7 +595,7 @@ namespace DOL.GS
 					case eRealm.Midgard: return "Midgard";
 					case eRealm.Hibernia: return "Hibernia";
 					case eRealm.Door: return "Door";
-					default: return "";
+					default: return string.Empty;
 			}
 		}
 		public static int EmblemOfRealm(eRealm realm)
@@ -695,7 +676,7 @@ namespace DOL.GS
 			{
                 return LanguageMgr.GetTranslation(client.Account.Language, "CraftLevelToCraftTitle.LegendaryGrandmaster");
 			}
-			return "";
+			return string.Empty;
 		}
 
 		public static eRealm GetBonusRealm(eProperty bonus)

@@ -21,10 +21,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -48,7 +45,7 @@ namespace DOL.GS
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -67,13 +64,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60161047);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
             MaxSpeedBase = 0;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
@@ -139,8 +129,7 @@ namespace DOL.AI.Brain
 {
     public class FornfrusenenBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public FornfrusenenBrain()
             : base()
@@ -151,7 +140,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -272,10 +261,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 80 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -376,8 +362,7 @@ namespace DOL.AI.Brain
 {
     public class FornShardBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public FornShardBrain()
             : base()

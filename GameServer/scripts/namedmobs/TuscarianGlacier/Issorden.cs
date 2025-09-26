@@ -22,10 +22,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -55,13 +52,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60162545);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             IssordenBrain.BafMobs = false;
             Faction = FactionMgr.GetFactionByID(140);
 
@@ -79,8 +69,7 @@ namespace DOL.AI.Brain
 {
     public class IssordenBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public IssordenBrain()
             : base()
@@ -138,7 +127,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }

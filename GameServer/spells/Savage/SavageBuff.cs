@@ -1,60 +1,42 @@
 using System;
 using System.Collections.Generic;
-using DOL.GS.Effects;
-using DOL.GS.PacketHandler;
 using DOL.Language;
 
 namespace DOL.GS.Spells
 {
-    // Main class for savage buffs
     public abstract class AbstractSavageBuff : PropertyChangingSpell
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
+    {
+        public override SpellCostType CostType => SpellCostType.Health;
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
-		{
-			return new SavageBuffECSGameEffect(initParams);
-		}
+        public AbstractSavageBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
 
-		public override bool CheckBeginCast(GameLiving selectedTarget)
-		{
-			int cost = PowerCost(Caster);
-			if (Caster.Health < cost)
-			{
-				MessageToCaster(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "SavageEnduranceHeal.CheckBeginCast.InsuffiscientHealth"), eChatType.CT_SpellResisted);
-				return false;
-			}
-			return base.CheckBeginCast(selectedTarget);
-		}
-		
-		public override int PowerCost(GameLiving target)
-		{
-			int cost = 0;
-			if (m_spell.Power < 0)
-				cost = (int)(m_caster.MaxHealth * Math.Abs(m_spell.Power) * 0.01);
-			else
-				cost = m_spell.Power;
-			return cost;
-		}
+        public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
+        {
+            return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new SavageBuffECSGameEffect(i));
+        }
 
-		/// <summary>
-		/// When an applied effect starts
-		/// duration spells only
-		/// </summary>
-		/// <param name="effect"></param>
-		public override void OnEffectStart(GameSpellEffect effect)
-		{
-			base.OnEffectStart(effect);
-			SendUpdates(effect.Owner);
-		}
+        public override int PowerCost(GameLiving target)
+        {
+            if (m_spell.Power < 0)
+                return (int) (m_caster.MaxHealth * Math.Abs(m_spell.Power) * 0.01);
+            else
+                return m_spell.Power;
+        }
+
+        public override int CalculateEnduranceCost()
+        {
+            return 0;
+        }
+
         public override IList<string> DelveInfo
         {
             get
             {
                 var list = new List<string>(16);
-                //list.Add("Function: " + (Spell.SpellType == "" ? "(not implemented)" : Spell.SpellType));
+                //list.Add("Function: " + (Spell.SpellType == string.Empty ? "(not implemented)" : Spell.SpellType));
                 //list.Add(" "); //empty line
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 list.Add(" "); //empty line
                 if (Spell.InstrumentRequirement != 0)
                     list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "DelveInfo.InstrumentRequire", GlobalConstants.InstrumentTypeToName(Spell.InstrumentRequirement)));
@@ -94,130 +76,115 @@ namespace DOL.GS.Spells
                 return list;
             }
         }
+    }
 
-		/// <summary>
-		/// When an applied effect expires.
-		/// Duration spells only.
-		/// </summary>
-		/// <param name="effect">The expired effect</param>
-		/// <param name="noMessages">true, when no messages should be sent to player and surrounding</param>
-		public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
-		{
-			//base.OnEffectExpires(effect, noMessages);
-			
-			//if (m_spell.Power != 0)
-			//{
-			//	int cost = 0;
-			//	if (m_spell.Power < 0)
-			//		cost = (int)(m_caster.MaxHealth * Math.Abs(m_spell.Power) * 0.01);
-			//	else
-			//		cost = m_spell.Power;
-			//	if (effect.Owner.Health > cost)
-			//		effect.Owner.ChangeHealth(effect.Owner, eHealthChangeType.Spell, -cost);
-			//}
-			//SendUpdates(effect.Owner);
-			return 0;
-		}
+    public abstract class AbstractSavageStatBuff : AbstractSavageBuff
+    {
+        public AbstractSavageStatBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
 
-		// constructor
-		public AbstractSavageBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}		
-	}
-	
-	public abstract class AbstractSavageStatBuff : AbstractSavageBuff
-	{
-		/// <summary>
-        /// Sends needed updates on start/stop
-		/// </summary>
-		/// <param name="target"></param>
-		protected override void SendUpdates(GameLiving target)
-		{
-			GamePlayer player = target as GamePlayer;
-			if (player != null)
-			{
-				player.Out.SendCharStatsUpdate();
-				player.Out.SendUpdateWeaponAndArmorStats();
-				player.UpdateEncumberance();
-				player.UpdatePlayerStatus();
-			}
-		}
-		// constructor
-		public AbstractSavageStatBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}				
-	}
-	public abstract class AbstractSavageResistBuff : AbstractSavageBuff
-	{
-		/// <summary>
-        /// Sends needed updates on start/stop
-		/// </summary>
-		/// <param name="target"></param>
-		protected override void SendUpdates(GameLiving target)
-		{
-			GamePlayer player = target as GamePlayer;
-			if (player != null)
-			{
-				player.Out.SendCharResistsUpdate();
-				player.UpdatePlayerStatus();
-			}
-		}
-		// constructor
-		public AbstractSavageResistBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}				
-	}
-	
-	[SpellHandlerAttribute("SavageParryBuff")]
-	public class SavageParryBuff : AbstractSavageStatBuff
-	{
-		public override eProperty Property1 { get { return eProperty.ParryChance; } }
+        protected override void SendUpdates(GameLiving target)
+        {
+            if (target is GamePlayer player)
+            {
+                player.Out.SendCharStatsUpdate();
+                player.Out.SendUpdateWeaponAndArmorStats();
+                player.UpdateEncumbrance();
+                player.UpdatePlayerStatus();
+            }
+        }
+    }
 
-		// constructor
-		public SavageParryBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
-	[SpellHandlerAttribute("SavageEvadeBuff")]
-	public class SavageEvadeBuff : AbstractSavageStatBuff
-	{
-		public override eProperty Property1 { get { return eProperty.EvadeChance; } }
+    public abstract class AbstractSavageResistBuff : AbstractSavageBuff
+    {
+        public override string ShortDescription => $"Increases {TargetPronoun} resistance to {PropertyToString(Property1)} damage by {Spell.Value}%.";
 
-		// constructor
-		public SavageEvadeBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
-	[SpellHandlerAttribute("SavageCombatSpeedBuff")]
-	public class SavageCombatSpeedBuff : AbstractSavageStatBuff
-	{
-		public override eProperty Property1 { get { return eProperty.MeleeSpeed; } }
+        public AbstractSavageResistBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
 
-		// constructor
-		public SavageCombatSpeedBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
-	[SpellHandlerAttribute("SavageDPSBuff")]
-	public class SavageDPSBuff : AbstractSavageStatBuff
-	{
-		public override eProperty Property1 { get { return eProperty.MeleeDamage; } }
+        protected override void SendUpdates(GameLiving target)
+        {
+            if (target is GamePlayer player)
+            {
+                player.Out.SendCharResistsUpdate();
+                player.UpdatePlayerStatus();
+            }
+        }
+    }
+ 
+    [SpellHandler(eSpellType.SavageParryBuff)]
+    public class SavageParryBuff : AbstractSavageStatBuff
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} chance to parry is increased by {Spell.Value}%.";
+        public override eProperty Property1 => eProperty.ParryChance;
 
-		// constructor
-		public SavageDPSBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}	
-	[SpellHandlerAttribute("SavageSlashResistanceBuff")]
-	public class SavageSlashResistanceBuff : AbstractSavageResistBuff
-	{
-		public override eProperty Property1 { get { return eProperty.Resist_Slash; } }
+        public SavageParryBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
 
-		// constructor
-		public SavageSlashResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
-	[SpellHandlerAttribute("SavageThrustResistanceBuff")]
-	public class SavageThrustResistanceBuff : AbstractSavageResistBuff
-	{
-		public override eProperty Property1 { get { return eProperty.Resist_Thrust; } }
+    [SpellHandler(eSpellType.SavageStyleParryBuff)]
+    public class SavageStyleParryBuff : AbstractSavageStatBuff
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} chance to parry is increased by {Spell.Value}% for the next attack.";
+        public override eProperty Property1 => eProperty.ParryChance;
 
-		// constructor
-		public SavageThrustResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
-	[SpellHandlerAttribute("SavageCrushResistanceBuff")]
-	public class SavageCrushResistanceBuff : AbstractSavageResistBuff
-	{
-		public override eProperty Property1 { get { return eProperty.Resist_Crush; } }
+        public SavageStyleParryBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
 
-		// constructor
-		public SavageCrushResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
-	}
+    [SpellHandler(eSpellType.SavageEvadeBuff)]
+    public class SavageEvadeBuff : AbstractSavageStatBuff
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} chance to evade is increased by {Spell.Value}%.";
+        public override eProperty Property1 => eProperty.EvadeChance;
+
+        public SavageEvadeBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
+
+    [SpellHandler(eSpellType.SavageStyleEvadeBuff)]
+    public class SavageStyleEvadeBuff : SavageEvadeBuff
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} chance to evade is increased by {Spell.Value}% for the next attack.";
+        public override eProperty Property1 => eProperty.EvadeChance;
+
+        public SavageStyleEvadeBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
+
+    [SpellHandler(eSpellType.SavageCombatSpeedBuff)]
+    public class SavageCombatSpeedBuff : AbstractSavageStatBuff
+    {
+        public override string ShortDescription => $"Increases {TargetPronoun} combat speed by {Spell.Value}%.";
+        public override eProperty Property1 => eProperty.MeleeSpeed;
+
+        public SavageCombatSpeedBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) {}
+    }
+
+    [SpellHandler(eSpellType.SavageDPSBuff)]
+    public class SavageDPSBuff : AbstractSavageStatBuff
+    {
+        public override string ShortDescription => $"Increases {TargetPronoun} melee damage by {Spell.Value}%.";
+        public override eProperty Property1 => eProperty.MeleeDamage;
+
+        public SavageDPSBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
+
+    [SpellHandler(eSpellType.SavageSlashResistanceBuff)]
+    public class SavageSlashResistanceBuff : AbstractSavageResistBuff
+    {
+        public override eProperty Property1 => eProperty.Resist_Slash;
+
+        public SavageSlashResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
+
+    [SpellHandler(eSpellType.SavageThrustResistanceBuff)]
+    public class SavageThrustResistanceBuff : AbstractSavageResistBuff
+    {
+        public override eProperty Property1 => eProperty.Resist_Thrust;
+
+        public SavageThrustResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
+
+    [SpellHandler(eSpellType.SavageCrushResistanceBuff)]
+    public class SavageCrushResistanceBuff : AbstractSavageResistBuff
+    {
+        public override eProperty Property1 => eProperty.Resist_Crush;
+
+        public SavageCrushResistanceBuff(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
+    }
 }
-
-

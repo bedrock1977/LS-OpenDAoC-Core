@@ -132,13 +132,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60157792);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			AmalgamateParthananBrain sbrain = new AmalgamateParthananBrain();
 			SetOwnBrain(sbrain);
@@ -375,7 +368,7 @@ namespace DOL.AI.Brain
 {
 	public class AmalgamateParthananBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public AmalgamateParthananBrain() : base()
 		{
 			AggroLevel = 100;
@@ -402,13 +395,7 @@ namespace DOL.GS
 
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60164845);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
+
 
 			ParthananBrain sbrain = new ParthananBrain();
 			SetOwnBrain(sbrain);
@@ -500,7 +487,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public ParthananBrain() : base()
 		{
 			AggroLevel = 100;
@@ -908,8 +895,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananFarmController1Brain : APlayerVicinityBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public ParthananFarmController1Brain()
 			: base()
@@ -1009,8 +995,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananFarmController2Brain : APlayerVicinityBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public ParthananFarmController2Brain()
 			: base()
@@ -1112,8 +1097,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananFarmController2bBrain : APlayerVicinityBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public ParthananFarmController2bBrain()
 			: base()
@@ -1213,8 +1197,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananFarmController3Brain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public ParthananFarmController3Brain()
 			: base()
@@ -1313,8 +1296,7 @@ namespace DOL.AI.Brain
 {
 	public class ParthananFarmController3bBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public ParthananFarmController3bBrain()
 			: base()

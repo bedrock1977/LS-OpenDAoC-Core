@@ -35,14 +35,14 @@ namespace DOL.GS.Effects
 			m_effectDuration = duration;
 			m_value = value;
 
-			if (player.TempProperties.GetProperty(RealmAbilities.BarrierOfFortitudeAbility.BofBaSb, false))
+			if (player.TempProperties.GetProperty<bool>(RealmAbilities.BarrierOfFortitudeAbility.BofBaSb))
 				return;
 
 			StartTimers();
 
 			GameEventMgr.AddHandler(m_player, GamePlayerEvent.Quit, new DOLEventHandler(PlayerLeftWorld));
 
-			m_player.AbilityBonus[(int)eProperty.ArmorAbsorption] += m_value;
+			m_player.AbilityBonus[eProperty.ArmorAbsorption] += m_value;
 
 			m_player.EffectList.Add(this);
 			player.TempProperties.SetProperty(RealmAbilities.BarrierOfFortitudeAbility.BofBaSb, true);
@@ -73,7 +73,7 @@ namespace DOL.GS.Effects
 		{
 
 			StopTimers();
-			m_player.AbilityBonus[(int)eProperty.ArmorAbsorption] -= m_value;
+			m_player.AbilityBonus[eProperty.ArmorAbsorption] -= m_value;
 			m_player.EffectList.Remove(this);
 			GameEventMgr.RemoveHandler(m_player, GamePlayerEvent.Quit, new DOLEventHandler(PlayerLeftWorld));
 			m_player.TempProperties.RemoveProperty(RealmAbilities.BarrierOfFortitudeAbility.BofBaSb);

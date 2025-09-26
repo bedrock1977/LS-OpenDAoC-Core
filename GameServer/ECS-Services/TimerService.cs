@@ -2,94 +2,83 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
+using DOL.Logging;
 using ECS.Debug;
-using log4net;
 
 namespace DOL.GS
 {
-    public class TimerService
+    public sealed class TimerService : GameServiceBase
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private const string SERVICE_NAME = nameof(TimerService);
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static List<ECSGameTimer> _list;
-        private static int _nonNullTimerCount;
-        private static int _nullTimerCount;
+        private List<ECSGameTimer> _list;
 
-        public static int DebugTickCount { get; set; } // Will print active brain count/array size info for debug purposes if superior to 0.
-        private static bool Debug => DebugTickCount > 0;
+        public static TimerService Instance { get; }
 
-        public static void Tick()
+        static TimerService()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-
-            if (Debug)
-            {
-                _nonNullTimerCount = 0;
-                _nullTimerCount = 0;
-            }
-
-            _list = EntityManager.UpdateAndGetAll<ECSGameTimer>(EntityManager.EntityType.Timer, out int lastValidIndex);
-            Parallel.For(0, lastValidIndex + 1, TickInternal);
-
-            if (Debug)
-            {
-                log.Debug($"==== Non-null timers in EntityManager array: {_nonNullTimerCount} | Null timers: {_nullTimerCount} | Total size: {_list.Count} ====");
-                DebugTickCount--;
-            }
-
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
+            Instance = new();
         }
 
-        private static void TickInternal(int index)
+        public override void Tick()
         {
-            ECSGameTimer timer = _list[index];
+            ProcessPostedActionsParallel();
+            int lastValidIndex;
 
-            if (timer?.EntityManagerId.IsSet != true)
+            try
             {
-                if (Debug)
-                    Interlocked.Increment(ref _nullTimerCount);
+                _list = ServiceObjectStore.UpdateAndGetAll<ECSGameTimer>(ServiceObjectType.Timer, out lastValidIndex);
+            }
+            catch (Exception e)
+            {
+                if (log.IsErrorEnabled)
+                    log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
 
                 return;
             }
 
-            if (Debug)
-                Interlocked.Increment(ref _nonNullTimerCount);
+            GameLoop.ExecuteForEach(_list, lastValidIndex + 1, TickInternal);
 
+            if (Diagnostics.CheckServiceObjectCount)
+                Diagnostics.PrintServiceObjectCount(ServiceName, ref EntityCount, _list.Count);
+        }
+
+        private static void TickInternal(ECSGameTimer timer)
+        {
             try
             {
-                if (ServiceUtils.ShouldTickAdjust(ref timer.NextTick))
-                {
-                    long startTick = GameLoop.GetCurrentTime();
-                    timer.Tick();
-                    long stopTick = GameLoop.GetCurrentTime();
+                if (Diagnostics.CheckServiceObjectCount)
+                    Interlocked.Increment(ref Instance.EntityCount);
 
-                    if (stopTick - startTick > 25)
-                        log.Warn($"Long {SERVICE_NAME}.{nameof(Tick)} for Timer Callback: {timer.Callback?.Method?.DeclaringType}:{timer.Callback?.Method?.Name}  Owner: {timer.Owner?.Name} Time: {stopTick - startTick}ms");
+                if (GameServiceUtils.ShouldTick(timer.NextTick))
+                {
+                    long startTick = GameLoop.GetRealTime();
+                    timer.Tick();
+                    long stopTick = GameLoop.GetRealTime();
+
+                    if (stopTick - startTick > Diagnostics.LongTickThreshold)
+                        log.Warn($"Long {Instance.ServiceName}.{nameof(Tick)} for Timer Callback: {timer.CallbackInfo?.DeclaringType}:{timer.CallbackInfo?.Name}  Owner: {timer.Owner?.Name} Time: {stopTick - startTick}ms");
                 }
             }
             catch (Exception e)
             {
-                ServiceUtils.HandleServiceException(e, SERVICE_NAME, timer, timer.Owner);
+                GameServiceUtils.HandleServiceException(e, Instance.ServiceName, timer, timer.Owner);
             }
         }
     }
 
-    public class ECSGameTimer : IManagedEntity
+    public class ECSGameTimer : IServiceObject
     {
         public delegate int ECSTimerCallback(ECSGameTimer timer);
 
-        private long _nextTick;
-
         public GameObject Owner { get; }
-        public ECSTimerCallback Callback { get; set; }
+        public ECSTimerCallback Callback { private get; set; }
+        public MethodInfo CallbackInfo => Callback?.GetMethodInfo();
         public int Interval { get; set; }
-        public ref long NextTick => ref _nextTick;
+        public long NextTick { get; protected set; }
         public bool IsAlive { get; private set; }
-        public int TimeUntilElapsed => (int) (_nextTick - GameLoop.GameLoopTime);
-        public EntityManagerId EntityManagerId { get; set; } = new(EntityManager.EntityType.Timer, false);
+        public int TimeUntilElapsed => (int) (NextTick - GameLoop.GameLoopTime);
+        public ServiceObjectId ServiceObjectId { get; set; } = new(ServiceObjectType.Timer);
         private PropertyCollection _properties;
 
         public ECSGameTimer(GameObject timerOwner)
@@ -108,7 +97,7 @@ namespace DOL.GS
             Owner = timerOwner;
             Callback = callback;
             Interval = interval;
-            Start();
+            Start(interval);
         }
 
         public void Start()
@@ -120,15 +109,15 @@ namespace DOL.GS
         public void Start(int interval)
         {
             Interval = interval;
-            _nextTick = GameLoop.GameLoopTime + interval;
+            NextTick = GameLoop.GameLoopTime + interval;
 
-            if (EntityManager.Add(this))
+            if (ServiceObjectStore.Add(this))
                 IsAlive = true;
         }
 
         public void Stop()
         {
-            if (EntityManager.Remove(this))
+            if (ServiceObjectStore.Remove(this))
                 IsAlive = false;
         }
 
@@ -137,13 +126,13 @@ namespace DOL.GS
             if (Callback != null)
                 Interval = Callback.Invoke(this);
 
-            if (Interval == 0)
+            if (Interval <= 0)
             {
                 Stop();
                 return;
             }
 
-            _nextTick += Interval;
+            NextTick += Interval;
         }
 
         public PropertyCollection Properties
@@ -154,12 +143,7 @@ namespace DOL.GS
                 {
                     lock (this)
                     {
-                        if (_properties == null)
-                        {
-                            PropertyCollection properties = new PropertyCollection();
-                            Thread.MemoryBarrier();
-                            _properties = properties;
-                        }
+                        _properties ??= new();
                     }
                 }
 

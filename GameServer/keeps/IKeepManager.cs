@@ -23,7 +23,6 @@ using System.Linq;
 using System.Reflection;
 using DOL.Database;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Keeps
 {
@@ -47,7 +46,7 @@ namespace DOL.GS.Keeps
 	/// </summary>
 	public interface IKeepManager
 	{
-		log4net.ILog Log { get; }
+		Logging.Logger Log { get; }
 		Hashtable Keeps { get; }
 		List<uint> FrontierRegionsList { get; }
 
@@ -75,7 +74,7 @@ namespace DOL.GS.Keeps
 		bool IsEnemy(GameKeepDoor checker, GamePlayer target);
 		bool IsEnemy(GameKeepComponent checker, GamePlayer target);
 		byte GetHeightFromLevel(byte level);
-		void GetBorderKeepLocation(int keepid, out int x, out int y, out int z, out ushort heading);
+		bool GetBorderKeepLocation(int keepid, out int x, out int y, out int z, out ushort heading);
 		int GetRealmKeepBonusLevel(eRealm realm);
 		int GetRealmTowerBonusLevel(eRealm realm);
 		void UpdateBaseLevels();

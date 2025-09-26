@@ -4,10 +4,9 @@ namespace DOL.GS.Effects
 {
     public class AtlasOF_JuggernautECSEffect : ECSGameAbilityEffect
     {
-        public AtlasOF_JuggernautECSEffect(ECSGameEffectInitParams initParams) : base(initParams)
+        public AtlasOF_JuggernautECSEffect(in ECSGameEffectInitParams initParams) : base(initParams)
         {
             EffectType = eEffect.Juggernaut;
-            EffectService.RequestStartEffect(this);
         }
 
         public override ushort Icon => 4261;
@@ -16,7 +15,7 @@ namespace DOL.GS.Effects
 
         public override void OnStartEffect()
         {
-            SpellLine RAspellLine = new SpellLine("RAs", "RealmAbilities", "RealmAbilities", true);
+            SpellLine RAspellLine = GlobalSpellsLines.RealmSpellsSpellLine;
             Spell Juggernaut = SkillBase.GetSpellByID(90801);
 
             if (Juggernaut != null)
@@ -35,7 +34,7 @@ namespace DOL.GS.Effects
 
         public void Cancel(bool playerCancel)
         {
-            EffectService.RequestImmediateCancelEffect(this, playerCancel);
+            Stop(playerCancel);
             OnStopEffect();
         }
     }

@@ -1,6 +1,5 @@
 using System.Reflection;
 using DOL.GS.Housing;
-using log4net;
 
 namespace DOL.GS.PacketHandler.Client.v168
 {
@@ -10,7 +9,7 @@ namespace DOL.GS.PacketHandler.Client.v168
         /// <summary>
         /// Defines a logger for this class.
         /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         public void HandlePacket(GameClient client, GSPacketIn packet)
         {
@@ -35,7 +34,7 @@ namespace DOL.GS.PacketHandler.Client.v168
                 return;
             }
 
-			lock (conMerchant.LockObject)
+			lock (conMerchant.Lock)
 			{
 				long totalConMoney = conMerchant.TotalMoney;
 
@@ -56,10 +55,8 @@ namespace DOL.GS.PacketHandler.Client.v168
 
 					conMerchant.TotalMoney -= totalConMoney;
 
-					if (ServerProperties.Properties.MARKET_ENABLE_LOG)
-					{
+					if (ServerProperties.Properties.MARKET_ENABLE_LOG && log.IsDebugEnabled)
 						log.DebugFormat("CM: [{0}:{1}] withdraws {2} from CM on lot {3}.", client.Player.Name, client.Account.Name, totalConMoney, conMerchant.HouseNumber);
-					}
 
 					client.Out.SendConsignmentMerchantMoney(conMerchant.TotalMoney);
 				}

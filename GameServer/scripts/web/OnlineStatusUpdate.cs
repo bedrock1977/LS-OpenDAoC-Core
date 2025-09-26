@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using DOL.Events;
-using log4net;
 
 namespace DOL.GS.GameEvents
 {
@@ -22,7 +21,7 @@ namespace DOL.GS.GameEvents
 
 		/// <summary>
 		/// Gets player count - Don't edit this one.
-		protected static string ClientCount = ClientService.ClientCount.ToString();
+		protected static string ClientCount = ClientService.Instance.ClientCount.ToString();
         /// </summary>
 
         /// <summary>
@@ -60,7 +59,7 @@ namespace DOL.GS.GameEvents
 		/// <summary>
 		/// Sets up our logger instance
 		/// </summary>
-		protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// This method is called when the script is loaded.
@@ -204,12 +203,12 @@ namespace DOL.GS.GameEvents
 		{
 			string[] failed = new string[6];
 			int count = 0;
-			if (UserName == "" || UserName == "null")
+			if (UserName == string.Empty || UserName == "null")
 			{
 				failed[count] = "Username";
 				count++;
 			}
-			if (Password == "" || Password == "null")
+			if (Password == string.Empty || Password == "null")
 			{
 				failed[count] = "Password";
 				count++;

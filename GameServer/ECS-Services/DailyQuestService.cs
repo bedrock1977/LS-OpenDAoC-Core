@@ -1,36 +1,42 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using DOL.Database;
-using ECS.Debug;
+using DOL.Logging;
 
 namespace DOL.GS
 {
-    public class DailyQuestService
+    public sealed class DailyQuestService : GameServiceBase
     {
-        private const string SERVICE_NAME = "DailyQuestService";
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+
         private const string DAILY_INTERVAL_KEY = "DAILY";
-        private static DateTime lastDailyRollover;
+        private DateTime _lastDailyRollover;
+
+        public static DailyQuestService Instance { get; }
 
         static DailyQuestService()
+        {
+            Instance = new();
+        }
+
+        private DailyQuestService()
         {
             IList<DbTaskRefreshInterval> loadQuestsProp = GameServer.Database.SelectAllObjects<DbTaskRefreshInterval>();
 
             foreach (DbTaskRefreshInterval interval in loadQuestsProp)
             {
                 if (interval.RolloverInterval.Equals(DAILY_INTERVAL_KEY))
-                    lastDailyRollover = interval.LastRollover;
+                    _lastDailyRollover = interval.LastRollover;
             }
         }
 
-        public static void Tick()
+        public override void Tick()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-            //.WriteLine($"daily:{lastDailyRollover.Date.DayOfYear} weekly:{lastWeeklyRollover.Date.DayOfYear+7} now:{DateTime.Now.Date.DayOfYear}");
+            ProcessPostedActionsParallel();
 
-            if (lastDailyRollover.Date.DayOfYear < DateTime.Now.Date.DayOfYear || lastDailyRollover.Year < DateTime.Now.Year)
+            if (_lastDailyRollover.Date.DayOfYear < DateTime.Now.Date.DayOfYear || _lastDailyRollover.Year < DateTime.Now.Year)
             {
-                lastDailyRollover = DateTime.Now;
                 DbTaskRefreshInterval loadQuestsProp = GameServer.Database.SelectObject<DbTaskRefreshInterval>(DB.Column("RolloverInterval").IsEqualTo(DAILY_INTERVAL_KEY));
 
                 // Update the one we've got, or make a new one.
@@ -47,15 +53,26 @@ namespace DOL.GS
                     GameServer.Database.AddObject(newTime);
                 }
 
-                List<GameClient> clients = EntityManager.UpdateAndGetAll<GameClient>(EntityManager.EntityType.Client, out int lastValidIndex);
+                List<GameClient> clients;
+                int lastValidIndex;
+
+                try
+                {
+                    clients = ServiceObjectStore.UpdateAndGetAll<GameClient>(ServiceObjectType.Client, out lastValidIndex);
+                }
+                catch (Exception e)
+                {
+                    if (log.IsErrorEnabled)
+                        log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
+
+                    return;
+                }
+
+                _lastDailyRollover = DateTime.Now;
 
                 for (int i = 0; i < lastValidIndex + 1; i++)
                 {
                     GameClient client = clients[i];
-
-                    if (client?.EntityManagerId.IsSet != true)
-                        return;
-
                     client.Player?.RemoveFinishedQuests(x => x is Quests.DailyQuest);
                 }
 
@@ -66,11 +83,7 @@ namespace DOL.GS
                     if (existingDailyQuest.Step <= -1)
                         GameServer.Database.DeleteObject(existingDailyQuest);
                 }
-
-                //Console.WriteLine($"Daily refresh");
             }
-
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
         }
     }
 }

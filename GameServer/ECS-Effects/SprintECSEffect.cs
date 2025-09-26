@@ -1,17 +1,15 @@
-﻿using System;
-using DOL.GS.PacketHandler;
+﻿using DOL.GS.PacketHandler;
 using DOL.Language;
 
 namespace DOL.GS
 {
     public class SprintECSGameEffect : ECSGameAbilityEffect
     {
-        public SprintECSGameEffect(ECSGameEffectInitParams initParams) : base(initParams) 
+        public SprintECSGameEffect(in ECSGameEffectInitParams initParams) : base(initParams) 
         {
             EffectType = eEffect.Sprint;
-            NextTick = GameLoop.GameLoopTime + 1;
             PulseFreq = 200;
-            EffectService.RequestStartEffect(this);
+            NextTick = GameLoop.GameLoopTime;
         }
 
         private int _idleTicks = 0;
@@ -29,14 +27,6 @@ namespace DOL.GS
         {
             if (OwnerPlayer != null)
             {
-                int regen = OwnerPlayer.GetModified(eProperty.EnduranceRegenerationRate);
-                var enduranceChant = OwnerPlayer.GetModified(eProperty.FatigueConsumption);
-                var cost = -5 + regen;
-
-                if (enduranceChant > 1)
-                    cost = (int) Math.Ceiling(cost * enduranceChant * 0.01);
-
-                OwnerPlayer.Endurance += cost;
                 OwnerPlayer.Out.SendUpdateMaxSpeed();
                 OwnerPlayer.Out.SendMessage(LanguageMgr.GetTranslation(OwnerPlayer.Client.Account.Language, "GamePlayer.Sprint.PrepareSprint"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 Owner.StartEnduranceRegeneration();
@@ -60,7 +50,7 @@ namespace DOL.GS
                 _idleTicks++;
 
             if (Owner.Endurance - 5 <= 0 || _idleTicks >= 30)
-                EffectService.RequestImmediateCancelEffect(this);
+                Stop();
         }
     }
 }

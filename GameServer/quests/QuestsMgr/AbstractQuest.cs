@@ -9,7 +9,6 @@ using DOL.Events;
 using DOL.GS.Behaviour;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Quests
 {
@@ -22,7 +21,7 @@ namespace DOL.GS.Quests
         /// <summary>
         /// Defines a logger for this class.
         /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// The level of the quest.
@@ -243,16 +242,13 @@ namespace DOL.GS.Quests
             return false;
         }
 
-        public virtual void StartQuestActionTimer(GamePlayer player, eQuestCommand command, int seconds, string label = "")
+        public virtual void StartQuestActionTimer(GamePlayer player, eQuestCommand command, int seconds, string label = null)
         {
             if (player.QuestActionTimer == null)
             {
                 m_currentCommand = command;
                 AddActionHandlers(player);
-
-                if (label == "")
-                    label = Enum.GetName(typeof(eQuestCommand), command);
-
+                label ??= Enum.GetName(typeof(eQuestCommand), command);
                 player.Out.SendTimerWindow(label, seconds);
                 player.QuestActionTimer = new(player, new ECSGameTimer.ECSTimerCallback(QuestActionCallback), seconds * 1000);
             }
@@ -358,7 +354,7 @@ namespace DOL.GS.Quests
                 return;
             }
 
-            lock (player.Inventory.LockObject)
+            lock (player.Inventory.Lock)
             {
                 DbInventoryItem item = player.Inventory.GetFirstItemByID(itemTemplate.Id_nb, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack);
 
@@ -383,7 +379,7 @@ namespace DOL.GS.Quests
                 return;
             }
 
-            lock (player.Inventory.LockObject)
+            lock (player.Inventory.Lock)
             {
                 if (item != null)
                 {
@@ -408,7 +404,7 @@ namespace DOL.GS.Quests
                 return 0;
             }
 
-            lock (player.Inventory.LockObject)
+            lock (player.Inventory.Lock)
             {
                 DbInventoryItem item = player.Inventory.GetFirstItemByID(itemTemplate.Id_nb, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack);
 
@@ -537,10 +533,7 @@ namespace DOL.GS.Quests
             DbInventoryItem item;
 
             if (itemTemplate is DbItemUnique)
-            {
-                GameServer.Database.AddObject(itemTemplate as DbItemUnique);
                 item = GameInventoryItem.Create(itemTemplate as DbItemUnique);
-            }
             else
                 item = GameInventoryItem.Create(itemTemplate);
 

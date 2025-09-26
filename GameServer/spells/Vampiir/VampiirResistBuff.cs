@@ -1,23 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-using System;
 using System.Collections.Generic;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
@@ -25,7 +5,7 @@ using DOL.GS.RealmAbilities;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("VampiirMeleeResistance")]
+	[SpellHandler(eSpellType.VampiirMeleeResistance)]
 	public class VampiirMeleeResistance : SpellHandler
 	{
 		public override void FinishSpellCast(GameLiving target)
@@ -40,9 +20,9 @@ namespace DOL.GS.Spells
 			GameLiving living = effect.Owner as GameLiving;
             GamePlayer player = effect.Owner as GamePlayer;
             int value = (int)Spell.Value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Slash] += value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Crush] += value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Thrust] += value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Slash] += value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Crush] += value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Thrust] += value;
             if (player != null)
             {
                 player.Out.SendCharStatsUpdate();
@@ -59,9 +39,9 @@ namespace DOL.GS.Spells
             GameLiving living = effect.Owner as GameLiving;
             GamePlayer player = effect.Owner as GamePlayer;
 			int value = (int)Spell.Value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Slash] -= value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Crush] -= value;
-            living.BaseBuffBonusCategory[(int)eProperty.Resist_Thrust] -= value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Slash] -= value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Crush] -= value;
+            living.BaseBuffBonusCategory[eProperty.Resist_Thrust] -= value;
             if (player != null)
             {
                 player.Out.SendCharStatsUpdate();
@@ -73,24 +53,13 @@ namespace DOL.GS.Spells
 			return 0;
 		}
 
-		public override void ApplyEffectOnTarget(GameLiving target)
-		{
-			int specLevel = 0;
-			if (Caster is GamePlayer)
-				specLevel = ((GamePlayer)Caster).GetModifiedSpecLevel(m_spellLine.Spec);
-			Effectiveness = 0.75 + (specLevel-1) * 0.5 / Spell.Level;
-			Effectiveness = Math.Max(0.75, Effectiveness);
-			Effectiveness = Math.Min(1.25, Effectiveness);
-			base.ApplyEffectOnTarget(target);
-        }
-
 		public override IList<string> DelveInfo 
 		{
 			get 
 			{
 				var list = new List<string>(16);
 				list.Add("Name: " + Spell.Name);
-				list.Add("Description: " + Spell.Description);
+				list.Add("Description: " + ShortDescription);
 				list.Add("Target: " + Spell.Target);
 				list.Add("Casting time: " + (Spell.CastTime*0.001).ToString("0.0## sec;-0.0## sec;'instant'"));
 				if (Spell.Duration >= ushort.MaxValue*1000)
@@ -116,7 +85,7 @@ namespace DOL.GS.Spells
 		public VampiirMeleeResistance(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
 	}
 
-	[SpellHandlerAttribute("VampiirMagicResistance")]
+	[SpellHandler(eSpellType.VampiirMagicResistance)]
 	public class VampiirMagicResistance : SpellHandler
 	{
 		public override void FinishSpellCast(GameLiving target)
@@ -136,12 +105,12 @@ namespace DOL.GS.Spells
 			if (boad != null) boad.Cancel(false);
 			
             int value = (int)Spell.Value;
-            living.AbilityBonus[(int)eProperty.Resist_Body] += value;
-            living.AbilityBonus[(int)eProperty.Resist_Cold] += value;
-            living.AbilityBonus[(int)eProperty.Resist_Energy] += value;
-            living.AbilityBonus[(int)eProperty.Resist_Heat] += value;
-            living.AbilityBonus[(int)eProperty.Resist_Matter] += value;
-            living.AbilityBonus[(int)eProperty.Resist_Spirit] += value;
+            living.AbilityBonus[eProperty.Resist_Body] += value;
+            living.AbilityBonus[eProperty.Resist_Cold] += value;
+            living.AbilityBonus[eProperty.Resist_Energy] += value;
+            living.AbilityBonus[eProperty.Resist_Heat] += value;
+            living.AbilityBonus[eProperty.Resist_Matter] += value;
+            living.AbilityBonus[eProperty.Resist_Spirit] += value;
             if(player != null)
             {
                 player.Out.SendCharStatsUpdate();
@@ -156,12 +125,12 @@ namespace DOL.GS.Spells
 		{
             GameLiving living = effect.Owner as GameLiving;
             int value = (int)Spell.Value;
-            living.AbilityBonus[(int)eProperty.Resist_Body] -= value;
-            living.AbilityBonus[(int)eProperty.Resist_Cold] -= value;
-            living.AbilityBonus[(int)eProperty.Resist_Energy] -= value;
-            living.AbilityBonus[(int)eProperty.Resist_Heat] -= value;
-            living.AbilityBonus[(int)eProperty.Resist_Matter] -= value;
-            living.AbilityBonus[(int)eProperty.Resist_Spirit] -= value;
+            living.AbilityBonus[eProperty.Resist_Body] -= value;
+            living.AbilityBonus[eProperty.Resist_Cold] -= value;
+            living.AbilityBonus[eProperty.Resist_Energy] -= value;
+            living.AbilityBonus[eProperty.Resist_Heat] -= value;
+            living.AbilityBonus[eProperty.Resist_Matter] -= value;
+            living.AbilityBonus[eProperty.Resist_Spirit] -= value;
             GamePlayer player = living as GamePlayer;
             if(player != null)
             {
@@ -174,24 +143,13 @@ namespace DOL.GS.Spells
 			return 0;
 		}
 
-		public override void ApplyEffectOnTarget(GameLiving target)
-		{
-			int specLevel = 0;
-			if (Caster is GamePlayer)
-				specLevel = ((GamePlayer)Caster).GetModifiedSpecLevel(m_spellLine.Spec);
-			Effectiveness = 0.75 + (specLevel-1) * 0.5 / Spell.Level;
-			Effectiveness = Math.Max(0.75, Effectiveness);
-			Effectiveness = Math.Min(1.25, Effectiveness);
-			base.ApplyEffectOnTarget(target);
-		}
-
 		public override IList<string> DelveInfo 
 		{
 			get 
 			{
 				var list = new List<string>(16);
 				list.Add("Name: " + Spell.Name);
-				list.Add("Description: " + Spell.Description);
+				list.Add("Description: " + ShortDescription);
 				list.Add("Target: " + Spell.Target);
 				list.Add("Casting time: " + (Spell.CastTime*0.001).ToString("0.0## sec;-0.0## sec;'instant'"));
 				if (Spell.Duration >= ushort.MaxValue*1000)

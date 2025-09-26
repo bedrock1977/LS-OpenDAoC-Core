@@ -28,7 +28,7 @@ namespace DOL.GS.Commands
 		"GMCommands.Keep.Usage.Radius")]
 	public class KeepCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected string TEMP_KEEP_LAST = "TEMP_KEEP_LAST";
 		public enum eKeepTypes : int
@@ -73,7 +73,7 @@ namespace DOL.GS.Commands
 				return;
 			}
 
-			AbstractGameKeep myKeep = client.Player.TempProperties.GetProperty<AbstractGameKeep>(TEMP_KEEP_LAST, null);
+			AbstractGameKeep myKeep = client.Player.TempProperties.GetProperty<AbstractGameKeep>(TEMP_KEEP_LAST);
 			if (myKeep == null) myKeep = GameServer.KeepManager.GetKeepCloseToSpot(client.Player.CurrentRegionID, client.Player, 10000);
 			
 			switch (args[1])
@@ -1958,7 +1958,7 @@ namespace DOL.GS.Commands
 
 						log.Debug("Keep creation: check of components complete");
 
-						foreach (GamePlayer otherPlayer in ClientService.GetPlayersOfRegion(client.Player.CurrentRegion))
+						foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersOfRegion(client.Player.CurrentRegion))
 						{
 							otherPlayer.Out.SendKeepInfo(keep);
 
@@ -2035,7 +2035,7 @@ namespace DOL.GS.Commands
 						DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "GMCommands.Keep.TowerCreate.CreatedSaved"));
 
 						//send the creation packets
-						foreach (GamePlayer otherPlayer in ClientService.GetPlayersOfRegion(client.Player.CurrentRegion))
+						foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersOfRegion(client.Player.CurrentRegion))
 						{
 							otherPlayer.Out.SendKeepInfo(k);
 							otherPlayer.Out.SendKeepComponentUpdate(k, false);
@@ -2141,7 +2141,7 @@ namespace DOL.GS.Commands
 							d.Z = door.Z;
 							d.Level = 0;
 							d.Model = 0xFFFF;
-							d.DoorID = door.DoorID;
+							d.DoorId = door.DoorId;
 							d.State = eDoorState.Closed;
 
 							DoorMgr.RegisterDoor(d);
@@ -2149,7 +2149,7 @@ namespace DOL.GS.Commands
 
 							d.Component = new GameKeepComponent();
 							d.Component.Keep = k;
-							d.Component.Keep.Doors.Add(d.DoorID.ToString(), d);
+							d.Component.Keep.Doors.Add(d.DoorId.ToString(), d);
 
 							d.Health = d.MaxHealth;
 							d.StartHealthRegeneration();
@@ -2160,7 +2160,7 @@ namespace DOL.GS.Commands
 						DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "GMCommands.Keep.FastCreate.KeepCreated"));
 
 						//send the creation packets
-						foreach (GamePlayer otherPlayer in ClientService.GetPlayersOfRegion(client.Player.CurrentRegion))
+						foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersOfRegion(client.Player.CurrentRegion))
 						{
 							otherPlayer.Out.SendKeepInfo(k);
 
@@ -2542,7 +2542,7 @@ namespace DOL.GS.Commands
 							}
 						}
 
-						foreach (GamePlayer otherPlayer in ClientService.GetPlayersOfRegion(client.Player.CurrentRegion))
+						foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersOfRegion(client.Player.CurrentRegion))
 						{
 							otherPlayer.Out.SendKeepRemove(myKeep);
 							otherPlayer.Out.SendKeepInfo(myKeep);

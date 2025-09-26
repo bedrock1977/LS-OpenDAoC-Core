@@ -1,16 +1,17 @@
 using System.Collections.Generic;
 using System.Linq;
+using DOL.GS.API;
 using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Effects
 {
     public class AtlasOF_BatteryOfLifeECSEffect : ECSGameAbilityEffect
     {
-        public AtlasOF_BatteryOfLifeECSEffect(ECSGameEffectInitParams initParams) : base(initParams)
+        public AtlasOF_BatteryOfLifeECSEffect(in ECSGameEffectInitParams initParams) : base(initParams)
         {
             EffectType = eEffect.BatteryOfLife;
-            EffectService.RequestStartEffect(this);
             PulseFreq = 1000;
+            NextTick = GameLoop.GameLoopTime;
         }
 
         private int _healthPool = 0;
@@ -22,14 +23,13 @@ namespace DOL.GS.Effects
         public override void OnStartEffect()
         {
             _healthPool = (int) (1000 * (1 + OwnerPlayer.GetModified(eProperty.BuffEffectiveness) * 0.01));
-            NextTick = 1;
             base.OnStartEffect();
         }
 
         public override void OnEffectPulse()
         {
             if (_healthPool <= 0)
-                EffectService.RequestImmediateCancelEffect(this);
+                Stop();
 
             if (OwnerPlayer.Group != null)
             {
@@ -37,7 +37,7 @@ namespace DOL.GS.Effects
 
                 foreach (GameLiving living in OwnerPlayer.Group.GetMembersInTheGroup())
                 {
-                    if (living.IsWithinRadius(OwnerPlayer, 1500) && living.Health < living.MaxHealth && living != OwnerPlayer)
+                    if (living.IsWithinRadius(OwnerPlayer, 1500) && living.IsAlive && living != OwnerPlayer)
                         livingToHeal.Add(living, living.Health);
                 }
 
@@ -51,24 +51,23 @@ namespace DOL.GS.Effects
                     GameLiving currentLiving = healed.Key;
                     int difference = currentLiving.MaxHealth - currentLiving.Health;
 
-                    if (_healthPool <= 0)
-                        EffectService.RequestImmediateCancelEffect(this);
+                    difference = currentLiving.ChangeHealth(OwnerPlayer, eHealthChangeType.Spell, difference);
 
-                    if (_healthPool > difference)
+                    if (difference > 0)
                     {
+                        _healthPool -= difference;
+
                         if (currentLiving is GamePlayer playerTarget)
                             playerTarget.Out.SendMessage($"{OwnerName}'s Battery of Life heals you for {difference} health points!", eChatType.CT_Spell, eChatLoc.CL_SystemWindow);
 
                         if (Owner is GamePlayer playerCaster)
                             playerCaster.Out.SendMessage($"Your Battery of Life heals {currentLiving.Name} for {difference} health points!", eChatType.CT_Spell, eChatLoc.CL_SystemWindow);
 
-                        currentLiving.ChangeHealth(OwnerPlayer, eHealthChangeType.Spell, difference);
-                        _healthPool -= difference;
-                    }
-                    else
-                    {
-                        currentLiving.ChangeHealth(OwnerPlayer, eHealthChangeType.Spell, _healthPool);
-                        _healthPool = 0;
+                        if (_healthPool <= 0)
+                        {
+                            Stop();
+                            break;
+                        }
                     }
                 }
             }

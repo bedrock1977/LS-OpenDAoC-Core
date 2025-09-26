@@ -22,7 +22,7 @@ namespace DOL.GS
 
                 // Patch 1.123: The intercept chance on the Fossil Defender has been reduced by 20%.
                 // Can't find documentation for previous intercept chance, so assuming 50%
-                if (pet is BDSubPet)
+                if (pet is BdSubPet)
                     return 30;
 
                 // Patch 1.125: Reduced the spirit warrior's intercept chance from 75% to 60% and intercept radius from 150 to 125
@@ -34,24 +34,20 @@ namespace DOL.GS
         {
             get
             {
-                if (Owner is GamePlayer player)
-                {
-                    return Source != null && Target != null
-                        ? LanguageMgr.GetTranslation(player.Client, "Effects.InterceptEffect.InterceptedByName", Target.GetName(0, false), Source.GetName(0, false))
-                        : LanguageMgr.GetTranslation(player.Client, "Effects.InterceptEffect.Name");
-                }
+                GamePlayer playerOwner = Owner as GamePlayer;
 
-                return string.Empty;
+                return Source != null && Target != null
+                    ? LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.InterceptEffect.InterceptedByName", Target.GetName(0, false), Source.GetName(0, false))
+                    : LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.InterceptEffect.Name");
             }
         }
         public override bool HasPositiveEffect => true;
 
-        public InterceptECSGameEffect(ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
+        public InterceptECSGameEffect(in ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
         {
             Source = source;
             Target = target;
             EffectType = eEffect.Intercept;
-            EffectService.RequestStartEffect(this);
         }
 
         public override void OnStartEffect()
@@ -77,16 +73,16 @@ namespace DOL.GS
             {
                 if (!Source.IsWithinRadius(Target, InterceptAbilityHandler.INTERCEPT_DISTANCE))
                 {
-                    playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouAttemtInterceptYBut", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
-                    playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.InterceptEffect.XAttemtInterceptYouBut", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                    playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouAttemptInterceptYBut", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                    playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.InterceptEffect.XAttemptInterceptYouBut", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 }
                 else
                 {
-                    playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouAttemtInterceptY", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                    playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouAttemptInterceptY", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                     playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.InterceptEffect.XAttemptInterceptYou", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 }
 
-                PairedEffect = new InterceptECSGameEffect(new ECSGameEffectInitParams(Target, 0, 1), Source, Target);
+                PairedEffect = ECSGameEffectFactory.Create(new(Target, 0, 1), Source, Target, static (in ECSGameEffectInitParams i, GameLiving source, GameLiving target) => new InterceptECSGameEffect(i, source, target));
                 PairedEffect.PairedEffect = this;
             }
 
@@ -99,11 +95,11 @@ namespace DOL.GS
             {
                 GamePlayer playerSource = Source as GamePlayer;
                 GamePlayer playerTarget = Target as GamePlayer;
-                playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouNoAttemtInterceptY", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                playerSource?.Out.SendMessage(LanguageMgr.GetTranslation(playerSource.Client, "Effects.InterceptEffect.YouNoAttemptInterceptY", Target.GetName(0, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.InterceptEffect.XNoAttemptInterceptYou", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
             }
 
-            EffectService.RequestCancelEffect(PairedEffect);
+            PairedEffect?.Stop();
             base.OnStopEffect();
         }
     }

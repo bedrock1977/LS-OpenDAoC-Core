@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using DOL.GS.Housing;
 using DOL.GS.PlayerTitles;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -13,7 +12,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Constructs a new PacketLib for Version 1.75 clients
@@ -28,11 +27,11 @@ namespace DOL.GS.PacketHandler
 			if (text == null)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.DetailWindow)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.DetailWindow)))
 			{
 				pak.WriteByte(0); // new in 1.75
 				if (caption == null)
-					caption = "";
+					caption = string.Empty;
 				if (caption.Length > byte.MaxValue)
 					caption = caption.Substring(0, byte.MaxValue);
 				pak.WritePascalString(caption); //window caption
@@ -48,7 +47,7 @@ namespace DOL.GS.PacketHandler
 		public override void SendPlayerTitles()
 		{
 			var titles = m_gameClient.Player.Titles;
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.DetailWindow)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.DetailWindow)))
 			{
 				pak.WriteByte(1); // new in 1.75
 				pak.WritePascalString("Player Statistics"); //window caption
@@ -84,9 +83,9 @@ namespace DOL.GS.PacketHandler
 
 		public override void SendPlayerTitleUpdate(GamePlayer player)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.VisualEffect)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.VisualEffect)))
 			{
-				pak.WriteShort((ushort) player.ObjectID);
+				pak.WriteShort(player.ObjectID);
 				pak.WriteByte(0x0B); // subcode
 				IPlayerTitle title = player.CurrentTitle;
 				if (title == PlayerTitleMgr.ClearTitle)
@@ -112,7 +111,7 @@ namespace DOL.GS.PacketHandler
 			if (player == null)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.VariousUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.VariousUpdate)))
 			{
 				pak.WriteByte(0x03); //subcode
 				pak.WriteByte(0x0e); //number of entry
@@ -209,39 +208,39 @@ namespace DOL.GS.PacketHandler
 				switch ((eProperty)updateStats[i])
 				{
 					case eProperty.Strength:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.StrCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.StrCapBonus];
 						break;
 					case eProperty.Dexterity:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.DexCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.DexCapBonus];
 						break;
 					case eProperty.Constitution:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.ConCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.ConCapBonus];
 						break;
 					case eProperty.Quickness:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.QuiCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.QuiCapBonus];
 						break;
 					case eProperty.Intelligence:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.IntCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.IntCapBonus];
 						break;
 					case eProperty.Piety:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.PieCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.PieCapBonus];
 						break;
 					case eProperty.Charisma:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.ChaCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.ChaCapBonus];
 						break;
 					case eProperty.Empathy:
-						cap += m_gameClient.Player.ItemBonus[(int)eProperty.EmpCapBonus];
+						cap += m_gameClient.Player.ItemBonus[eProperty.EmpCapBonus];
 						break;
 					default: break;
 				}
 
 				if (updateStats[i] == m_gameClient.Player.CharacterClass.ManaStat)
-					cap += m_gameClient.Player.ItemBonus[(int)eProperty.AcuCapBonus];
+					cap += m_gameClient.Player.ItemBonus[eProperty.AcuCapBonus];
 
 				itemCaps[i] = Math.Min(cap, itemCap + bonusCap);
 			}
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.StatsUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.StatsUpdate)))
 			{
 				// base
 				for (int i = 0; i < updateStats.Length; i++)
@@ -259,8 +258,8 @@ namespace DOL.GS.PacketHandler
 				// buffs/debuffs only; remove base, item bonus, RA bonus, class bonus
 				for (int i = 0; i < updateStats.Length; i++)
 				{
-					modStats[i] = m_gameClient.Player.GetModified((eProperty)updateStats[i]);
-					int abilityBonus = m_gameClient.Player.AbilityBonus[(int)updateStats[i]];
+					modStats[i] = m_gameClient.Player.GetModified((eProperty) updateStats[i]);
+					int abilityBonus = m_gameClient.Player.AbilityBonus[(eProperty) updateStats[i]];
 					int acuityItemBonus = 0;
 
 					if (updateStats[i] == m_gameClient.Player.CharacterClass.ManaStat)
@@ -268,16 +267,16 @@ namespace DOL.GS.PacketHandler
 						if (m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Scout && m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Hunter && m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Ranger
 							&& m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Nightshade)
 						{
-							abilityBonus += m_gameClient.Player.AbilityBonus[(int)eProperty.Acuity];
+							abilityBonus += m_gameClient.Player.AbilityBonus[eProperty.Acuity];
 
 							if (m_gameClient.Player.CharacterClass.ClassType != eClassType.PureTank)
-								acuityItemBonus = m_gameClient.Player.ItemBonus[(int)eProperty.Acuity];
+								acuityItemBonus = m_gameClient.Player.ItemBonus[eProperty.Acuity];
 						}
 					}
 
 					int buff = modStats[i] - baseStats[i];
 					buff -= abilityBonus;
-					buff -= Math.Min(itemCaps[i], m_gameClient.Player.ItemBonus[(int)updateStats[i]] + acuityItemBonus);
+					buff -= Math.Min(itemCaps[i], m_gameClient.Player.ItemBonus[(eProperty) updateStats[i]] + acuityItemBonus);
 
 					pak.WriteShort((ushort)buff);
 				}
@@ -296,11 +295,11 @@ namespace DOL.GS.PacketHandler
 						{
 
 							if (m_gameClient.Player.CharacterClass.ClassType != eClassType.PureTank)
-								acuityItemBonus = m_gameClient.Player.ItemBonus[(int)eProperty.Acuity];
+								acuityItemBonus = m_gameClient.Player.ItemBonus[eProperty.Acuity];
 						}
 					}
 
-					pak.WriteShort((ushort)(m_gameClient.Player.ItemBonus[(int)updateStats[i]] + acuityItemBonus));
+					pak.WriteShort((ushort)(m_gameClient.Player.ItemBonus[(eProperty) updateStats[i]] + acuityItemBonus));
 				}
 
 				pak.WriteShort(0);
@@ -322,10 +321,10 @@ namespace DOL.GS.PacketHandler
 						if (m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Scout && m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Hunter && m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Ranger
 							&& m_gameClient.Player.CharacterClass.ID != (int)eCharacterClass.Nightshade)
 						{
-							acuityItemBonus = m_gameClient.Player.AbilityBonus[(int)eProperty.Acuity];
+							acuityItemBonus = m_gameClient.Player.AbilityBonus[eProperty.Acuity];
 						}
 					}
-					pak.WriteByte((byte)(m_gameClient.Player.AbilityBonus[(int)updateStats[i]] + acuityItemBonus));
+					pak.WriteByte((byte)(m_gameClient.Player.AbilityBonus[(eProperty) updateStats[i]] + acuityItemBonus));
 				}
 
 				pak.WriteByte(0);
@@ -371,28 +370,27 @@ namespace DOL.GS.PacketHandler
 				caps[i] = cap;
 			}
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.StatsUpdate)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.StatsUpdate)))
 			{
 
 				// racial resists
 				for (int i = 0; i < updateResists.Length; i++)
 				{
 					racial[i] = SkillBase.GetRaceResist(m_gameClient.Player.Race, updateResists[i]);
-					pak.WriteShort((ushort)racial[i]);
+					pak.WriteShort((ushort) racial[i]);
 				}
 
 				// buffs/debuffs only; remove base, item bonus, RA bonus, race bonus
 				for (int i = 0; i < updateResists.Length; i++)
 				{
-					int mod = m_gameClient.Player.GetModified((eProperty)updateResists[i]);
-					int buff = mod - racial[i] - m_gameClient.Player.AbilityBonus[(int)updateResists[i]] - Math.Min(caps[i], m_gameClient.Player.ItemBonus[(int)updateResists[i]]);
-					pak.WriteShort((ushort)buff);
+					int buff = m_gameClient.Player.GetModifiedFromBuffs((eProperty) updateResists[i]);
+					pak.WriteShort((ushort) buff);
 				}
 
 				// item bonuses
 				for (int i = 0; i < updateResists.Length; i++)
 				{
-					pak.WriteShort((ushort)(m_gameClient.Player.ItemBonus[(int)updateResists[i]]));
+					pak.WriteShort((ushort) m_gameClient.Player.ItemBonus[(eProperty) updateResists[i]]);
 				}
 
 				// item caps
@@ -404,7 +402,7 @@ namespace DOL.GS.PacketHandler
 				// RA bonuses
 				for (int i = 0; i < updateResists.Length; i++)
 				{
-					pak.WriteByte((byte)(m_gameClient.Player.AbilityBonus[(int)updateResists[i]]));
+					pak.WriteByte((byte) (m_gameClient.Player.AbilityBonus[(eProperty) updateResists[i]] + m_gameClient.Player.OtherBonus[(eProperty) updateResists[i]]));
 				}
 
 				pak.WriteByte(0xFF); // FF if resists packet
@@ -437,9 +435,9 @@ namespace DOL.GS.PacketHandler
 			if (m_gameClient.Player == null || playerToCreate.IsVisibleTo(m_gameClient.Player) == false)
 				return;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.PlayerCreate172)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.PlayerCreate172)))
 			{
-				pak.WriteShort((ushort)playerToCreate.Client.SessionID);
+				pak.WriteShort(playerToCreate.Client.SessionID);
 				pak.WriteShort((ushort)playerToCreate.ObjectID);
 				pak.WriteShort(playerToCreate.Model);
 				pak.WriteShort((ushort)playerToCreate.Z);
@@ -482,7 +480,7 @@ namespace DOL.GS.PacketHandler
 
 		public override void SendLoginGranted(byte color)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.LoginGranted)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.LoginGranted)))
 			{
 				pak.WriteByte(0x01); //isSI
 				pak.WriteByte(ParseVersion((int)m_gameClient.Version, true));

@@ -13,7 +13,7 @@ namespace DOL.GS.RealmAbilities
 	/// </summary>
 	public class RAStatEnhancer : L5RealmAbility
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		eProperty m_property = eProperty.Undefined;
 
@@ -75,33 +75,17 @@ namespace DOL.GS.RealmAbilities
 		/// <param name="target"></param>
 		public virtual void SendUpdates(GameLiving target)
 		{
-			GamePlayer player = target as GamePlayer;	// need new prop system to not worry about updates
-			if (player != null)
-			{
-				player.Out.SendCharStatsUpdate();
-				player.Out.SendUpdateWeaponAndArmorStats();
-				player.UpdateEncumberance();
-				player.UpdatePlayerStatus();
-			}
-
-			if (target.IsAlive)
-			{
-				if (target.Health < target.MaxHealth) target.StartHealthRegeneration();
-				else if (target.Health > target.MaxHealth) target.Health = target.MaxHealth;
-
-				if (target.Mana < target.MaxMana) target.StartPowerRegeneration();
-				else if (target.Mana > target.MaxMana) target.Mana = target.MaxMana;
-
-				if (target.Endurance < target.MaxEndurance) target.StartEnduranceRegeneration();
-				else if (target.Endurance > target.MaxEndurance) target.Endurance = target.MaxEndurance;
-			}
+			// Stagger the update and delegate to the effect list component to avoid redundant packets and solve a case of deadlock.
+			// We're typically holding an ability lock here, and sending a weapon/armor update requires an inventory lock.
+			// But threads holding a lock on inventory seems to be able to request a lock on abilities too (encumbrance update maybe?).
+			target.effectListComponent.RequestPlayerUpdate(EffectHelper.PlayerUpdate.Encumberance | EffectHelper.PlayerUpdate.WeaponArmor | EffectHelper.PlayerUpdate.Stats | EffectHelper.PlayerUpdate.Status);
 		}
 
 		public override void Activate(GameLiving living, bool sendUpdates)
 		{
 			if (m_activeLiving == null)
 			{
-				living.AbilityBonus[(int)m_property] += GetAmountForLevel(Level);
+				living.AbilityBonus[m_property] += GetAmountForLevel(Level);
 				m_activeLiving = living;
 				if (sendUpdates) SendUpdates(living);
 			}
@@ -115,7 +99,7 @@ namespace DOL.GS.RealmAbilities
 		{
 			if (m_activeLiving != null)
 			{
-				living.AbilityBonus[(int)m_property] -= GetAmountForLevel(Level);
+				living.AbilityBonus[m_property] -= GetAmountForLevel(Level);
 				if (sendUpdates) SendUpdates(living);
 				m_activeLiving = null;
 			}
@@ -130,7 +114,7 @@ namespace DOL.GS.RealmAbilities
 			if (newLevel == 0)
 				newLevel = Level;
 
-			m_activeLiving.AbilityBonus[(int)m_property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
+			m_activeLiving.AbilityBonus[m_property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
 			SendUpdates(m_activeLiving);
 		}
 	}
@@ -177,6 +161,6 @@ namespace DOL.GS.RealmAbilities
 	
 	public class RAEndRegenEnhancer : RAStatEnhancer
 	{
-		public RAEndRegenEnhancer(DbAbility dba, int level) : base(dba, level, eProperty.EnduranceRegenerationRate) { }
+		public RAEndRegenEnhancer(DbAbility dba, int level) : base(dba, level, eProperty.EnduranceRegenerationAmount) { }
 	}
 }

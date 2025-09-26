@@ -2,15 +2,20 @@ using System;
 using DOL.AI.Brain;
 using DOL.Events;
 using DOL.GS.PacketHandler;
+using DOL.Logging;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("DirectDamage")]
+	[SpellHandler(eSpellType.DirectDamage)]
 	public class DirectDamageSpellHandler : SpellHandler
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logger log = LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private bool m_castFailed = false;
+
+		public override string ShortDescription => $"Inflicts {Spell.Damage} {Spell.DamageTypeToString()} damage to the target.";
+
+		public DirectDamageSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
 		/// <summary>
 		/// Execute direct damage spell
@@ -70,43 +75,33 @@ namespace DOL.GS.Spells
 			if (target == null)
 				return;
 
-			if (Spell.Target == eSpellTarget.CONE) //  || (Spell.Target == eSpellTarget.ENEMY && Spell.IsPBAoE)  <-- pbaoe skips los per 1.65
+			// 1.65 compliance. No LoS check on PBAoE or AoE spells.
+			if (Spell.Target is eSpellTarget.CONE)
 			{
 				GamePlayer checkPlayer = null;
+
 				if (target is GamePlayer)
-				{
 					checkPlayer = target as GamePlayer;
-				}
 				else
 				{
 					if (Caster is GamePlayer)
-					{
 						checkPlayer = Caster as GamePlayer;
-					}
-					else if (Caster is GameNPC && (Caster as GameNPC).Brain is IControlledBrain)
-					{
-						IControlledBrain brain = (Caster as GameNPC).Brain as IControlledBrain;
-						checkPlayer = brain.GetPlayerOwner();
-					}
+					else if (Caster is GameNPC npcCaster && npcCaster.Brain is IControlledBrain npcCasterBrain)
+						checkPlayer = npcCasterBrain.GetPlayerOwner();
 				}
+
 				if (checkPlayer != null)
-				{
 					checkPlayer.Out.SendCheckLos(Caster, target, new CheckLosResponse(DealDamageCheckLos));
-				}
 				else
-				{
 					DealDamage(target);
-				}
 			}
 			else
-			{
 				DealDamage(target);
-			}
 		}
 
-		protected virtual void DealDamageCheckLos(GamePlayer player, eLosCheckResponse response, ushort sourceOID, ushort targetOID)
+		protected virtual void DealDamageCheckLos(GamePlayer player, LosCheckResponse response, ushort sourceOID, ushort targetOID)
 		{
-			if (response is eLosCheckResponse.TRUE)
+			if (response is LosCheckResponse.True)
 			{
 				try
 				{
@@ -138,59 +133,13 @@ namespace DOL.GS.Spells
 
 		protected virtual void DealDamage(GameLiving target)
 		{
-			if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
+			if (!target.IsAlive || target.ObjectState is not GameObject.eObjectState.Active)
+				return;
 
-			// calc damage
 			AttackData ad = CalculateDamageToTarget(target);
-
 			SendDamageMessages(ad);
 			DamageTarget(ad, true);
-			
 			target.StartInterruptTimer(target.SpellInterruptDuration, ad.AttackType, Caster);
 		}
-
-
-		/*
-		 * We need to send resist spell los check packets because spell resist is calculated first, and
-		 * so you could be inside keep and resist the spell and be interupted when not in view
-		 */
-		protected override void OnSpellResisted(GameLiving target)
-		{
-			if (target is GamePlayer)
-			{
-				GamePlayer player = target as GamePlayer;
-				player.Out.SendCheckLos(Caster, player, new CheckLosResponse(ResistSpellCheckLos));
-			}
-			else
-			{
-				SpellResisted(target);
-			}
-		}
-
-		private void ResistSpellCheckLos(GamePlayer player, eLosCheckResponse response, ushort sourceOID, ushort targetOID)
-		{
-			if (response is eLosCheckResponse.TRUE)
-			{
-				try
-				{
-					GameLiving target = Caster.CurrentRegion.GetObject(targetOID) as GameLiving;
-					if (target != null)
-						SpellResisted(target);
-				}
-				catch (Exception e)
-				{
-					if (log.IsErrorEnabled)
-						log.Error(string.Format("targetOID:{0} caster:{1} exception:{2}", targetOID, Caster, e));
-				}
-			}
-		}
-
-		private void SpellResisted(GameLiving target)
-		{
-			base.OnSpellResisted(target);
-		}
-
-		// constructor
-		public DirectDamageSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
 	}
 }

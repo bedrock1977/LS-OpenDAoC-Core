@@ -26,55 +26,56 @@ namespace DOL.GS.PropertyCalc
                 case GameKeepDoor:
                 case GameKeepComponent:
                     return CalculateKeepComponentArmorFactor(living);
-                case IGameEpicNpc:
-                    return CalculateLivingArmorFactor(living, property, 12.0 * (living as IGameEpicNpc).ArmorFactorScalingFactor, 50.0, false);
+                case IGameEpicNpc epicNpc:
+                    return CalculateLivingArmorFactor(living, property, 12 * epicNpc.ArmorFactorScalingFactor, 50);
+                case NecromancerPet:
+                    return CalculateLivingArmorFactor(living, property, 12, 121);
                 case GameSummonedPet:
-                    return CalculateLivingArmorFactor(living, property, 12.0, living is NecromancerPet ? 121.0 : 175.0, true);
+                    return CalculateLivingArmorFactor(living, property, 12, 175);
+                case GuardLord:
+                    return CalculateLivingArmorFactor(living, property, 12, 134);
                 default:
-                    return CalculateLivingArmorFactor(living, property, 12.0, living is GuardLord ? 134.0 : 200.0, false);
+                    return CalculateLivingArmorFactor(living, property, 12, 200);
             }
-        }
 
-        private static int CalculatePlayerArmorFactor(GameLiving living, eProperty property)
-        {
-            // Base AF buffs are calculated in the item's armor calc since they have the same cap.
-            int armorFactor = Math.Min((int) (living.Level * 1.875), living.SpecBuffBonusCategory[(int) property]);
-            armorFactor -= Math.Abs(living.DebuffCategory[(int) property]);
-            armorFactor += Math.Min(living.Level, living.ItemBonus[(int) property]);
-            armorFactor += living.BuffBonusCategory4[(int) property];
-            armorFactor /= 6;
-            return Math.Max(1, armorFactor);
-        }
+            static int CalculatePlayerArmorFactor(GameLiving living, eProperty property)
+            {
+                // Base AF buffs are calculated in the item's armor calc since they have the same cap.
+                int armorFactor = Math.Min((int) (living.Level * 1.875), living.SpecBuffBonusCategory[property]);
+                armorFactor -= Math.Abs(living.DebuffCategory[property]);
+                armorFactor += Math.Min(living.Level, living.ItemBonus[property]);
+                armorFactor += living.OtherBonus[property];
+                return armorFactor;
+            }
 
-        private static int CalculateLivingArmorFactor(GameLiving living, eProperty property, double factor, double divisor, bool useBaseBuff)
-        {
-            int armorFactor = (int) ((1 + living.Level / divisor) * (living.Level * factor));
+            static int CalculateLivingArmorFactor(GameLiving living, eProperty property, double factor, double divisor)
+            {
+                int armorFactor = (int) ((1 + living.Level / divisor) * (living.Level * factor));
 
-            if (useBaseBuff)
-                armorFactor += living.BaseBuffBonusCategory[(int) property];
+                // Some source state either base AF or spec AF isn't supposed to work on NPCs.
+                // In any case, having some buffs not doing anything feels pretty bad. Some pets also have a self spec AF buff.
+                armorFactor += living.BaseBuffBonusCategory[property] + living.SpecBuffBonusCategory[property];
+                armorFactor -= Math.Abs(living.DebuffCategory[property]);
+                armorFactor += living.OtherBonus[property];
+                return armorFactor;
+            }
 
-            armorFactor += living.SpecBuffBonusCategory[(int) property];
-            armorFactor -= Math.Abs(living.DebuffCategory[(int) property]);
-            armorFactor += living.BuffBonusCategory4[(int) property];
-            armorFactor /= 6;
-            return Math.Max(1, armorFactor);
-        }
+            static int CalculateKeepComponentArmorFactor(GameLiving living)
+            {
+                GameKeepComponent component = null;
 
-        private static int CalculateKeepComponentArmorFactor(GameLiving living)
-        {
-            GameKeepComponent component = null;
+                if (living is GameKeepDoor keepDoor)
+                    component = keepDoor.Component;
+                else if (living is GameKeepComponent)
+                    component = living as GameKeepComponent;
 
-            if (living is GameKeepDoor keepDoor)
-                component = keepDoor.Component;
-            else if (living is GameKeepComponent)
-                component = living as GameKeepComponent;
+                if (component == null)
+                    return 1;
 
-            if (component == null)
-                return 1;
-
-            double keepLevelMod = 1 + component.Keep.Level * 0.1;
-            int typeMod = component.Keep is GameKeep ? 4 : 2;
-            return Math.Max(1, (int) (component.Keep.BaseLevel * keepLevelMod * typeMod));
+                double keepLevelMod = 1 + component.Keep.Level * 0.1;
+                int typeMod = component.Keep is GameKeep ? 24 : 12;
+                return (int) (component.Keep.BaseLevel * keepLevelMod * typeMod);
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 using DOL.Database;
 using System;
-using log4net;
 using System.Reflection;
 
 namespace DOL.GS
@@ -10,7 +9,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public static bool LoadAllAreas()
 		{
@@ -41,7 +40,9 @@ namespace DOL.GS
 
 						if (area == null)
 						{
-							log.Debug("area type " + thisArea.ClassType + " cannot be created, skipping");
+							if (log.IsDebugEnabled)
+								log.Debug("area type " + thisArea.ClassType + " cannot be created, skipping");
+
 							continue;
 						}
 					}
@@ -52,13 +53,17 @@ namespace DOL.GS
 					if (region == null)
 						continue;
 					region.AddArea(area);
-					log.Info("Area added: " + thisArea.Description);
+
+					if (log.IsInfoEnabled)
+						log.Info("Area added: " + thisArea.Description);
 				}
 				return true;
 			}
 			catch (Exception ex)
 			{
-				log.Error("Loading all areas failed", ex);
+				if (log.IsErrorEnabled)
+					log.Error("Loading all areas failed", ex);
+
 				return false;
 			}
 		}

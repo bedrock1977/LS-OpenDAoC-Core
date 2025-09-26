@@ -100,11 +100,11 @@ Scripts.Players.Cancelstyle.Off: OFF
 
 # /Cmdhelp
 Scripts.Players.Cmdhelp.NoCommand:			La commande {0} n'existe pas.
-Scripts.Players.Cmdhelp.PlvlCommands:		<----------Commandes disponibles pour le niveau de privilège {0}---------->
-Scripts.Players.Cmdhelp.Usage:				>----------Usage pour {0}----------<
+Scripts.Players.Cmdhelp.PlvlCommands:		Commandes disponibles pour le niveau de privilège {0}
+Scripts.Players.Cmdhelp.Usage:				Usage pour {0}
 
 # /Disband
-Scripts.Players.Disband.Disbanded:			{o} a quitté le groupe.
+Scripts.Players.Disband.Disbanded:			{0} a quitté le groupe.
 Scripts.Players.Disband.NoPlayer:			Pas de joueur de ce nom dans le groupe.
 Scripts.Players.Disband.NotInGroup:			Vous n'êtes pas dans un groupe.
 Scripts.Players.Disband.NotLeader:			Vous n'êtes pas le chef du groupe.

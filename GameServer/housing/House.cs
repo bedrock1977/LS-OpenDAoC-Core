@@ -1,38 +1,17 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using DOL.Database;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Housing
 {
 	public class House : Point3D, IGameLocation
 	{
-		/// <summary>
-		/// Defines a logger for this class.
-		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+
+		private const int MAX_VAULT_COUNT = 8; // Must not be bigger than what `eInventorySlot` allows.
 
 		private readonly DbHouse _databaseItem;
 		private readonly Dictionary<int, DbHouseCharsXPerms> _housePermissions;
@@ -543,9 +522,9 @@ namespace DOL.GS.Housing
 		/// <summary>
 		/// Returns a ArrayList with all players in the house
 		/// </summary>
-		public IList<GamePlayer> GetAllPlayersInHouse()
+		public List<GamePlayer> GetAllPlayersInHouse()
 		{
-			var ret = new List<GamePlayer>();
+			var ret = GameLoop.GetListForTick<GamePlayer>();
 			foreach (GamePlayer player in WorldMgr.GetPlayersCloseToSpot(RegionID, X, Y, 25000, WorldMgr.VISIBILITY_DISTANCE))
 			{
 				if (player.CurrentHouse == this && player.InHouse)
@@ -557,28 +536,20 @@ namespace DOL.GS.Housing
 			return ret;
 		}
 
-		/// <summary>
-		/// Find a number that can be used for this vault.
-		/// </summary>
-		/// <returns></returns>
-		public int GetFreeVaultNumber()
+		public int GetAvailableVaultSlot()
 		{
-			var usedVaults = new[] {false, false, false, false};
+			bool[] slots = new bool[MAX_VAULT_COUNT];
 
-			foreach (var housePointItem in DOLDB<DbHouseHookPointItem>.SelectObjects(DB.Column("HouseNumber").IsEqualTo(HouseNumber).And(DB.Column("ItemTemplateID").IsLike("%_vault"))))
+			foreach (DbHouseHookPointItem housePointItem in DOLDB<DbHouseHookPointItem>.SelectObjects(DB.Column("HouseNumber").IsEqualTo(HouseNumber).And(DB.Column("ItemTemplateID").IsLike("%_vault"))))
 			{
-				if (housePointItem.Index >= 0 && housePointItem.Index <= 3)
-				{
-					usedVaults[housePointItem.Index] = true;
-				}
+				if (housePointItem.Index is >= 0 and < MAX_VAULT_COUNT)
+					slots[housePointItem.Index] = true;
 			}
 
-			for (int freeVault = 0; freeVault <= 3; ++freeVault)
+			for (int availableSlot = 0; availableSlot < MAX_VAULT_COUNT; availableSlot++)
 			{
-				if (!usedVaults[freeVault])
-				{
-					return freeVault;
-				}
+				if (!slots[availableSlot])
+					return availableSlot;
 			}
 
 			return -1;
@@ -594,7 +565,8 @@ namespace DOL.GS.Housing
 				return true;
 			}
 
-			log.Error("[Housing]: HouseHookPointOffset exceeds array size.  Model " + o.HouseModel + ", hookpoint " + o.HookpointID);
+			if (log.IsErrorEnabled)
+				log.Error("[Housing]: HouseHookPointOffset exceeds array size.  Model " + o.HouseModel + ", hookpoint " + o.HookpointID);
 
 			return false;
 		}
@@ -648,7 +620,7 @@ namespace DOL.GS.Housing
 			return position;
 		}
 
-		private ushort GetHookpointHeading(uint n)
+		public ushort GetHookpointHeading(uint n)
 		{
 			if (n > HousingConstants.MaxHookpointLocations)
 				return 0;
@@ -688,40 +660,40 @@ namespace DOL.GS.Housing
 			switch ((eObjectType)item.Object_Type)
 			{
 				case eObjectType.HouseVault:
-					{
-						var houseVault = new GameHouseVault(item, index);
-						houseVault.Attach(this, position, heading);
-						hookpointObject = houseVault;
-						break;
-					}
+				{
+					var houseVault = new GameHouseVault(item, index);
+					houseVault.Attach(this, position);
+					hookpointObject = houseVault;
+					break;
+				}
 				case eObjectType.HouseNPC:
-					{
-						hookpointObject = GameServer.ServerRules.PlaceHousingNPC(this, item, location, GetHookpointHeading(position));
-						break;
-					}
+				{
+					hookpointObject = GameServer.ServerRules.PlaceHousingNPC(this, item, location, GetHookpointHeading(position));
+					break;
+				}
 				case eObjectType.HouseBindstone:
-					{
-						hookpointObject = new GameStaticItem();
-						hookpointObject.CurrentHouse = this;
-						hookpointObject.InHouse = true;
-						hookpointObject.OwnerID = templateID;
-						hookpointObject.X = x;
-						hookpointObject.Y = y;
-						hookpointObject.Z = z;
-						hookpointObject.Heading = heading;
-						hookpointObject.CurrentRegionID = RegionID;
-						hookpointObject.Name = item.Name;
-						hookpointObject.Model = (ushort) item.Model;
-						hookpointObject.AddToWorld();
-						//0:07:45.984 S=>C 0xD9 item/door create v171 (oid:0x0DDB emblem:0x0000 heading:0x0DE5 x:596203 y:530174 z:24723 model:0x05D2 health:  0% flags:0x04(realm:0) extraBytes:0 unk1_171:0x0096220C name:"Hibernia bindstone")
-						//add bind point
-						break;
-					}
+				{
+					hookpointObject = new GameStaticItem();
+					hookpointObject.CurrentHouse = this;
+					hookpointObject.InHouse = true;
+					hookpointObject.OwnerID = templateID;
+					hookpointObject.X = x;
+					hookpointObject.Y = y;
+					hookpointObject.Z = z;
+					hookpointObject.Heading = GetHookpointHeading(position);
+					hookpointObject.CurrentRegionID = RegionID;
+					hookpointObject.Name = item.Name;
+					hookpointObject.Model = (ushort) item.Model;
+					hookpointObject.AddToWorld();
+					//0:07:45.984 S=>C 0xD9 item/door create v171 (oid:0x0DDB emblem:0x0000 heading:0x0DE5 x:596203 y:530174 z:24723 model:0x05D2 health:  0% flags:0x04(realm:0) extraBytes:0 unk1_171:0x0096220C name:"Hibernia bindstone")
+					//add bind point
+					break;
+				}
 				case eObjectType.HouseInteriorObject:
-					{
-						hookpointObject = GameServer.ServerRules.PlaceHousingInteriorItem(this, item, location, heading);
-						break;
-					}
+				{
+					hookpointObject = GameServer.ServerRules.PlaceHousingInteriorItem(this, item, location, heading);
+					break;
+				}
 			}
 
 			if (hookpointObject != null)
@@ -816,27 +788,34 @@ namespace DOL.GS.Housing
 			// check to make sure a consignment merchant doesn't already exist for this house.
 			if (ConsignmentMerchant != null)
 			{
-				log.DebugFormat("Add CM: House {0} already has a consignment merchant.", HouseNumber);
+				if (log.IsDebugEnabled)
+					log.DebugFormat("Add CM: House {0} already has a consignment merchant.", HouseNumber);
+
 				return false;
 			}
 
 			var houseCM = DOLDB<DbHouseConsignmentMerchant>.SelectObject(DB.Column("HouseNumber").IsEqualTo(HouseNumber));
 			if (houseCM != null)
 			{
-				log.DebugFormat("Add CM: Found active consignment merchant in HousingConsignmentMerchant table for house {0}.", HouseNumber);
+				if (log.IsDebugEnabled)
+					log.DebugFormat("Add CM: Found active consignment merchant in HousingConsignmentMerchant table for house {0}.", HouseNumber);
+
 				return false;
 			}
 
 			var obj = DOLDB<DbMob>.SelectObject(DB.Column("HouseNumber").IsEqualTo(HouseNumber));
 			if (obj != null)
 			{
-				log.DebugFormat("Add CM: Found consignment merchant in Mob table for house {0} but none in HousingConsignmentMerchant!  Creating a new merchant.", HouseNumber);
+				if (log.IsDebugEnabled)
+					log.DebugFormat("Add CM: Found consignment merchant in Mob table for house {0} but none in HousingConsignmentMerchant!  Creating a new merchant.", HouseNumber);
+
 				GameServer.Database.DeleteObject(obj);
 			}
 
 			if (DatabaseItem.HasConsignment == true)
 			{
-				log.ErrorFormat("Add CM: No Consignment Merchant found but House DB record HasConsignment for house {0}!  Creating a new merchant.", HouseNumber);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Add CM: No Consignment Merchant found but House DB record HasConsignment for house {0}!  Creating a new merchant.", HouseNumber);
 			}
 
 			// now let's try to find a CM with this owner ID and no house and if we find it, attach
@@ -844,14 +823,18 @@ namespace DOL.GS.Housing
 
 			if (houseCM != null)
 			{
-				log.Warn($"Re-adding an existing consignment merchant for house {HouseNumber}. The previous house was {houseCM.HouseNumber}");
+				if (log.IsWarnEnabled)
+					log.Warn($"Re-adding an existing consignment merchant for house {HouseNumber}. The previous house was {houseCM.HouseNumber}");
+
 				houseCM.HouseNumber = HouseNumber;
 				GameServer.Database.SaveObject(houseCM);
 			}
 			else
 			{
 				// create a new consignment merchant entry, and add it to the DB
-				log.Warn("Adding a consignment merchant for house " + HouseNumber);
+				if (log.IsWarnEnabled)
+					log.Warn("Adding a consignment merchant for house " + HouseNumber);
+
 				houseCM = new DbHouseConsignmentMerchant { OwnerID = OwnerID, HouseNumber = HouseNumber, Money = startValue };
 				GameServer.Database.AddObject(houseCM);
 			}
@@ -900,22 +883,15 @@ namespace DOL.GS.Housing
 			if (ConsignmentMerchant == null)
 				return false;
 
-			log.Warn("HOUSING: Removing consignment merchant for house " + HouseNumber);
-
 			// If this is a guild house and the house is removed the items still belong to the guild ID and will show up
 			// again if guild purchases another house and CM
 
 			int count = 0;
-			foreach(DbInventoryItem item in ConsignmentMerchant.DBItems(null))
+			foreach(DbInventoryItem item in ConsignmentMerchant.GetDbItems(null))
 			{
 				item.OwnerLot = 0;
 				GameServer.Database.SaveObject(item);
 				count++;
-			}
-
-			if (count > 0)
-			{
-				log.Warn("HOUSING: Cleared OwnerLot for " + count + " items on the consignment merchant!");
 			}
 
 			var houseCM = DOLDB<DbHouseConsignmentMerchant>.SelectObject(DB.Column("HouseNumber").IsEqualTo(HouseNumber));
@@ -1152,10 +1128,8 @@ namespace DOL.GS.Housing
 		public void RemovePermission(int slot)
 		{
 			// make sure the permission exists
-			if (!_housePermissions.ContainsKey(slot))
+			if (!_housePermissions.TryGetValue(slot, out DbHouseCharsXPerms matchedPerm))
 				return;
-
-			var matchedPerm = _housePermissions[slot];
 
 			// remove the permission and delete it from the database
 			_housePermissions.Remove(slot);
@@ -1165,13 +1139,11 @@ namespace DOL.GS.Housing
 		public void AdjustPermissionSlot(int slot, int newPermLevel)
 		{
 			// make sure the permission exists
-			if (!_housePermissions.ContainsKey(slot))
+			if (!_housePermissions.TryGetValue(slot, out DbHouseCharsXPerms permission))
 				return;
 
-			var permission = _housePermissions[slot];
-
 			// check for proper permission level range
-			if (newPermLevel < HousingConstants.MinPermissionLevel || newPermLevel > HousingConstants.MaxPermissionLevel)
+			if (newPermLevel is < HousingConstants.MinPermissionLevel or > HousingConstants.MaxPermissionLevel)
 				return;
 
 			// update the permission level
@@ -1512,13 +1484,9 @@ namespace DOL.GS.Housing
 			foreach (DbHousePermissions dbperm in DOLDB<DbHousePermissions>.SelectObjects(DB.Column("HouseNumber").IsEqualTo(HouseNumber)))
 			{
 				if (_permissionLevels.ContainsKey(dbperm.PermissionLevel) == false)
-				{
 					_permissionLevels.Add(dbperm.PermissionLevel, dbperm);
-				}
-				else
-				{
+				else if (log.IsErrorEnabled)
 					log.ErrorFormat("Duplicate permission level {0} for house {1}", dbperm.PermissionLevel, HouseNumber);
-				}
 			}
 
 			HousepointItems.Clear();
@@ -1529,10 +1497,8 @@ namespace DOL.GS.Housing
 					HousepointItems.Add(item.HookpointID, item);
 					FillHookpoint(item.HookpointID, item.ItemTemplateID, item.Heading, item.Index);
 				}
-				else
-				{
+				else if (log.IsErrorEnabled)
 					log.ErrorFormat("Duplicate item {0} attached to hookpoint {1} for house {2}!", item.ItemTemplateID, item.HookpointID, HouseNumber);
-				}
 			}
 		}
 

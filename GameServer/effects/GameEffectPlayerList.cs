@@ -1,7 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using log4net;
+using System.Threading;
 
 namespace DOL.GS.Effects
 {
@@ -9,17 +10,18 @@ namespace DOL.GS.Effects
 	/// Sends updates only for changed effects
 	/// when iterating over this effect list lock the list!
 	/// </summary>
+	[Obsolete("Old DoL system, newer effects and spell handlers must use ECSGameEffect and EffectListComponent")]
 	public class GameEffectPlayerList : GameEffectList
 	{
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Lock object for Change Update
 		/// </summary>
-		private readonly object m_changedLock = new object();		
+		private readonly Lock m_changedLock = new();
 		/// <summary>
 		/// Holds the list of changed effects
 		/// </summary>

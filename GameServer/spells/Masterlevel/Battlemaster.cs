@@ -11,7 +11,7 @@ namespace DOL.GS.Spells
 {
     //http://www.camelotherald.com/masterlevels/ma.php?ml=Battlemaster
     #region Battlemaster-1
-    [SpellHandlerAttribute("MLEndudrain")]
+    [SpellHandler(eSpellType.MLEndudrain)]
     public class MLEndudrain : MasterlevelHandling
     {
         public MLEndudrain(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -42,7 +42,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Battlemaster-2
-    [SpellHandlerAttribute("KeepDamageBuff")]
+    [SpellHandler(eSpellType.KeepDamageBuff)]
     public class KeepDamageBuff : MasterlevelBuffHandling
     {
         public override eProperty Property1 { get { return eProperty.KeepDamage; } }
@@ -52,7 +52,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Battlemaster-3
-    [SpellHandlerAttribute("MLManadrain")]
+    [SpellHandler(eSpellType.MLManadrain)]
     public class MLManadrain : MasterlevelHandling
     {
         public MLManadrain(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -78,10 +78,13 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Battlemaster-4
-    [SpellHandlerAttribute("Grapple")]
+    [SpellHandler(eSpellType.Grapple)]
     public class Grapple : MasterlevelHandling
     {
         private int check = 0;
+
+        public override string ShortDescription => "You are stunned and cannot take any actions.";
+
         public override bool CheckBeginCast(GameLiving selectedTarget)
         {
             if (selectedTarget is GameNPC == true)
@@ -110,17 +113,17 @@ namespace DOL.GS.Spells
             base.OnEffectStart(effect);
         }
 
-        protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+        protected override int CalculateEffectDuration(GameLiving target)
         {
             return Spell.Duration;
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
-        public override bool IsOverwritable(ECSGameSpellEffect compare)
+        public override bool HasConflictingEffectWith(ISpellHandler compare)
         {
             return false;
         }
@@ -171,10 +174,10 @@ namespace DOL.GS.Spells
 
     //ml5 in database Target shood be Group if PvP..Realm if RvR..Value = spell proc'd (a.k the 80value dd proc)
     #region Battlemaster-5
-    [SpellHandler("EssenceFlamesProc")]
+    [SpellHandler(eSpellType.EssenceFlamesProc)]
     public class EssenceFlamesProcSpellHandler : OffensiveProcSpellHandler
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
         /// Handler fired whenever effect target is attacked
@@ -200,7 +203,7 @@ namespace DOL.GS.Spells
                 if (sender is GamePlayer)
                 {
                     GamePlayer player = (GamePlayer)sender;
-                    DbInventoryItem leftWeapon = player.Inventory.GetItem(eInventorySlot.LeftHandWeapon);
+                    DbInventoryItem leftWeapon = player.ActiveLeftWeapon;
                     // if we can use left weapon, we have currently a weapon in left hand and we still have endurance,
                     // we can assume that we are using the two weapons.
                     if (player.attackComponent.CanUseLefthandedWeapon && leftWeapon != null && leftWeapon.Object_Type != (int)eObjectType.Shield)
@@ -215,10 +218,10 @@ namespace DOL.GS.Spells
 
             if (Util.Chance(baseChance))
             {
-                ISpellHandler handler = ScriptMgr.CreateSpellHandler((GameLiving)sender, m_procSpell, m_procSpellLine);
+                ISpellHandler handler = ScriptMgr.CreateSpellHandler((GameLiving)sender, _procSpell, _procSpellLine);
                 if (handler != null)
                 {
-                    switch (m_procSpell.Target)
+                    switch (_procSpell.Target)
                     {
                         case eSpellTarget.ENEMY:
                         {
@@ -238,7 +241,7 @@ namespace DOL.GS.Spells
                                 {
                                     foreach (GameLiving groupPlayer in player.Group.GetMembersInTheGroup())
                                     {
-                                        if (player.IsWithinRadius(groupPlayer, m_procSpell.Range))
+                                        if (player.IsWithinRadius(groupPlayer, _procSpell.Range))
                                         {
                                             handler.StartSpell(groupPlayer);
                                         }
@@ -252,7 +255,7 @@ namespace DOL.GS.Spells
                         }
                         default:
                         {
-                            log.Warn("Skipping " + m_procSpell.Target + " proc " + m_procSpell.Name + " on " + ad.Target.Name + "; Realm = " + ad.Target.Realm);
+                            log.Warn("Skipping " + _procSpell.Target + " proc " + _procSpell.Name + " on " + ad.Target.Name + "; Realm = " + ad.Target.Realm);
                             break;
                         }
                     }
@@ -267,7 +270,7 @@ namespace DOL.GS.Spells
 
 	#region Battlemaster-6
 	// LifeFlight
-    [SpellHandler("ThrowWeapon")]
+    [SpellHandler(eSpellType.ThrowWeapon)]
     public class ThrowWeaponSpellHandler : DirectDamageSpellHandler
  	{
         #region Disarm Weapon
@@ -329,11 +332,11 @@ namespace DOL.GS.Spells
 
             return base.CheckBeginCast(selectedTarget);
 		}
-		
+
         //Throw Weapon does not "resist"
-		public override int CalculateSpellResistChance(GameLiving target) 
-        { 
-            return 0; 
+		public override double CalculateSpellResistChance(GameLiving target)
+        {
+            return 0;
         }
 
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
@@ -385,7 +388,7 @@ namespace DOL.GS.Spells
                         resultByte = 2;
                         if (ad.Target != null && ad.Target.Inventory != null)
                         {
-                            DbInventoryItem lefthand = ad.Target.Inventory.GetItem(eInventorySlot.LeftHandWeapon);
+                            DbInventoryItem lefthand = ad.Target.ActiveLeftWeapon;
                             if (lefthand != null && lefthand.Object_Type == (int)eObjectType.Shield)
                             {
                                 defendersWeapon = lefthand.Model;
@@ -421,13 +424,6 @@ namespace DOL.GS.Spells
             // send animation before dealing damage else dead livings show no animation
             ad.Target.OnAttackedByEnemy(ad);
             ad.Attacker.DealDamage(ad);
-            if (ad.Damage == 0 && ad.Target is GameNPC)
-            {
-                IOldAggressiveBrain aggroBrain = ((GameNPC)ad.Target).Brain as IOldAggressiveBrain;
-                if (aggroBrain != null)
-                    aggroBrain.AddToAggroList(Caster, 1);
-            }
-            
         }
 
         public override void SendDamageMessages(AttackData ad)
@@ -450,11 +446,11 @@ namespace DOL.GS.Spells
                 case eAttackResult.Fumbled: player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GamePlayer.Attack.Fumble"), eChatType.CT_YouHit, eChatLoc.CL_SystemWindow); break;
                 case eAttackResult.HitStyle:
                 case eAttackResult.HitUnstyled:
-					string modmessage = "";
+					string modmessage = string.Empty;
 					if (ad.Modifier > 0) modmessage = " (+" + ad.Modifier + ")";
 					if (ad.Modifier < 0) modmessage = " (" + ad.Modifier + ")";
 
-					string hitWeapon = "";
+					string hitWeapon = string.Empty;
 
 					switch (ServerProperties.Properties.SERV_LANGUAGE)
 					{
@@ -488,7 +484,7 @@ namespace DOL.GS.Spells
 
 					// critical hit
 					if (ad.CriticalDamage > 0)
-                        player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GamePlayer.Attack.Critical", ad.Target.GetName(0, false), ad.CriticalDamage) + $" ({ad.Attacker.attackComponent.AttackCriticalChance(null, ad.Weapon)}%)", eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
+                        player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GamePlayer.Attack.Critical", ad.Target.GetName(0, false), ad.CriticalDamage) + $" ({ad.CriticalChance}%)", eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
 					break;
 			}
         }
@@ -547,15 +543,16 @@ namespace DOL.GS.Spells
                 return null;
 
             //create the AttackData
-            AttackData ad = new AttackData();
-            ad.Attacker = player;
-            ad.Target = target;
-            ad.Damage = 0;
-            ad.CriticalDamage = 0;
-            ad.WeaponSpeed = player.AttackSpeed(weapon) / 100;
-            ad.DamageType = player.attackComponent.AttackDamageType(weapon);
-            ad.Weapon = weapon;
-            ad.IsOffHand = weapon.Hand == 2;
+            AttackData ad = new()
+            {
+                Attacker = player,
+                Target = target,
+                Interval = player.AttackSpeed(weapon),
+                DamageType = player.attackComponent.AttackDamageType(weapon, null),
+                Weapon = weapon,
+                IsOffHand = weapon.Hand == 2
+            };
+
             //we need to figure out which armor piece they are going to hit.
             //figure out the attacktype
             switch (weapon.Item_Type)
@@ -569,13 +566,15 @@ namespace DOL.GS.Spells
                     ad.AttackType = AttackData.eAttackType.MeleeTwoHand;
                     break;
             }
+
+            double effectiveness = CalculateDamageEffectiveness(); // Spell damage? Seems wrong.
+
             //Throw Weapon is subject to all the conventional attack results, parry, evade, block, etc.
-            ad.AttackResult = ad.Target.attackComponent.CalculateEnemyAttackResult(null, ad, weapon);
+            ad.AttackResult = ad.Target.attackComponent.CalculateEnemyAttackResult(null, ad, weapon, ref effectiveness);
 
             if (ad.AttackResult == eAttackResult.HitUnstyled || ad.AttackResult == eAttackResult.HitStyle)
             {
-                //we only need to calculate the damage if the attack was a success.
-                double damage = player.attackComponent.AttackDamage(weapon, out _) * Effectiveness;
+                double damage = player.attackComponent.AttackDamage(weapon, null, out _) * effectiveness;
 
                 if (target is GamePlayer)
                     ad.ArmorHitLocation = ((GamePlayer)target).CalculateArmorHitLocation(ad);
@@ -585,7 +584,7 @@ namespace DOL.GS.Spells
                     armor = target.Inventory.GetItem((eInventorySlot)ad.ArmorHitLocation);
 
                 //calculate the lowerboundary of the damage
-                int lowerboundary = (player.WeaponSpecLevel(weapon) - 1) * 50 / (ad.Target.EffectiveLevel + 1) + 75;
+                int lowerboundary = (player.WeaponSpecLevel(weapon) - 1) * 50 / (ad.Target.Level + 1) + 75;
                 lowerboundary = Math.Max(lowerboundary, 75);
                 lowerboundary = Math.Min(lowerboundary, 125);
 
@@ -603,21 +602,25 @@ namespace DOL.GS.Spells
 
                 damage += ad.Modifier;
 
-                int resist = (int)(damage * GetDamageResist(target, (eResist) target.GetResistTypeForDamage(ad.DamageType)) * -0.01);
-                eProperty property = ad.Target.GetResistTypeForDamage(ad.DamageType);
-                int secondaryResistModifier = ad.Target.SpecBuffBonusCategory[(int)property];
+                int resist = (int)(damage * GetDamageResist(target, (eResist) GameLiving.GetResistTypeForDamage(ad.DamageType)) * -0.01);
+                eProperty property = GameLiving.GetResistTypeForDamage(ad.DamageType);
+                int secondaryResistModifier = ad.Target.SpecBuffBonusCategory[property];
                 int resistModifier = 0;
                 resistModifier += (int)((ad.Damage + (double)resistModifier) * (double)secondaryResistModifier * -0.01);
                 damage += resist;
                 damage += resistModifier;
                 ad.Modifier += resist;
                 ad.Damage = (int)damage;
-                ad.Damage = Math.Min(ad.Damage, (int)(player.attackComponent.AttackDamage(weapon, out _) * Effectiveness));
+                ad.Damage = Math.Min(ad.Damage, (int)(player.attackComponent.AttackDamage(weapon, null, out _) * effectiveness));
                 ad.Damage = (int)(ad.Damage * ServerProperties.Properties.PVP_MELEE_DAMAGE);
+
                 if (ad.Damage == 0)
                     ad.AttackResult = eAttackResult.Missed;
                 else
-                    ad.CriticalDamage = player.attackComponent.CalculateMeleeCriticalDamage(ad, null, weapon);
+                {
+                    ad.CriticalChance = player.attackComponent.CalculateCriticalChance(null);
+                    ad.CriticalDamage = player.attackComponent.CalculateCriticalDamage(ad);
+                }
 
                 static int GetDamageResist(GameLiving living, eResist resistType)
                 {
@@ -635,7 +638,7 @@ namespace DOL.GS.Spells
                         case eResist.Heat:
                         case eResist.Matter:
                         case eResist.Spirit:
-                            res += living.BaseBuffBonusCategory[(int)eProperty.MagicAbsorption];
+                            res += living.BaseBuffBonusCategory[eProperty.MagicAbsorption];
                             break;
                         default:
                             break;
@@ -658,23 +661,23 @@ namespace DOL.GS.Spells
 
     //essence debuff
     #region Battlemaster-7
-    [SpellHandlerAttribute("EssenceSearHandler")]
+    [SpellHandler(eSpellType.EssenceSearHandler)]
     public class EssenceSearHandler : SpellHandler
     {
-        public override int CalculateSpellResistChance(GameLiving target) { return 0; }
+        public override double CalculateSpellResistChance(GameLiving target) { return 0; }
 
         public override void OnEffectStart(GameSpellEffect effect)
         {
             base.OnEffectStart(effect);
             GameLiving living = effect.Owner as GameLiving;
             //value should be 15 to reduce Essence resist
-            living.DebuffCategory[(int)eProperty.Resist_Natural] += (int)m_spell.Value;
+            living.DebuffCategory[eProperty.Resist_Natural] += (int)m_spell.Value;
 
             if (effect.Owner is GamePlayer)
             {
                 GamePlayer player = effect.Owner as GamePlayer;
                 player.Out.SendCharStatsUpdate();
-                player.UpdateEncumberance();
+                player.UpdateEncumbrance();
                 player.UpdatePlayerStatus();
                 player.Out.SendUpdatePlayer();
             }
@@ -682,7 +685,7 @@ namespace DOL.GS.Spells
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
         {
             GameLiving living = effect.Owner as GameLiving;
-            living.DebuffCategory[(int)eProperty.Resist_Natural] -= (int)m_spell.Value;
+            living.DebuffCategory[eProperty.Resist_Natural] -= (int)m_spell.Value;
 
             if (effect.Owner is GamePlayer)
             {
@@ -707,19 +710,13 @@ namespace DOL.GS.Spells
                 target.LastAttackedByEnemyTickPvP = target.CurrentRegion.Time;
                 Caster.LastAttackTickPvP = Caster.CurrentRegion.Time;
             }
-            if (target is GameNPC)
-            {
-                IOldAggressiveBrain aggroBrain = ((GameNPC)target).Brain as IOldAggressiveBrain;
-                if (aggroBrain != null)
-                    aggroBrain.AddToAggroList(Caster, (int)Spell.Value);
-            }
         }
         public EssenceSearHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
     }
     #endregion
 
     #region Battlemaster-8
-    [SpellHandlerAttribute("BodyguardHandler")]
+    [SpellHandler(eSpellType.BodyguardHandler)]
     public class BodyguardHandler : SpellHandler
     {
         public override bool CheckBeginCast(GameLiving selectedTarget)
@@ -737,7 +734,7 @@ namespace DOL.GS.Spells
             get
             {
                 var list = new List<string>();
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 return list;
             }
         }
@@ -747,12 +744,12 @@ namespace DOL.GS.Spells
 
     //for ML9 in the database u have to add  EssenceDampenHandler  in type (its a new method customly made) 
     #region Battlemaster-9
-    [SpellHandlerAttribute("EssenceDampenHandler")]
+    [SpellHandler(eSpellType.EssenceDampenHandler)]
     public class EssenceDampenHandler : SpellHandler
     {
         protected int DexDebuff = 0;
         protected int QuiDebuff = 0;
-        public override int CalculateSpellResistChance(GameLiving target) { return 0; }
+        public override double CalculateSpellResistChance(GameLiving target) { return 0; }
 
         public override void OnEffectStart(GameSpellEffect effect)
         {
@@ -761,8 +758,8 @@ namespace DOL.GS.Spells
             DexDebuff = (int)((double)effect.Owner.GetModified(eProperty.Dexterity) * percentValue);
             QuiDebuff = (int)((double)effect.Owner.GetModified(eProperty.Quickness) * percentValue);
             GameLiving living = effect.Owner as GameLiving;
-            living.DebuffCategory[(int)eProperty.Dexterity] += DexDebuff;
-            living.DebuffCategory[(int)eProperty.Quickness] += QuiDebuff;
+            living.DebuffCategory[eProperty.Dexterity] += DexDebuff;
+            living.DebuffCategory[eProperty.Quickness] += QuiDebuff;
 
             if (effect.Owner is GamePlayer)
             {
@@ -775,8 +772,8 @@ namespace DOL.GS.Spells
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
         {
             GameLiving living = effect.Owner as GameLiving;
-            living.DebuffCategory[(int)eProperty.Dexterity] -= DexDebuff;
-            living.DebuffCategory[(int)eProperty.Quickness] -= QuiDebuff;
+            living.DebuffCategory[eProperty.Dexterity] -= DexDebuff;
+            living.DebuffCategory[eProperty.Quickness] -= QuiDebuff;
 
             if (effect.Owner is GamePlayer)
             {
@@ -800,12 +797,6 @@ namespace DOL.GS.Spells
             {
                 target.LastAttackedByEnemyTickPvP = target.CurrentRegion.Time;
                 Caster.LastAttackTickPvP = Caster.CurrentRegion.Time;
-            }
-            if (target is GameNPC)
-            {
-                IOldAggressiveBrain aggroBrain = ((GameNPC)target).Brain as IOldAggressiveBrain;
-                if (aggroBrain != null)
-                    aggroBrain.AddToAggroList(Caster, (int)Spell.Value);
             }
         }
         public EssenceDampenHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -834,7 +825,7 @@ namespace DOL.GS.PropertyCalc
         public override int CalcValue(GameLiving living, eProperty property)
         {
             int percent = 100
-                +living.BaseBuffBonusCategory[(int)property];
+                +living.BaseBuffBonusCategory[property];
 
             return percent;
         }

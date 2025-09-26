@@ -24,7 +24,7 @@ namespace DOL.GS.Keeps
 {
 	public class GameKeepBanner : GameStaticItem , IKeepItem
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public enum eBannerType : int 
 		{
@@ -64,7 +64,7 @@ namespace DOL.GS.Keeps
 		/// </summary>
 		public const ushort HiberniaGuildModel = 680;
 
-		protected string m_templateID = "";
+		protected string m_templateID = string.Empty;
 		public string TemplateID
 		{
 			get { return m_templateID; }

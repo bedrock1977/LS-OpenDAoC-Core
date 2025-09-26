@@ -21,29 +21,29 @@ namespace DOL.GS.RealmAbilities
 				return;
 
 			GamePlayer player = living as GamePlayer;
-			IEnumerable<GamePlayer> playersInGroup;
+			List<GamePlayer> playersInGroup = GameLoop.GetListForTick<GamePlayer>();;
 			bool success;
 
 			SendCastMessage(player);
 
 			if (player.Group != null)
-				playersInGroup = player.Group.GetPlayersInTheGroup().Where(x => x.IsAlive && player.IsWithinRadius(player, m_range));
+				playersInGroup.AddRange(player.Group.GetPlayersInTheGroup().Where(x => x.IsAlive && player.IsWithinRadius(player, m_range)));
 			else
-				playersInGroup = new List<GamePlayer>() { player };
+				playersInGroup.Add(player);
 
 			foreach (GamePlayer playerInGroup in playersInGroup)
 			{
 				if (!playerInGroup.IsAlive)
 					continue;
 
-				success = !playerInGroup.TempProperties.GetProperty(BofBaSb, false);
+				success = !playerInGroup.TempProperties.GetProperty<bool>(BofBaSb);
 
 				SendCasterSpellEffect(playerInGroup, 7009, success);
 				SendCasterSpellEffect(playerInGroup, 1486, success);
 				SendCasterSpellEffect(playerInGroup, 10535, success);
 				
 				if (success)
-					new BunkerOfFaithECSEffect(new ECSGameEffectInitParams(playerInGroup, m_duration, GetAbsorbAmount(), CreateSpell(player)));
+					ECSGameEffectFactory.Create(new(playerInGroup, m_duration, GetAbsorbAmount(), CreateSpell(player)), static (in ECSGameEffectInitParams i) => new BunkerOfFaithECSEffect(i));
 			}
 
 			DisableSkill(player);
@@ -70,21 +70,13 @@ namespace DOL.GS.RealmAbilities
 			m_dbspell.Frequency = 0;
 			m_dbspell.Range = 1500;
 			m_spell = new Spell(m_dbspell, 0); // make spell level 0 so it bypasses the spec level adjustment code
-			m_spellline = new SpellLine("RAs", "RealmAbilities", "RealmAbilities", true);
-			return new SpellHandler(caster, m_spell, m_spellline);
+			m_spellline = GlobalSpellsLines.RealmSpellsSpellLine;
+			return ScriptMgr.CreateSpellHandler(caster, m_spell, m_spellline) as SpellHandler;
 		}
-    
+
 		private DbSpell m_dbspell;
 		private Spell m_spell = null;
 		private SpellLine m_spellline;
-		
-		private byte CastSuccess(bool success)
-		{
-			if (success)
-				return 1;
-			else
-				return 0;
-		}
 
 		public override int GetReUseDelay(int level)
 		{

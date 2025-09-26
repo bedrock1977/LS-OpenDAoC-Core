@@ -13,7 +13,7 @@ namespace DOL.GS.RealmAbilities
 	/// </summary>
 	public abstract class RAPropertyEnhancer : L5RealmAbility
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		// property to modify
 		eProperty[] m_property;
@@ -77,7 +77,7 @@ namespace DOL.GS.RealmAbilities
 		/// <summary>
 		/// Unit for values like %
 		/// </summary>
-		protected virtual string ValueUnit { get { return ""; } }
+		protected virtual string ValueUnit { get { return string.Empty; } }
 
 		public override void Activate(GameLiving living, bool sendUpdates)
 		{
@@ -85,7 +85,7 @@ namespace DOL.GS.RealmAbilities
 			{
 				foreach (eProperty property in m_property)
 				{
-					living.AbilityBonus[(int)property] += GetAmountForLevel(Level);
+					living.AbilityBonus[property] += GetAmountForLevel(Level);
 				}
 				m_activeLiving = living;
 				if (sendUpdates) SendUpdates(living);
@@ -102,7 +102,7 @@ namespace DOL.GS.RealmAbilities
 			{
 				foreach (eProperty property in m_property)
 				{
-					living.AbilityBonus[(int)property] -= GetAmountForLevel(Level);
+					living.AbilityBonus[property] -= GetAmountForLevel(Level);
 				}
 				if (sendUpdates) SendUpdates(living);
 				m_activeLiving = null;
@@ -120,7 +120,7 @@ namespace DOL.GS.RealmAbilities
 
 			foreach (eProperty property in m_property)
 			{
-				m_activeLiving.AbilityBonus[(int)property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
+				m_activeLiving.AbilityBonus[property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
 			}
 			SendUpdates(m_activeLiving);
 		}

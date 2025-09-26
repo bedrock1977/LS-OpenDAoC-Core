@@ -1,27 +1,7 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using DOL.Database;
-using DOL.GS.Styles;
 using DOL.GS.Keeps;
+using static DOL.GS.IGameStaticItemOwner;
 
 namespace DOL.GS.ServerRules
 {
@@ -65,16 +45,6 @@ namespace DOL.GS.ServerRules
 		/// <param name="quiet">should messages be sent</param>
 		/// <returns>true if attack is allowed</returns>
 		bool IsAllowedToAttack(GameLiving attacker, GameLiving defender, bool quiet);
-
-		/// <summary>
-		/// Is caster allowed to cast a spell
-		/// </summary>
-		/// <param name="caster"></param>
-		/// <param name="target"></param>
-		/// <param name="spell"></param>
-		/// <param name="spellLine"></param>
-		/// <returns>true if allowed</returns>
-		bool IsAllowedToCastSpell(GameLiving caster, GameLiving target, Spell spell, SpellLine spellLine);
 
 		/// <summary>
 		/// Should the target be considered the same realm as the source?
@@ -226,7 +196,7 @@ namespace DOL.GS.ServerRules
 		/// <param name="player">player whom specializations are checked</param>
 		/// <param name="objectType">object type</param>
 		/// <returns>specialization in object or 0</returns>
-		int GetBaseObjectSpecLevel(GamePlayer player, eObjectType objectType);
+		int GetObjectBaseSpecLevel(GamePlayer player, eObjectType objectType);
 
 		/// <summary>
 		/// Invoked on NPC death and deals out
@@ -234,7 +204,9 @@ namespace DOL.GS.ServerRules
 		/// </summary>
 		/// <param name="killedNPC">npc that died</param>
 		/// <param name="killer">killer</param>
-		void OnNPCKilled(GameNPC killedNPC, GameObject killer);
+		void OnNpcKilled(GameNPC killedNPC, GameObject killer);
+
+		void DropLoot(GameNPC killedNPC, GameObject killer, SortedSet<ItemOwnerTotalDamagePair> itemOwners);
 
 		/// <summary>
 		/// Invoked on Player death and deals out
@@ -243,14 +215,6 @@ namespace DOL.GS.ServerRules
 		/// <param name="killedPlayer">player that died</param>
 		/// <param name="killer">killer</param>
 		void OnPlayerKilled(GamePlayer killedPlayer, GameObject killer);
-
-		/// <summary>
-		/// Invoked on a livings death and deals out
-		/// experience / rps if needed
-		/// </summary>
-		/// <param name="living">the living that died</param>
-		/// <param name="killer"></param>
-		void OnLivingKilled(GameLiving living, GameObject killer);
 
 		/// <summary>
 		/// Invoked when a player teleports somewhere
@@ -471,5 +435,11 @@ namespace DOL.GS.ServerRules
 		/// </summary>
 		void OnPlayerLevelUp(GamePlayer player, int previousLevel);
 
+		public class EntityCountTotalDamagePair(int count, double damage, GamePlayer highestLevelPlayer)
+		{
+			public int Count { get; set; } = count;
+			public double Damage { get; set; } = damage;
+			public GamePlayer HighestLevelPlayer { get; set; } = highestLevelPlayer;
+		}
 	}
 }

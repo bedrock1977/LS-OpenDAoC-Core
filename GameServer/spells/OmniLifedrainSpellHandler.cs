@@ -1,32 +1,15 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-using System;
 using System.Collections.Generic;
-using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("OmniLifedrain")]
+	[SpellHandler(eSpellType.OmniLifedrain)]
 	public class OmniLifedrainSpellHandler : DirectDamageSpellHandler
 	{
+		protected override bool IsDualComponentSpell => true;
+
+		public OmniLifedrainSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
+
 		/// <summary>
 		/// execute direct effect
 		/// </summary>
@@ -67,33 +50,13 @@ namespace DOL.GS.Spells
 			if (heal > 0)
 			{
 				MessageToCaster("You steal " + heal + " hit point" + (heal == 1 ? "." : "s."), eChatType.CT_Spell);
-
-
-                #region PVP DAMAGE
-
-                if (m_caster is NecromancerPet && ((m_caster as NecromancerPet).Brain as IControlledBrain).GetPlayerOwner() != null || m_caster is GamePlayer)
-                {
-                    if (m_caster.DamageRvRMemory > 0)
-                        m_caster.DamageRvRMemory -= (long)Math.Max(heal, 0);
-                }
-
-                #endregion PVP DAMAGE
-
 			}
 			else
 			{
 				MessageToCaster("You cannot absorb any more life.", eChatType.CT_SpellResisted);
-
-                #region PVP DAMAGE
-
-                if (m_caster is NecromancerPet && ((m_caster as NecromancerPet).Brain as IControlledBrain).GetPlayerOwner() != null || m_caster is GamePlayer)
-                {
-                    if (m_caster.DamageRvRMemory > 0)
-                        m_caster.DamageRvRMemory = 0; //Remise a zéro compteur dommages/heal rps
-                }
-                #endregion PVP DAMAGE
 			}
 		}
+
 		/// <summary>
 		/// Uses percent of damage to renew endurance
 		/// </summary>
@@ -113,6 +76,7 @@ namespace DOL.GS.Spells
 				MessageToCaster("You cannot steal any more endurance.", eChatType.CT_SpellResisted);
 			}
 		}
+
 		/// <summary>
 		/// Uses percent of damage to replenish power
 		/// </summary>
@@ -133,18 +97,6 @@ namespace DOL.GS.Spells
 			}
 		}
 
-		/// <summary>
-		/// Calculates the base 100% spell damage which is then modified by damage variance factors
-		/// </summary>
-		/// <returns></returns>
-		public override double CalculateDamageBase(GameLiving target)
-		{
-			double spellDamage = Spell.Damage;
-			return spellDamage;
-		}
-
-		// constructor
-		public OmniLifedrainSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 		public override IList<string> DelveInfo
 		{
 			get

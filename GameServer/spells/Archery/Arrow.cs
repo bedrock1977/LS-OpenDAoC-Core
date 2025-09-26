@@ -19,6 +19,13 @@ namespace DOL.GS.Spells
 			get { return false; }
 		}
 
+		protected override double CalculateDamageEffectiveness()
+		{
+			// Half of the damage is magical.
+			// Subtract any spelldamage bonus and re-calculate after half damage is calculated.
+			return CasterEffectiveness * (0.5 - Caster.GetModified(eProperty.SpellDamage) * 0.01);
+		}
+
 		/// <summary>
 		/// Fire arrow
 		/// </summary>
@@ -115,15 +122,17 @@ namespace DOL.GS.Spells
 
 			protected override int OnTick(ECSGameTimer timer)
 			{
+				// A lot of things here seem to be outdated and need to be cleaned up.
+
 				GameLiving target = m_arrowTarget;
 				GameLiving caster = (GameLiving) timer.Owner;
 
 				if (target == null || !target.IsAlive || target.ObjectState != GameObject.eObjectState.Active || target.CurrentRegionID != caster.CurrentRegionID)
 					return 0;
 
-				int missrate = 100 - m_handler.CalculateToHitChance(target);
+				double missrate = 100 - m_handler.CalculateToHitChance(target);
 				// add defence bonus from last executed style if any
-				AttackData targetAD = target.TempProperties.GetProperty<AttackData>(GameLiving.LAST_ATTACK_DATA, null);
+				AttackData targetAD = target.attackComponent.attackAction.LastAttackData;
 				if (targetAD != null
 				    && targetAD.AttackResult == eAttackResult.HitStyle
 				    && targetAD.Style != null)
@@ -131,9 +140,6 @@ namespace DOL.GS.Spells
 					missrate += targetAD.Style.BonusToDefense;
 				}
 
-				// half of the damage is magical
-				// subtract any spelldamage bonus and re-calculate after half damage is calculated
-				m_handler.Effectiveness = 0.5 - caster.GetModified(eProperty.SpellDamage) * 0.01;
 				AttackData ad = m_handler.CalculateDamageToTarget(target);
 
 				// check for bladeturn miss
@@ -142,7 +148,7 @@ namespace DOL.GS.Spells
 					return 0;
 				}
 
-				if (Util.Chance(missrate))
+				if (Util.ChanceDouble(missrate))
 				{
 					ad.AttackResult = eAttackResult.Missed;
 					m_handler.MessageToCaster("You miss!", eChatType.CT_YouHit);
@@ -153,7 +159,7 @@ namespace DOL.GS.Spells
 					{
 						IOldAggressiveBrain aggroBrain = ((GameNPC)target).Brain as IOldAggressiveBrain;
 						if (aggroBrain != null)
-							aggroBrain.AddToAggroList(caster, 1);
+							aggroBrain.AddToAggroList(caster);
 					}
 					return 0;
 				}
@@ -165,7 +171,7 @@ namespace DOL.GS.Spells
 				if (target is GamePlayer && !target.IsStunned && !target.IsMezzed && !target.IsSitting && m_handler.Spell.LifeDrainReturn != (int)Archery.eShotType.Critical)
 				{
 					GamePlayer player = (GamePlayer)target;
-					DbInventoryItem lefthand = player.Inventory.GetItem(eInventorySlot.LeftHandWeapon);
+					DbInventoryItem lefthand = player.ActiveLeftWeapon;
 					if (lefthand != null && (player.ActiveWeapon == null || player.ActiveWeapon.Item_Type == Slot.RIGHTHAND || player.ActiveWeapon.Item_Type == Slot.LEFTHAND))
 					{
 						if (target.IsObjectInFront(caster, 180) && lefthand.Object_Type == (int)eObjectType.Shield)
@@ -174,7 +180,6 @@ namespace DOL.GS.Spells
 							double shield = 0.5 * player.GetModifiedSpecLevel(Specs.Shields);
 							double blockchance = ((player.Dexterity * 2) - 100) / 40.0 + shield + (0 * 3) + 5;
 							blockchance += 30;
-							blockchance -= target.GetConLevel(caster) * 5;
 							if (blockchance >= 100) blockchance = 99;
 							if (blockchance <= 0) blockchance = 1;
 
@@ -316,7 +321,7 @@ namespace DOL.GS.Spells
 				{
 					if (ad.AttackResult == eAttackResult.HitUnstyled || ad.AttackResult == eAttackResult.HitStyle)
 					{
-						caster.CheckWeaponMagicalEffect(ad, m_handler.Caster.ActiveWeapon);
+						caster.CheckWeaponMagicalEffect(ad);
 					}
 				}
 

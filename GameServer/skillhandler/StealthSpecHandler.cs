@@ -61,7 +61,7 @@ namespace DOL.GS.SkillHandler
 
 				//"You can't hide with a relic!"
 
-				if (player.effectListComponent.GetAllPulseEffects().Count > 0)
+				if (player.effectListComponent.GetPulseEffects().Count > 0)
 				{
                     player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "Skill.Ability.Stealth.CannotUseActivePulsingSpell"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                     return;
@@ -129,7 +129,7 @@ namespace DOL.GS.SkillHandler
 
 			//since 1.88 (?), players which stealth, doesn't be followed by mobs [by Suncheck]
 			//TODO: Some further checks need?
-			foreach (GameObject attacker in player.attackComponent.Attackers.Keys)
+			foreach (GameObject attacker in player.attackComponent.AttackerTracker.Attackers)
 			{
 				if (attacker is not GameLiving livingAttacker)
 					continue;

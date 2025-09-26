@@ -12,7 +12,7 @@ namespace DOL.GS
 {
 	public class MinotaurRelic : GameStaticItem
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		#region constructor
 		public MinotaurRelic() : base() { m_saveInDB = true; }
@@ -42,7 +42,7 @@ namespace DOL.GS
 		protected int m_relicID;
 		protected ISpellHandler m_spellHandler;
 		protected GameSpellEffect m_gameSpellEffect;
-		public IList<GamePlayer> Playerlist = new List<GamePlayer>();
+		public List<GamePlayer> Playerlist = new List<GamePlayer>();
         protected string m_protectorClassType;
         protected bool m_spawnLocked;
 
@@ -292,7 +292,7 @@ namespace DOL.GS
 		{
 			if (RelicSpell == null || m_spellHandler==null || m_gameSpellEffect==null) return;
 
-			IList<GamePlayer> newPlayerlist = new List<GamePlayer>();
+			List<GamePlayer> newPlayerlist = GameLoop.GetListForTick<GamePlayer>();
 
 			if (m_owner != null)
 			{
@@ -381,7 +381,9 @@ namespace DOL.GS
 							log.Error("Minotaur Relics : Effect Start : " + e);
 					}
 				}
-				Playerlist = newPlayerlist;
+
+				Playerlist.Clear();
+				Playerlist.AddRange(newPlayerlist);
 			}
 		}
 		protected void StopRelicEffect()
@@ -543,7 +545,7 @@ namespace DOL.GS
 			Z = living.Z;
 			Heading = living.Heading;
 
-			foreach (GamePlayer player in ClientService.GetPlayersOfRegion(CurrentRegion))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(CurrentRegion))
 			{
 				if (XP > 0)
 					player.Out.SendMinotaurRelicMapUpdate((byte)RelicID, CurrentRegionID, X, Y, Z);

@@ -40,7 +40,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Midgard
 {
@@ -49,7 +48,7 @@ namespace DOL.GS.Quests.Midgard
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "War Concluded";
 		protected const int minimumLevel = 50;
@@ -117,7 +116,7 @@ namespace DOL.GS.Quests.Midgard
 				Masrim = new GameNPC();
 				Masrim.Model = 177;
 				Masrim.Name = "Masrim";
-				Masrim.GuildName = "";
+				Masrim.GuildName = string.Empty;
 				Masrim.Realm = eRealm.Midgard;
 				Masrim.CurrentRegionID = 100;
 				Masrim.Size = 52;
@@ -151,7 +150,7 @@ namespace DOL.GS.Quests.Midgard
 				Oona = new Oona();
 				Oona.Model = 356;
 				Oona.Name = "Oona";
-				Oona.GuildName = "";
+				Oona.GuildName = string.Empty;
 				Oona.Realm = eRealm.None;
 				Oona.CurrentRegionID = 100;
 				Oona.Size = 50;

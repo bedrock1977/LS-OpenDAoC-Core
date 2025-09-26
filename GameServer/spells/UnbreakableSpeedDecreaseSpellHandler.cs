@@ -7,19 +7,24 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Spell handler for unbreakable speed decreasing spells
 	/// </summary>
-	[SpellHandler("UnbreakableSpeedDecrease")]
+	[SpellHandler(eSpellType.UnbreakableSpeedDecrease)]
 	public class UnbreakableSpeedDecreaseSpellHandler : ImmunityEffectSpellHandler
 	{
 		private const string EFFECT_PROPERTY = "UnbreakableSpeedDecreaseProperty";
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override string ShortDescription =>
+			Spell.Value >= 99 ?
+			"The target is rooted in place." :
+			$"The target is slowed by {Spell.Value}%.";
+
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new StatDebuffECSEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new StatDebuffECSEffect(i));
 		}
 		
 		public override void ApplyEffectOnTarget(GameLiving target)
 		{
-			var effect = EffectListService.GetSpellEffectOnTarget(target, eEffect.MovementSpeedDebuff);
+			var effect = EffectListService.GetEffectOnTarget(target, eEffect.MovementSpeedDebuff);
 			if (target.HasAbility(Abilities.CCImmunity)||target.HasAbility(Abilities.RootImmunity) || 
 				EffectListService.GetEffectOnTarget(target, eEffect.SnareImmunity) != null ||
 				EffectListService.GetEffectOnTarget(target, eEffect.SpeedOfSound) != null || 
@@ -27,8 +32,8 @@ namespace DOL.GS.Spells
 				&& !Spell.Name.Equals("Prevent Flight"))
 			{
 				//EffectService.RequestCancelEffect(effect);
-				MessageToCaster(target.Name + " is immune to this effect!", eChatType.CT_SpellResisted);
-				OnSpellResisted(target);
+				MessageToCaster("Your target is immune to this effect!", eChatType.CT_SpellResisted);
+				OnSpellNegated(target, SpellNegatedReason.Immune);
 				return;
 			}
 			if (target.EffectList.GetOfType<ChargeEffect>() != null)
@@ -73,7 +78,7 @@ namespace DOL.GS.Spells
 		{
 			base.OnEffectExpires(effect,noMessages);
 
-			RestoreSpeedTimer timer = effect.Owner.TempProperties.GetProperty<RestoreSpeedTimer>(EFFECT_PROPERTY, null);
+			RestoreSpeedTimer timer = effect.Owner.TempProperties.GetProperty<RestoreSpeedTimer>(EFFECT_PROPERTY);
 			effect.Owner.TempProperties.RemoveProperty(EFFECT_PROPERTY);
 			if(timer!=null) timer.Stop();
 
@@ -86,15 +91,9 @@ namespace DOL.GS.Spells
 			return 60000;
 		}
 
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+		protected override int CalculateEffectDuration(GameLiving target)
 		{
-			double duration = base.CalculateEffectDuration(target, effectiveness);
+			double duration = base.CalculateEffectDuration(target);
 			duration *= target.GetModified(eProperty.SpeedDecreaseDurationReduction) * 0.01;
 
 			if (duration < 1)

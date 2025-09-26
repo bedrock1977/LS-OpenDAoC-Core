@@ -1,140 +1,115 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using DOL.Database.Attributes;
 using DOL.Database.UniqueID;
 
 namespace DOL.Database
 {
-	/// <summary>
-	/// Abstract Baseclass for all DataObject's. All Classes that are derived from this class
-	/// are stored in a Datastore
-	/// </summary>
-	public abstract class DataObject : ICloneable
-	{
-		bool m_allowAdd = true;
-		bool m_allowDelete = true;
+    public abstract class DataObject : ICloneable
+    {
+        private DataObject _snapshot;
+        private bool _allowAdd = true;
+        private bool _allowDelete = true;
+        private DateTime _lastTimeRowUpdated;
 
-		/// <summary>
-		/// Default-Construktor that generates a new Object-ID and set
-		/// Dirty and Persisted to <c>false</c>
-		/// </summary>
-		protected DataObject()
-		{
-			ObjectId = IdGenerator.GenerateID();
-			IsPersisted = false;
-			AllowAdd = true;
-			AllowDelete = true;
-			IsDeleted = false;
-		}
+        public virtual bool UsesPreCaching => AttributeUtil.GetPreCachedFlag(GetType());
 
-		/// <summary>
-		/// The table name which own he object 
-		/// </summary>
-		[Browsable(false)]
-		public virtual string TableName
-		{
-			get
-			{
-				return AttributeUtil.GetTableName(GetType());
-			}
-		}
+        [Browsable(false)]
+        public virtual string TableName => AttributeUtil.GetTableName(GetType());
 
-		/// <summary>
-		/// Load object in cache or not?
-		/// </summary>
-		[Browsable(false)]
-		public virtual bool UsesPreCaching
-		{
-			get
-			{
-				return AttributeUtil.GetPreCachedFlag(GetType());
-			}
-		}
+        [Browsable(false)]
+        public bool IsPersisted { get; set; }
 
-		/// <summary>
-		/// Is this object also in the database?
-		/// </summary>
-		[Browsable(false)]
-		public bool IsPersisted { get; set; }
+        [Browsable(false)]
+        public virtual bool AllowAdd
+        {
+            get => _allowAdd;
+            set => _allowAdd = value;
+        }
 
-		/// <summary>
-		/// Can this object added to the DB?
-		/// </summary>
-		[Browsable(false)]
-		public virtual bool AllowAdd 
-		{
-			get { return m_allowAdd; }
-			set { m_allowAdd = value; }
-		}
+        [Browsable(false)]
+        public virtual bool AllowDelete
+        {
+            get => _allowDelete;
+            set => _allowDelete = value;
+        }
 
-		/// <summary>
-		/// Can this object be deleted from the DB?
-		/// </summary>
-		[Browsable(false)]
-		public virtual bool AllowDelete
-		{
-			get { return m_allowDelete; }
-			set { m_allowDelete = value; }
-		}
+        [Browsable(false)]
+        public string ObjectId { get; set; }
 
-		/// <summary>
-		/// Index of the object in his table
-		/// </summary>
-		[Browsable(false)]
-		public string ObjectId { get; set; }
+        [Browsable(false)]
+        public virtual bool Dirty { get; set; }
 
-		/// <summary>
-		/// Is object different than object in the DB?
-		/// </summary>
-		[Browsable(false)]
-		public virtual bool Dirty { get; set; }
+        [Browsable(false)]
+        public virtual bool IsDeleted { get; set; }
 
-		/// <summary>
-		/// Has this object been deleted from the database
-		/// </summary>
-		[Browsable(false)]
-		public virtual bool IsDeleted { get; set; }
+        [DataElement(AllowDbNull = false, Index = false)]
+        public DateTime LastTimeRowUpdated
+        {
+            get => Dirty ? DateTime.UtcNow : _lastTimeRowUpdated;
+            set => _lastTimeRowUpdated = value;
+        }
 
-		/// <summary>
-		/// Default field added to all DataObject.
-		/// Last time this record was updated.
-		/// Return UTC Now to update table's "LastTimeRowUpdated"
-		/// for Maintenance purpose.
-		/// </summary>
-		[DataElement(AllowDbNull = false, Index = false)]
-		public DateTime LastTimeRowUpdated 
-		{
-			get { return DateTime.UtcNow; }
-			set { Dirty = true; }
-		}
+        protected DataObject()
+        {
+            ObjectId = IdGenerator.GenerateID();
+            IsPersisted = false;
+            AllowAdd = true;
+            AllowDelete = true;
+            IsDeleted = false;
+        }
 
-		#region ICloneable Member
+        public void TakeSnapshot()
+        {
+            // Called when an object as been created and its properties initialized.
+            // Creates a copy of itself to be able to keep track of dirty properties.
+            _snapshot = (DataObject) MemberwiseClone();
+            _snapshot.Dirty = false;
+        }
 
-		/// <summary>
-		/// Clone the current object and return the copy
-		/// </summary>
-		/// <returns></returns>
-		public object Clone()
-		{
-			var obj = (DataObject) MemberwiseClone();
-			obj.ObjectId = IdGenerator.GenerateID();
-			return obj;
-		}
+        public List<ElementBinding> GetDirtyBindings(DataTableHandler tableHandler)
+        {
+            // If there's no snapshot, we can't know what changed.
+            if (_snapshot == null)
+                return tableHandler.FieldElementBindings.Where(Predicate).ToList();
 
-		#endregion
+            List<ElementBinding> dirtyBindings = new();
 
-		public override string ToString()
-		{
-			return string.Format("DataObject: {0}, ObjectId{{{1}}}", TableName, ObjectId);
-		}
-	}
+            // Iterate through all columns that can be part of an UPDATE statement.
+            foreach (ElementBinding binding in tableHandler.FieldElementBindings.Where(bind => bind.PrimaryKey == null && bind.ReadOnly == null))
+            {
+                if (!Predicate(binding))
+                    continue;
 
-	// Used to allow manipulation of inventory items and delay their database action.
-	public enum PendingDatabaseAction
-	{
-		NONE,
-		SAVE,
-		ADD,
-		DELETE
-	}
+                object currentValue = binding.GetValue(this);
+                object originalValue = binding.GetValue(_snapshot);
+
+                // If the values are not equal, this property is dirty.
+                if (!Equals(currentValue, originalValue))
+                    dirtyBindings.Add(binding);
+            }
+
+            return dirtyBindings;
+
+            static bool Predicate(ElementBinding binding)
+            {
+                return binding.PrimaryKey == null && binding.ReadOnly == null;
+            }
+        }
+
+        public object Clone()
+        {
+            var obj = (DataObject) MemberwiseClone();
+            obj.IsPersisted = false;
+            obj.ObjectId = IdGenerator.GenerateID();
+            return obj;
+        }
+
+        public override string ToString()
+        {
+            return $"DataObject: {TableName}, ObjectId{{{ObjectId}}}";
+        }
+    }
 }

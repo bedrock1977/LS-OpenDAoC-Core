@@ -5,7 +5,6 @@ using DOL.AI.Brain;
 using DOL.Database;
 using DOL.Events;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Albion;
 
@@ -18,7 +17,7 @@ public class LostStoneofArawn : BaseQuest
     /// <summary>
     ///     Defines a logger for this class.
     /// </summary>
-    private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+    private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
     private static GameNPC Honaytrt; // Start NPC Honayt'rt
     private static GameNPC Nchever; // N'chever
@@ -109,7 +108,7 @@ public class LostStoneofArawn : BaseQuest
             Honaytrt = new GameNPC();
             Honaytrt.Model = 759;
             Honaytrt.Name = "Honayt\'rt";
-            Honaytrt.GuildName = "";
+            Honaytrt.GuildName = string.Empty;
             Honaytrt.Realm = eRealm.Albion;
             Honaytrt.CurrentRegionID = 51;
             Honaytrt.LoadEquipmentTemplateFromDatabase("097fe8c1-7d7e-4b82-a7ca-04a6e192afc1");
@@ -140,7 +139,7 @@ public class LostStoneofArawn : BaseQuest
             Nchever = new GameNPC();
             Nchever.Model = 752;
             Nchever.Name = "N\'chever";
-            Nchever.GuildName = "";
+            Nchever.GuildName = string.Empty;
             Nchever.Realm = eRealm.Albion;
             Nchever.CurrentRegionID = 51;
             Nchever.LoadEquipmentTemplateFromDatabase("a2639e94-f032-4041-ad67-15dfeaf004d2");
@@ -173,7 +172,7 @@ public class LostStoneofArawn : BaseQuest
             Ohonat.LoadEquipmentTemplateFromDatabase("a58ef747-80e0-4cda-9052-15711ea0f4f7");
             Ohonat.Model = 761;
             Ohonat.Name = "O\'honat";
-            Ohonat.GuildName = "";
+            Ohonat.GuildName = string.Empty;
             Ohonat.Realm = eRealm.Albion;
             Ohonat.CurrentRegionID = 51;
             Ohonat.Size = 52;
@@ -312,14 +311,13 @@ public class LostStoneofArawn : BaseQuest
         Nyaegha.LoadEquipmentTemplateFromDatabase("Nyaegha");
         Nyaegha.Model = 605;
         Nyaegha.Name = "Nyaegha";
-        Nyaegha.GuildName = "";
+        Nyaegha.GuildName = string.Empty;
         Nyaegha.Realm = eRealm.None;
         Nyaegha.Race = 2001;
         Nyaegha.BodyType = (ushort) NpcTemplateMgr.eBodyType.Demon;
         Nyaegha.CurrentRegionID = 51;
         Nyaegha.Size = 150;
         Nyaegha.Level = 65;
-        Nyaegha.ScalingFactor = ServerProperties.Properties.NECK_BOSS_SCALING;
         Nyaegha.X = 348381;
         Nyaegha.Y = 479838;
         Nyaegha.Z = 3320;
@@ -391,7 +389,7 @@ public class LostStoneofArawn : BaseQuest
         if (existingCopy.Length > 0) return;
 
         //only try to spawn him once per trigger even if multiple people enter at the same time
-        if (Monitor.TryEnter(spawnLock))
+        if (_spawnLock.TryEnter())
         {
             try
             {
@@ -403,7 +401,7 @@ public class LostStoneofArawn : BaseQuest
             }
             finally
             {
-                Monitor.Exit(spawnLock);
+                _spawnLock.Exit();
             }
         }
         else
@@ -412,7 +410,8 @@ public class LostStoneofArawn : BaseQuest
         }
     }
 
-    static object spawnLock = new object();
+    private static readonly Lock _spawnLock = new();
+
     private static void TalkToHonaytrt(DOLEvent e, object sender, EventArgs args)
     {
         //We get the player from the event arguments and check if he qualifies		

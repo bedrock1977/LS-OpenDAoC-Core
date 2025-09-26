@@ -1,21 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-*/
-
 using System;
 using System.Collections;
 using DOL.GS.PacketHandler;
@@ -50,7 +32,7 @@ namespace DOL.GS
 			// Message: You examine {0}. {1} is {2} and is a healer.
             list.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameNPC.Examine.YouExamine.Healer", GetName(0, false, player.Client.Account.Language, this), GetPronoun(0, true, player.Client.Account.Language), GetAggroLevelString(player, false)));
             // Message: [Right-click to restore lost Constitution]
-            list.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameNPC.Interact.GiveDonation.Healer", null));
+            list.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameNPC.Examine.GiveDonation.Healer"));
             return list;
 		}
 		#endregion Examine Messages
@@ -74,14 +56,14 @@ namespace DOL.GS
             ECSGameEffect effect = EffectListService.GetEffectOnTarget(player, eEffect.ResurrectionIllness); // Identify effect to remove
 			if (effect != null) // If PvE sickness is active
 			{
-				EffectService.RequestImmediateCancelEffect(effect); // Cancel sickness
+				effect.Stop(); // Cancel sickness
 				// Message: {0} cures your resurrection sickness.
                 ChatUtil.SendSystemMessage(player, "GameNPC.Interact.CuresRS.Healer", GetName(0, true, player.Client.Account.Language, this));
             }
             ECSGameEffect rvrEffect = EffectListService.GetEffectOnTarget(player, eEffect.RvrResurrectionIllness); // Identify effect to remove
             if (rvrEffect != null) // If RvR sickness is active
             {
-	            EffectService.RequestImmediateCancelEffect(rvrEffect); // Cancel sickness
+	            rvrEffect.Stop(); // Cancel sickness
 	            // Message: {0} cures your resurrection sickness.
 	            ChatUtil.SendSystemMessage(player, "GameNPC.Interact.CuresRS.Healer", GetName(0, true, player.Client.Account.Language, this));
             }

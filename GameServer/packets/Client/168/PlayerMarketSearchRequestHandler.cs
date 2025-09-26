@@ -23,7 +23,6 @@ using System.Collections.Generic;
 using DOL.Database;
 using DOL.GS.Housing;
 using System.Text;
-using log4net;
 
 namespace DOL.GS.PacketHandler.Client.v168
 {
@@ -33,7 +32,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		
 		public void HandlePacket(GameClient client, GSPacketIn packet)
@@ -72,7 +71,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// found weird searches after searching for a string, so we are forcing the weirdness
 			if (search.name.Equals("|"))
 			{
-				search.name = "";
+				search.name = string.Empty;
 			}
 
 			//packet.Skip(1);
@@ -164,12 +163,8 @@ namespace DOL.GS.PacketHandler.Client.v168
 
 			search.clientVersion = client.Version.ToString();
 
-
-			Console.WriteLine(search);
-
-			if (ServerProperties.Properties.MARKET_ENABLE_LOG)
+			if (ServerProperties.Properties.MARKET_ENABLE_LOG && log.IsDebugEnabled)
 			{
-			
 				log.DebugFormat(" ");
 				log.DebugFormat("----- MARKET EXPLORER SEARCH PACKET ANALYSIS ---------------------");
 				log.DebugFormat(" ");
@@ -650,7 +645,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - SLOT
 		public string GetPacketDescriptionSlot(int slotID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Slot
@@ -756,7 +751,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Item Abilities
 		public string GetPacketDescriptionItemAbilities(int itemAbilityID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Item Abilities
@@ -1022,7 +1017,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 2 - Slash
 			// 3 - Thrust
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (damageTypeID)
 			{
@@ -1054,7 +1049,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 6 - Reinforced
 			// 7 - Scale
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (armorClassID)
 			{
@@ -1157,7 +1152,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 48 - To-Hit Bonus (PvE Only)
 
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (bonusID)
 			{
@@ -1259,7 +1254,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 2 - Conversion
 			// 3 - Radiant Aura
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (bonusValueID)
 			{
@@ -1298,7 +1293,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 11 - Tailoring
 			// 1 - Weaponcrafting
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (craftSkillID)
 			{
@@ -1335,7 +1330,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 			// 1 - Weaponcrafting
 
 
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			switch (craftSpeedID)
 			{
@@ -1360,7 +1355,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Focus
 		public string GetPacketDescriptionBonusesValuesFocus(int focusID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Focus (Albion)
@@ -1408,7 +1403,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Mythical Resist Cap
 		public string GetPacketDescriptionBonusesValuesMythicalResistCap(int resistID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Mythical Resist Cap
@@ -1451,7 +1446,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Mythical Resist And
 		public string GetPacketDescriptionBonusesValuesMythicalResistAnd(int resistID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Mythical Resist And
@@ -1494,7 +1489,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Mythical Stat Cap
 		public string GetPacketDescriptionBonusesValuesMythicalStatCap(int statID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Mythical Stat Cap
@@ -1540,7 +1535,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Mythical Stat And Ca
 		public string GetPacketDescriptionBonusesValuesMythicalStatAndCa(int statID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Mythical Stat And Ca???
@@ -1585,7 +1580,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Resist
 		public string GetPacketDescriptionBonusesValuesResist(int resistID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Resist
@@ -1628,7 +1623,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Skill
 		public string GetPacketDescriptionBonusesValuesSkill(int skillID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Skill (Albion)
@@ -1731,7 +1726,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Stat
 		public string GetPacketDescriptionBonusesValuesStat(int statID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Stat (Albion)
@@ -1777,7 +1772,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values - Stats Cap
 		public string GetPacketDescriptionBonusesValuesStatsCap(int statID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// -------------------------------------------------------------------------
 			// Market Explorer Packets Debug - Bonuses Values - Stats Cap (Albion)
@@ -1822,7 +1817,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 		#region Packet Description - Bonuses Values (depending on bonus type)
 		public string GetPacketDescriptionBonusesValues(int bonusID, int bonusValueID)
 		{
-			string packetDescription = "";
+			string packetDescription = string.Empty;
 
 			// 35 - Artifact
 			// 26 - Craft Skill Gain

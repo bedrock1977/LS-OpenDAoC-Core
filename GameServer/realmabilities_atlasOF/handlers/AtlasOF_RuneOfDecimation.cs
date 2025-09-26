@@ -48,7 +48,7 @@ namespace DOL.GS.RealmAbilities
             m_dbspell.EffectGroup = 0;
             m_dbspell.Range = 350;
             m_spell = new Spell(m_dbspell, 0); // Make spell level 0 so it bypasses the spec level adjustment code.
-            m_spellline = new SpellLine("RAs", "RealmAbilities", "RealmAbilities", true);
+            m_spellline = GlobalSpellsLines.RealmSpellsSpellLine;
         }
 
         public override void Execute(GameLiving living)
@@ -111,7 +111,7 @@ namespace DOL.GS.RealmAbilities
                 ClientService.CreateObjectForPlayer(player, trap);
             }
 
-            new AtlasOF_RuneOfDecimationECSEffect(new ECSGameEffectInitParams(trap, m_duration, 1, tmpHandler));
+            ECSGameEffectFactory.Create(new(trap, m_duration, 1, tmpHandler), static (in ECSGameEffectInitParams i) => new AtlasOF_RuneOfDecimationECSEffect(i));
             DisableSkill(living);
         }
     }

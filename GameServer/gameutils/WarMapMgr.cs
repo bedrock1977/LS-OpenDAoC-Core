@@ -1,19 +1,17 @@
 using System;
-using System.Reflection;
 using System.Collections.Generic;
-using DOL.GS;
-using log4net;
+using System.Reflection;
 
 namespace DOL.GS
 {
     public class WarMapMgr
-    {   
+    {
         const long REMAIN_IN_CACHE = 2 * 60 * 1000; // 2min
         const long REFRESH_INTERVAL = 10 * 1000; // 10sec
         const int FIGHTS_RATIO = 4; // 4 players = small fight, *2 = normal, *3 = big, *4 = huge
         const int GROUPS_RATIO = 8; // 8 players = small icon, etc
 
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         static long LastCalcul = 0;
         static Dictionary<long, Fight> m_fights = new Dictionary<long, Fight>();
@@ -101,16 +99,16 @@ namespace DOL.GS
                 lock (m_fights)
                 {
                     IList<long> remove = new List<long>();
+
                     foreach (long time in m_fights.Keys)
                     {
                         if (time + REMAIN_IN_CACHE < nftime)
                             remove.Add(time);
                     }
+
                     foreach (long time in remove)
-                    {
-                        if (m_fights.ContainsKey(time))
-                            m_fights.Remove(time);
-                    }
+                        m_fights.Remove(time);
+
                     lock (b_fights)
                     {
                         b_fights.Clear();
@@ -167,6 +165,7 @@ namespace DOL.GS
                 lock (m_groups)
                 {
                     IList<string> remove = new List<string>();
+
                     foreach (string name in m_groups.Keys)
                     {
                         foreach (long time in m_groups[name].Keys)
@@ -175,12 +174,10 @@ namespace DOL.GS
                                 remove.Add(name);
                         }
                     }
+
                     foreach (string name in remove)
-                    {
-                        if (m_groups.ContainsKey(name))
-                            m_groups.Remove(name);
-                    }
-                    
+                        m_groups.Remove(name);
+
                     lock (b_groups)
                     {
                         b_groups.Clear();

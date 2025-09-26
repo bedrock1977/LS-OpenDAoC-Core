@@ -5,7 +5,7 @@ using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-    [SpellHandlerAttribute("HereticDamageSpeedDecrease")]
+    [SpellHandler(eSpellType.HereticDamageSpeedDecrease)]
 	public class HereticDamageSpeedDecrease : HereticSpeedDecreaseSpellHandler
 	{
         protected int m_lastdamage = 0;
@@ -18,15 +18,15 @@ namespace DOL.GS.Spells
             base.FinishSpellCast(target);
         }
 
-        public override double GetLevelModFactor()
+        public override double CalculateDamageVarianceOffsetFromLevelDifference(GameLiving caster, GameLiving target)
         {
             return 0;
         }
 
-        public override bool IsOverwritable(ECSGameSpellEffect compare)
+        public override bool HasConflictingEffectWith(ISpellHandler compare)
         {
-            if (base.IsOverwritable(compare) == false) return false;
-            if (compare.SpellHandler.Spell.Duration != Spell.Duration) return false;
+            if (base.HasConflictingEffectWith(compare) == false) return false;
+            if (compare.Spell.Duration != Spell.Duration) return false;
             return true;
         }
 
@@ -34,37 +34,10 @@ namespace DOL.GS.Spells
         {
             AttackData ad = base.CalculateDamageToTarget(target);
             ad.CriticalDamage = 0;
+            ad.CriticalChance = 0;
             ad.AttackType = AttackData.eAttackType.Unknown;
             return ad;
         }
-
-
-        public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
-        {
-            int speclevel = 1;
-            if (m_caster is GamePlayer)
-            {
-                speclevel = ((GamePlayer)m_caster).GetModifiedSpecLevel(m_spellLine.Spec);
-            }
-            min = 1;
-            max = 1;
-
-            if (target.Level > 0)
-            {
-                min = 0.5 + (speclevel - 1) / (double)target.Level * 0.5;
-            }
-
-            if (speclevel - 1 > target.Level)
-            {
-                double overspecBonus = (speclevel - 1 - target.Level) * 0.005;
-                min += overspecBonus;
-                max += overspecBonus;
-            }
-
-            if (min > max) min = max;
-            if (min < 0) min = 0;
-        }
-
 
         protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
         {
@@ -112,7 +85,14 @@ namespace DOL.GS.Spells
                 RemoveEffect();
                 return;
             }
-            if ( !m_caster.IsAlive || !effect.Owner.IsAlive || m_caster.Mana < Spell.PulsePower || !m_caster.IsWithinRadius( effect.Owner, Spell.Range ) || m_caster.IsMezzed || m_caster.IsStunned || ( m_caster.TargetObject is GameLiving ? effect.Owner != m_caster.TargetObject as GameLiving : true ) )
+            if ( !m_caster.IsAlive ||
+                !effect.Owner.IsAlive ||
+                m_caster.Mana < Spell.PulsePower ||
+                !m_caster.IsWithinRadius(effect.Owner, Spell.CalculateEffectiveRange(m_caster)) ||
+                m_caster.IsMezzed ||
+                m_caster.IsStunned ||
+                m_caster.TargetObject is not GameLiving ||
+                effect.Owner != (m_caster.TargetObject as GameLiving))
             {
                 RemoveEffect();
             }
@@ -163,7 +143,7 @@ namespace DOL.GS.Spells
         {
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
-            if (Util.Chance(CalculateSpellResistChance(target)))
+            if (Util.ChanceDouble(CalculateSpellResistChance(target)))
             {
                 OnSpellResist(target);
                 return;
@@ -226,23 +206,6 @@ namespace DOL.GS.Spells
             {
                 target.StartInterruptTimer(target.SpellInterruptDuration, AttackData.eAttackType.Spell, Caster);
             }
-
-            if (target is GameNPC)
-            {
-                IOldAggressiveBrain aggroBrain = ((GameNPC)target).Brain as IOldAggressiveBrain;
-                if (aggroBrain != null)
-                    aggroBrain.AddToAggroList(Caster, 1);
-			}
-			if (target.Realm == 0 || Caster.Realm == 0)
-			{
-				target.LastAttackedByEnemyTickPvE = target.CurrentRegion.Time;
-				Caster.LastAttackTickPvE = Caster.CurrentRegion.Time;
-			}
-			else
-			{
-				target.LastAttackedByEnemyTickPvP = target.CurrentRegion.Time;
-				Caster.LastAttackTickPvP = Caster.CurrentRegion.Time;
-			}
         }
 
         public virtual void DamageTarget(AttackData ad)

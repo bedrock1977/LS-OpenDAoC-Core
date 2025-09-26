@@ -5,7 +5,6 @@ using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.SalvageCalc;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
@@ -17,7 +16,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		#region Declaration
 
@@ -136,7 +135,7 @@ namespace DOL.GS
 				salvageYield.MaterialId_nb = (string) ReturnSalvage.ID;
 			}
 
-			if (salvageYield.MaterialId_nb == "")
+			if (salvageYield.MaterialId_nb == string.Empty)
 			{
 				player.Out.SendMessage("No material set for this item", eChatType.CT_System, eChatLoc.CL_SystemWindow);
 				return 0;
@@ -178,7 +177,7 @@ namespace DOL.GS
             int Multiplier = 0;
             int ReturnCount = SalvageCount;
 
-            string iType = "";
+            string iType = string.Empty;
 
             // if (item.IsCrafted)
             // {
@@ -301,10 +300,10 @@ namespace DOL.GS
 		/// <returns></returns>
 		protected static int Proceed(ECSGameTimer timer)
 		{
-			GamePlayer player = timer.Properties.GetProperty<GamePlayer>(AbstractCraftingSkill.PLAYER_CRAFTER, null);
-			DbInventoryItem itemToSalvage = timer.Properties.GetProperty<DbInventoryItem>(SALVAGED_ITEM, null);
-			DbSalvageYield yield = timer.Properties.GetProperty<DbSalvageYield>(SALVAGE_YIELD, null);
-			IList<DbInventoryItem> itemList = player.TempProperties.GetProperty<IList<DbInventoryItem>>(SALVAGE_QUEUE, null);
+			GamePlayer player = timer.Properties.GetProperty<GamePlayer>(AbstractCraftingSkill.PLAYER_CRAFTER);
+			DbInventoryItem itemToSalvage = timer.Properties.GetProperty<DbInventoryItem>(SALVAGED_ITEM);
+			DbSalvageYield yield = timer.Properties.GetProperty<DbSalvageYield>(SALVAGE_YIELD);
+			IList<DbInventoryItem> itemList = player.TempProperties.GetProperty<IList<DbInventoryItem>>(SALVAGE_QUEUE);
 			int materialCount = yield.Count;
 
 			if (player == null || itemToSalvage == null || yield == null || materialCount == 0)
@@ -340,7 +339,7 @@ namespace DOL.GS
 			InventoryLogging.LogInventoryAction(player, "(salvage)", eInventoryActionType.Craft, itemToSalvage.Template, itemToSalvage.Count);
 
 			Dictionary<int, int> changedSlots = new Dictionary<int, int>(5); // value: < 0 = new item count; > 0 = add to old
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				int count = materialCount;
 				foreach (DbInventoryItem item in player.Inventory.GetItemRange(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack))
@@ -695,7 +694,7 @@ namespace DOL.GS
             #region SpecialFix MerchantList
 
             if (item.Bonus8 > 0)
-                if (item.Bonus8Type == 0 || item.Bonus8Type.ToString() == "")
+                if (item.Bonus8Type == 0 || item.Bonus8Type.ToString() == string.Empty)
                     maxCount = item.Bonus8;
 
             #endregion SpecialFix MerchantList

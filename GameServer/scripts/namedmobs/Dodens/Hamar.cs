@@ -18,13 +18,6 @@ namespace DOL.GS.Scripts
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(9910);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 		
 			// 1h Axe, left + main
 			GameNpcInventoryTemplate hamarTemp = new GameNpcInventoryTemplate();
@@ -42,7 +35,6 @@ namespace DOL.GS.Scripts
 			VisibleActiveWeaponSlots = 16;
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
-			ScalingFactor = 40;
 			base.SetOwnBrain(new HamarBrain());
 			LoadedFromScript = false; //load from database
 			SaveIntoDatabase();
@@ -51,10 +43,7 @@ namespace DOL.GS.Scripts
 			return true;
 		}
 		
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int GetResist(eDamageType damageType)
 		{
 			switch (damageType)
@@ -165,7 +154,7 @@ namespace DOL.GS.Scripts
 			/// <param name="message">The message to be broadcast.</param>
 			public void BroadcastMessage(String message)
 			{
-				foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+				foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 				{
 					player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 				}

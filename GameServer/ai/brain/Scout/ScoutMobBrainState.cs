@@ -27,7 +27,7 @@ namespace DOL.AI.Brain
                 return;
             }
 
-            _target = _brain.GetOrderedAggroList().FirstOrDefault().Item1;
+            _target = _brain.GetOrderedAggroList().FirstOrDefault().Living;
 
             if (_target == null)
             {
@@ -70,7 +70,7 @@ namespace DOL.AI.Brain
                 base.Think();
             else if (_state is ScoutMobState.FACING_TARGET)
             {
-                if (ServiceUtils.ShouldTick(_staringEndTime))
+                if (GameServiceUtils.ShouldTick(_staringEndTime))
                     LookForFriends();
                 else
                     StareAtTarget();
@@ -112,14 +112,10 @@ namespace DOL.AI.Brain
                     return;
 
                 _brain.AddAggroListTo(_friend);
-                _friend.AttackMostWanted();
 
+                // This includes us.
                 foreach (StandardMobBrain otherFriendlyBrain in _friend.GetFriendlyAndAvailableBrainsInRadiusOrderedByDistance(ADDS_RADIUS, MAX_ADDS))
-                {
-                    // This includes us.
                     _brain.AddAggroListTo(otherFriendlyBrain);
-                    otherFriendlyBrain.AttackMostWanted();
-                }
 
                 _state = ScoutMobState.FIGHTING;
             }

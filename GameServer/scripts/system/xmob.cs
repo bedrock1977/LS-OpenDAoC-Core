@@ -22,7 +22,7 @@ namespace DOL.GS.Commands
 
     public class XCreateCommandHandler : AbstractCommandHandler, ICommandHandler
     {
-        public static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        public static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         #region spot cache
 
@@ -439,7 +439,7 @@ namespace DOL.GS.Commands
                                         if (npc.Realm == eRealm.None)
                                         {
                                             npc.Level = (byte)Util.Random(min, max);
-                                            npc.AutoSetStats();
+                                            npc.SetStats();
                                             npc.SaveIntoDatabase();
                                         }
                                 }
@@ -457,7 +457,7 @@ namespace DOL.GS.Commands
                                         if (npc.Realm == eRealm.None)
                                         {
                                             npc.Level = nlvl;
-                                            npc.AutoSetStats();
+                                            npc.SetStats();
                                             npc.SaveIntoDatabase();
                                         }
                                     }

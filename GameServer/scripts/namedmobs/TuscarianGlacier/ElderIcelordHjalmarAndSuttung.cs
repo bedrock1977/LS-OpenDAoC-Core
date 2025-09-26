@@ -24,10 +24,7 @@ namespace DOL.GS
             }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -59,13 +56,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60160395);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
             RespawnInterval = -1; 
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
@@ -140,8 +130,7 @@ namespace DOL.AI.Brain
 {
     public class SuttungBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SuttungBrain()
             : base()
@@ -153,7 +142,7 @@ namespace DOL.AI.Brain
 
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -316,10 +305,7 @@ namespace DOL.GS
             }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -367,13 +353,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60160394);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
             RespawnInterval = -1;
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Giant;
@@ -401,7 +380,7 @@ namespace DOL.GS
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -425,8 +404,7 @@ namespace DOL.AI.Brain
 {
     public class HjalmarBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public HjalmarBrain()
             : base()
@@ -438,7 +416,7 @@ namespace DOL.AI.Brain
 
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -559,10 +537,7 @@ namespace DOL.GS
             }
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 50 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         protected int Show_Effect(ECSGameTimer timer)
         {
@@ -658,8 +633,7 @@ namespace DOL.AI.Brain
 {
     public class MorkimmaBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public MorkimmaBrain()
             : base()
@@ -743,8 +717,7 @@ namespace DOL.AI.Brain
 {
     public class HjalmarSuttungControllerBrain : APlayerVicinityBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public HjalmarSuttungControllerBrain()
             : base()

@@ -1,23 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using DOL.AI.Brain;
 using DOL.GS.Effects;
@@ -28,7 +8,7 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Simulates disarming a target by stopping their attack
 	/// </summary>
-	[SpellHandler("Disarm")]
+	[SpellHandler(eSpellType.Disarm)]
 	public class DisarmSpellHandler : SpellHandler
 	{
 		/// <summary>
@@ -47,27 +27,11 @@ namespace DOL.GS.Spells
 		public override void OnEffectStart(GameSpellEffect effect)
 		{
 			base.OnEffectStart(effect);
-			if (effect.Owner.Realm == 0 || Caster.Realm == 0)
-			{
-				effect.Owner.LastAttackedByEnemyTickPvE = effect.Owner.CurrentRegion.Time;
-				Caster.LastAttackTickPvE = Caster.CurrentRegion.Time;
-			}
-			else
-			{
-				effect.Owner.LastAttackedByEnemyTickPvP = effect.Owner.CurrentRegion.Time;
-				Caster.LastAttackTickPvP = Caster.CurrentRegion.Time;
-			}
-            effect.Owner.DisarmedTime = effect.Owner.CurrentRegion.Time + CalculateEffectDuration(effect.Owner, Caster.Effectiveness);
+            effect.Owner.DisarmedTime = effect.Owner.CurrentRegion.Time + CalculateEffectDuration(effect.Owner);
 			effect.Owner.attackComponent.StopAttack();
 			MessageToLiving(effect.Owner, Spell.Message1, eChatType.CT_Spell);
 			Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message2, effect.Owner.GetName(0, false)), eChatType.CT_Spell, effect.Owner);
 			effect.Owner.StartInterruptTimer(effect.Owner.SpellInterruptDuration, AttackData.eAttackType.Spell, Caster);
-			if (effect.Owner is GameNPC)
-			{
-				IOldAggressiveBrain aggroBrain = ((GameNPC)effect.Owner).Brain as IOldAggressiveBrain;
-				if (aggroBrain != null)
-					aggroBrain.AddToAggroList(Caster, 1);
-			}
 		}
 
 		/// <summary>
@@ -96,9 +60,9 @@ namespace DOL.GS.Spells
 			{
 				var list = new List<string>();
 
-				list.Add("Function: " + (Spell.SpellType.ToString() == "" ? "(not implemented)" : Spell.SpellType.ToString()));
+				list.Add("Function: " + (Spell.SpellType.ToString() == string.Empty ? "(not implemented)" : Spell.SpellType.ToString()));
 				list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
 				if(Spell.Duration != 0) list.Add(string.Format("Duration: {0}sec", (int)Spell.Duration/1000));
 				list.Add("Target: " + Spell.Target);

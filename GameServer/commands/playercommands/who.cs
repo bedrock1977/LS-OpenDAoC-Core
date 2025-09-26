@@ -23,12 +23,11 @@ namespace DOL.GS.Commands
 		"/WHO <level> <level> - lists players in level range",
 		"/WHO BG - lists all players leading a public BattleGroup",
 		"/WHO nogroup - lists all ungrouped players",
-		"/WHO hc - lists all Hardcore players",
-		"/WHO solo - lists all SOLO players"
+		"/WHO hc - lists all Hardcore players"
 	)]
 	public class WhoCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public const int MAX_LIST_SIZE = 49;
 		public const string MESSAGE_LIST_TRUNCATED = "(Too many matches ({0}).  List truncated.)";
@@ -46,7 +45,7 @@ namespace DOL.GS.Commands
 			ArrayList clientsList = new ArrayList();
 			ArrayList resultMessages = new ArrayList();
 
-			foreach (GamePlayer otherPlayer in ClientService.GetPlayers())
+			foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayers())
 			{
 				if (otherPlayer.Client.Account.PrivLevel > (uint) ePrivLevel.Player && otherPlayer.IsAnonymous == false)
 				{
@@ -138,13 +137,6 @@ namespace DOL.GS.Commands
 					filters.Add(new HCFilter());
 					break;
 				}
-				case "solo":
-				case "nohelp":
-				{
-					filters = new ArrayList(1);
-					filters.Add(new NoHelpFilter());
-					break;
-				}
 				case "frontiers":
 				{
 					filters = new ArrayList();
@@ -215,7 +207,7 @@ namespace DOL.GS.Commands
 			}
 
 			StringBuilder result = new StringBuilder(player.Name, 100);
-			if (player.GuildName != "")
+			if (player.GuildName != string.Empty)
 			{
 				result.Append(" <");
 				result.Append(player.GuildName);
@@ -264,12 +256,12 @@ namespace DOL.GS.Commands
 				if (log.IsErrorEnabled && player.Client.Account.PrivLevel != (uint)ePrivLevel.Admin)
 					log.Error("no currentzone in who commandhandler for player " + player.Name);
 			}
-			ChatGroup mychatgroup = player.TempProperties.GetProperty<ChatGroup>(ChatGroup.CHATGROUP_PROPERTY, null);
+			ChatGroup mychatgroup = player.TempProperties.GetProperty<ChatGroup>(ChatGroup.CHATGROUP_PROPERTY);
 			if (mychatgroup != null && (mychatgroup.Members.Contains(player) || mychatgroup.IsPublic && (bool)mychatgroup.Members[player] == true))
 			{
 				result.Append(" [CG]");
 			}
-			BattleGroup mybattlegroup = player.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY, null);
+			BattleGroup mybattlegroup = player.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY);
 			if (mybattlegroup != null && (mybattlegroup.Members.Contains(player) || mybattlegroup.IsPublic && (bool)mybattlegroup.Members[player] == true))
 			{
 				result.Append(" [BG]");
@@ -289,10 +281,6 @@ namespace DOL.GS.Commands
 			if (player.HCFlag)
 			{
 				result.Append(" <HC>");
-			}
-			if (player.NoHelp)
-			{
-				result.Append(" <SOLO>");
 			}
 			if(player.Client.Account.PrivLevel == (uint)ePrivLevel.GM)
 			{
@@ -453,7 +441,7 @@ namespace DOL.GS.Commands
 		{
 			public bool ApplyFilter(GamePlayer player)
 			{
-				ChatGroup cg = player.TempProperties.GetProperty<ChatGroup>(ChatGroup.CHATGROUP_PROPERTY, null);
+				ChatGroup cg = player.TempProperties.GetProperty<ChatGroup>(ChatGroup.CHATGROUP_PROPERTY);
 				//no chatgroup found
 				if (cg == null)
 					return false;
@@ -488,7 +476,7 @@ namespace DOL.GS.Commands
 				return player.RPFlag;
 			}
 		}
-		
+
 		private class AdvisorFilter : IWhoFilter
 		{
 			public bool ApplyFilter(GamePlayer player)
@@ -496,20 +484,12 @@ namespace DOL.GS.Commands
 				return player.Advisor;
 			}
 		}
-		
+
 		private class HCFilter : IWhoFilter
 		{
 			public bool ApplyFilter(GamePlayer player)
 			{
 				return player.HCFlag;
-			}
-		}
-		
-		private class NoHelpFilter : IWhoFilter
-		{
-			public bool ApplyFilter(GamePlayer player)
-			{
-				return player.NoHelp;
 			}
 		}
 
@@ -524,12 +504,12 @@ namespace DOL.GS.Commands
 				return false;
 			}
 		}
-		
+
 		private class BGFilter : IWhoFilter
 		{
 			public bool ApplyFilter(GamePlayer player)
 			{
-				BattleGroup bg = player.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY, null);
+				BattleGroup bg = player.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY);
 				//no battlegroup found
 				if (bg == null)
 					return false;

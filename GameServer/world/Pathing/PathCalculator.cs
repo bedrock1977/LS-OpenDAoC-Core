@@ -1,192 +1,149 @@
-using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Threading;
-using log4net;
+using DOL.GS.Movement;
 
 namespace DOL.GS
 {
-    /// <summary>
-    /// Path calculator component that can be added to any NPC to calculate paths
-    /// @author mlinder
-    /// </summary>
     public sealed class PathCalculator
     {
-        /// <summary>
-        /// Defines a logger for this class.
-        /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        /// <summary>
-        /// Minimum distance that a target has to be away before we start plotting paths instead of directly
-        /// walking towards the target. Includes Z.
-        /// </summary>
         public const int MIN_PATHING_DISTANCE = 80;
-
-        /// <summary>
-        /// Minimum distance difference required before a path is being replotted
-        /// </summary>
         public const int MIN_TARGET_DIFF_REPLOT_DISTANCE = 80;
-
-        /// <summary>
-        /// Distance at which we consider a pathing node reached
-        /// </summary>
         public const int NODE_REACHED_DISTANCE = 24;
+        public const int DOOR_SEARCH_DISTANCE = 512;
+        private const int IDLE = 0;
+        private const int REPLOTTING = 1;
 
-        /// <summary>
-        /// Distance to search for doors when computing NextDoor.
-        /// </summary>
-        private const int DOOR_SEARCH_DISTANCE = 512;
-
-        /// <summary>
-        /// True if this calculator can be used for the specified NPC.
-        /// </summary>
-        /// <param name="o"></param>
-        /// <returns></returns>
-        public static bool IsSupported(GameNPC o)
-        {
-            return o?.CurrentZone != null && o.CurrentZone.IsPathingEnabled;
-        }
-
-        /// <summary>
-        /// Owner to which this calculator belongs to. Used for calculating position offsets
-        /// </summary>
         public GameNPC Owner { get; }
-
-        /// <summary>
-        /// If set, contains the next door on the NPCs path
-        /// </summary>
-        public GameDoor NextDoor { get; private set; }
-
-        private readonly Queue<WrappedPathPoint> _pathNodes = new Queue<WrappedPathPoint>();
-        private Vector3 _lastTarget = Vector3.Zero;
-
-        /// <summary>
-        /// Forces the path to be replot on the next CalculateNextTarget(...)
-        /// </summary>
         public bool ForceReplot { get; set; }
-
-        /// <summary>
-        /// True if a path to the target was plotted. False if resorting back to air/direct route
-        /// </summary>
         public bool DidFindPath { get; private set; }
 
-        /// <summary>
-        /// Creates a path calculator for the given NPC
-        /// </summary>
-        /// <param name="owner"></param>
+        private Queue<WrappedPathPoint> _pathNodes = new();
+        private Dictionary<WrappedPathPoint, List<GameDoorBase>> _doorsOnPath = new();
+        private Vector3 _lastTarget = Vector3.Zero;
+        private int _isReplottingPath = IDLE;
+        private PathVisualization _pathVisualization;
+
         public PathCalculator(GameNPC owner)
         {
             ForceReplot = true;
             Owner = owner;
         }
 
-        /// <summary>
-        /// True if we should path towards the target point
-        /// </summary>
-        /// <param name="target"></param>
-        /// <returns></returns>
+        public static bool IsSupported(GameNPC npc)
+        {
+            return npc?.CurrentZone != null && npc.CurrentZone.IsPathingEnabled;
+        }
+
         private bool ShouldPath(Vector3 target)
         {
             return ShouldPath(Owner, target);
         }
 
-        /// <summary>
-        /// Clears all data stored in this calculator
-        /// </summary>
         public void Clear()
         {
             _pathNodes.Clear();
+            _doorsOnPath.Clear();
             _lastTarget = Vector3.Zero;
             DidFindPath = false;
             ForceReplot = true;
         }
 
-        /// <summary>
-        /// True if we should path towards the target point
-        /// </summary>
-        /// <param name="owner"></param>
-        /// <param name="target"></param>
-        /// <returns></returns>
         public static bool ShouldPath(GameNPC owner, Vector3 target)
         {
+            // Too close to path (note: this is making NPCs walk through walls).
             if (owner.GetDistanceTo(target) < MIN_PATHING_DISTANCE)
-                return false; // too close to path
-            if (owner.Flags.HasFlag(GameNPC.eFlags.FLYING))
                 return false;
+
+            if (owner.Flags.HasFlag(GameNPC.eFlags.FLYING) || owner is GameTaxi)
+                return false;
+
+            // This will probably result in some really awkward paths otherwise.
             if (owner.Z <= 0)
-                return false; // this will probably result in some really awkward paths otherwise
-            var zone = owner.CurrentZone;
+                return false;
+
+            Zone zone = owner.CurrentZone;
+
             if (zone == null || !zone.IsPathingEnabled)
-                return false; // we're in nirvana
-            if (owner.CurrentRegion.GetZone((int)target.X, (int)target.Y) != zone)
-                return false; // target is in a different zone (TODO: implement this maybe? not sure if really required)
+                return false;
+
+            // Target is in a different zone (TODO: implement this maybe? not sure if really required).
+            if (owner.CurrentRegion.GetZone((int) target.X, (int) target.Y) != zone)
+                return false;
+
             return true;
         }
 
-        //private readonly Meter noPathFoundMetric = Metric.Meter("NoPathFound", Unit.Calls);
-
-        /// <summary>
-        /// Semaphore to prevent multiple replots
-        /// </summary>
-        private int isReplottingPath = IDLE;
-        const int IDLE = 0, REPLOTTING = 1;
-
         private void ReplotPath(Vector3 target)
         {
-            // Try acquiring a pathing lock
-            if (Interlocked.CompareExchange(ref isReplottingPath, REPLOTTING, IDLE) != IDLE)
-            {
-                // Computation is already in progress. ReplotPathAsync will be called again automatically by .PathTo every few ms
+            if (Interlocked.CompareExchange(ref _isReplottingPath, REPLOTTING, IDLE) != IDLE)
                 return;
-            }
 
-            // we make a blocking call here because we are already in a worker thread and inside a lock
+            const int MAX_PATH_NODES = 512;
+            WrappedPathPoint[] rentedPathBuffer = ArrayPool<WrappedPathPoint>.Shared.Rent(MAX_PATH_NODES);
+
             try
             {
-                var currentZone = Owner.CurrentZone;
-                var currrentPos = new Vector3(Owner.X, Owner.Y, Owner.Z);
-                var pathingResult = PathingMgr.Instance.GetPathStraightAsync(currentZone, currrentPos, target);
+                Zone currentZone = Owner.CurrentZone;
+                Vector3 currentPos = new(Owner.X, Owner.Y, Owner.Z);
+                PathingResult pathingResult = PathingMgr.Instance.GetPathStraight(currentZone, currentPos, target, rentedPathBuffer);
 
-                lock (_pathNodes)
+                _pathNodes.Clear();
+                _doorsOnPath.Clear();
+
+                if (pathingResult.Error is EPathingError.PathFound or EPathingError.PartialPathFound)
                 {
-                    _pathNodes.Clear();
-                    if (pathingResult.Error != PathingError.NoPathFound && pathingResult.Error != PathingError.NavmeshUnavailable &&
-                        pathingResult.Points != null)
+                    DidFindPath = true;
+                    int nodeCount = pathingResult.PointCount;
+
+                    // Keep track of doors on the path.
+                    // Skip the first node if it isn't a door.
+                    for (int i = 0; i < nodeCount; i++)
                     {
-                        DidFindPath = true;
-                        var to = pathingResult.Points.Length - 1; /* remove target node only if no partial path */
-                        if (pathingResult.Error == PathingError.PartialPathFound)
-                        {
-                            to = pathingResult.Points.Length;
-                        }
-                        for (int i = 1; i < to; i++) /* remove first node */
-                        {
-                            var pt = pathingResult.Points[i];
-                            if (pt.Position.X < -500000)
-                            {
-                                log.Error("PathCalculator.ReplotPath returned weird node: " + pt + " (result=" + pathingResult.Error +
-                                          "); this=" + this);
-                            }
-                            _pathNodes.Enqueue(pt);
-                        }
+                        WrappedPathPoint pathPoint = rentedPathBuffer[i];
+                        bool isDoor = (pathPoint.Flags & EDtPolyFlags.DOOR) != 0;
+
+                        if (i == 0 && !isDoor)
+                            continue;
+
+                        _pathNodes.Enqueue(pathPoint);
+
+                        if (!isDoor)
+                            continue;
+
+                        Point3D point = new(pathPoint.Position.X, pathPoint.Position.Y, pathPoint.Position.Z);
+                        _doorsOnPath[pathPoint] = new();
+                        Owner.CurrentRegion.GetInRadius(point, eGameObjectType.DOOR, DOOR_SEARCH_DISTANCE, _doorsOnPath[pathPoint]);
                     }
-                    else
-                    {
-                        //noPathFoundMetric.Mark();
-                        DidFindPath = false;
-                    }
-                    _lastTarget = target;
-                    ForceReplot = false;
+
+                    _pathVisualization?.Visualize(_pathNodes, Owner.CurrentRegion);
                 }
+                else
+                {
+                    if (pathingResult.Error is EPathingError.BufferTooSmall)
+                    {
+                        if (log.IsWarnEnabled)
+                            log.Warn($"Path buffer for {Owner} was too small. Needed {pathingResult.PointCount}, had {MAX_PATH_NODES}.");
+                    }
+
+                    DidFindPath = false;
+                }
+
+                _lastTarget = target;
+                ForceReplot = false;
             }
             finally
             {
-                if (Interlocked.Exchange(ref isReplottingPath, IDLE) != REPLOTTING)
+                ArrayPool<WrappedPathPoint>.Shared.Return(rentedPathBuffer);
+
+                if (Interlocked.Exchange(ref _isReplottingPath, IDLE) != REPLOTTING)
                 {
-                    log.Warn("PathCalc semaphore was in IDLE state even though we were replotting. This should never happen");
+                    if (log.IsErrorEnabled)
+                        log.Error("PathCalc semaphore was in IDLE state even though we were replotting. This should never happen");
                 }
             }
         }
@@ -194,74 +151,85 @@ namespace DOL.GS
         /// <summary>
         /// Calculates the next point this NPC should walk to to reach the target
         /// </summary>
-        /// <param name="target"></param>
-        /// <returns>Next path node, or null if target reached. Throws a NoPathToTargetException if path is blocked/returns>
-        public Tuple<Vector3?, NoPathReason> CalculateNextTarget(Vector3 target)
+        /// <returns>Next path node, or null if target reached. Throws a NoPathToTargetException if path is blocked</returns>
+        public Vector3? CalculateNextTarget(Vector3 target, out ENoPathReason noPathReason)
         {
             if (!ShouldPath(target))
             {
-                DidFindPath = true; // not needed
-                return new Tuple<Vector3?, NoPathReason>(null, NoPathReason.NOPROBLEM);
+                DidFindPath = true; // Not needed.
+                noPathReason = ENoPathReason.NoPath;
+                return null;
             }
 
-            // Check if we can reuse our path. We assume that we ourselves never "suddenly" warp to a completely
-            // different position.
+            // Check if we can reuse our path. We assume that we ourselves never "suddenly" warp to a completely different position.
             if (ForceReplot || !_lastTarget.IsInRange(target, MIN_TARGET_DIFF_REPLOT_DISTANCE))
-            {
                 ReplotPath(target);
+
+            // Stop right there if the path contains a closed door that we're not allowed to open.
+            // Ideally, we should check for an alternative path.
+            // This only affects NPCs with a realm set (guards, pets) to prevent XP exploits.
+            if (Owner.Realm is not eRealm.None)
+            {
+                foreach (List<GameDoorBase> doorsAroundPathPoint in _doorsOnPath.Values)
+                {
+                    foreach (GameDoorBase door in doorsAroundPathPoint)
+                    {
+                        if (door.State is eDoorState.Closed && !door.CanBeOpenedViaInteraction)
+                        {
+                            noPathReason = ENoPathReason.ClosedDoor;
+                            return null;
+                        }
+                    }
+                }
             }
 
-            // Find the next node in the path to the target, but skip points that are too close
-            while (_pathNodes.Count > 0 && Owner.IsWithinRadius(_pathNodes.Peek().Position, NODE_REACHED_DISTANCE))
+            // Dequeue the next node if we've reached it, and any subsequent node that might be close to it.
+            while (_pathNodes.TryPeek(out WrappedPathPoint nextNode) && Owner.IsWithinRadius(nextNode.Position, NODE_REACHED_DISTANCE))
             {
+                // Open doors that can be opened (which should be every door if we're here).
+                if (_doorsOnPath.Remove(nextNode, out List<GameDoorBase> doorsAroundPathPoint))
+                {
+                    foreach (GameDoorBase door in doorsAroundPathPoint)
+                    {
+                        if (door.CanBeOpenedViaInteraction && door.State is not eDoorState.Open)
+                            door.Open();
+                    }
+                }
+
                 _pathNodes.Dequeue();
             }
 
-            // Scan the next few nodes for a potential door
-            // TODO(mlinder): Implement support for doors
-            NextDoor = null;
-            /*foreach (var node in _pathNodes.Take(1)) {
-              if ((node.Flags & dtPolyFlags.DOOR) != 0) {
-                var currentNode = node;
-                try {
-                  NextDoor =
-                    DoorMgr.GetDoorsInRadius(Owner.Region, node.Position, DOOR_SEARCH_DISTANCE)
-                      .MinBy(x => x.Position.DistanceSquared(currentNode.Position));
-                  // TODO(mlinder): Confirm whether this actually makes sure that the path goes through a door, and not just next to it?
-                } catch (InvalidOperationException) {
-                  // TODO(mlinder): this is really inefficient b/c of exception handling, duh
-                  Owner.DebugSend("Did not find door in radius");
-                }
-                break;
-              }
-            }
-
-            // Open doors automagically (maybe not the best place to do this?)
-            if (NextDoor != null) {
-              Owner.DebugSend("There is a door on the next segment: {0}", NextDoor);
-              if (!DealWithDoorOnPath(NextDoor))
-              {
-                return new Tuple<Vector3?, NoPathReason>(null, NoPathReason.DOOR_EN_ROUTE);
-              }
-            }*/
-
             if (_pathNodes.Count == 0)
             {
-                // Path end reached, or no path found
-                if (!DidFindPath)
-                    return new Tuple<Vector3?, NoPathReason>(null, NoPathReason.RECAST_FOUND_NO_PATH);
-                return new Tuple<Vector3?, NoPathReason>(null, NoPathReason.UNKNOWN); // no more nodes (or no path)
+                if (DidFindPath)
+                {
+                    noPathReason = ENoPathReason.End;
+                    return null;
+                }
+
+                noPathReason = ENoPathReason.NoPath;
+                return null;
             }
 
-            // Just walk to the next pathing node
-            var next = _pathNodes.Peek();
-            return new Tuple<Vector3?, NoPathReason>(next.Position, NoPathReason.NOPROBLEM);
+            noPathReason = ENoPathReason.NoProblem;
+            return _pathNodes.Peek().Position;
+        }
+
+        public void ToggleVisualization()
+        {
+            if (_pathVisualization != null)
+            {
+                _pathVisualization.CleanUp();
+                _pathVisualization = null;
+                return;
+            }
+
+            _pathVisualization = new();
         }
 
         public override string ToString()
         {
-            return
-              $"PathCalc[Target={_lastTarget}, Nodes={_pathNodes.Count}, NextNode={(_pathNodes.Count > 0 ? _pathNodes.Peek().ToString() : null)}, NextDoor={NextDoor}]";
+            return $"PathCalc[Target={_lastTarget}, Nodes={_pathNodes.Count}, NextNode={(_pathNodes.Count > 0 ? _pathNodes.Peek().ToString() : null)}]";
         }
     }
 }

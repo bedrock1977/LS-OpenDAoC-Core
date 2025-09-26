@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using DOL.GS;
+﻿using DOL.GS;
 using DOL.GS.Scheduler;
 
 namespace DOL.AI.Brain
@@ -38,7 +37,7 @@ namespace DOL.AI.Brain
 			{
 				if (!Body.attackComponent.AttackState && AggroRange > 0)
 				{
-					var currentPlayersSeen = new List<GamePlayer>();
+					var currentPlayersSeen = GameLoop.GetListForTick<GamePlayer>();
 					foreach (GamePlayer player in Body.GetPlayersInRadius((ushort) AggroRange))
 					{
 						if (!PlayersSeen.Contains(player))
@@ -50,15 +49,13 @@ namespace DOL.AI.Brain
 					for (int i = 0; i < PlayersSeen.Count; i++)
 					{
 						if (!currentPlayersSeen.Contains(PlayersSeen[i]))
-						{
-							PlayersSeen.RemoveAt(i);
-						}
+							PlayersSeen.SwapRemoveAt(i);
 					}
 				}
 				if (!Body.attackComponent.AttackState && AggroLevel > 0)
 				{
 					CheckPlayerAggro();
-					CheckNPCAggro();
+					CheckNpcAggro();
 				}
 				if (HasAggro)
 				{
@@ -138,7 +135,7 @@ namespace DOL.AI.Brain
 		{
 			Body.Size = 95;
 			Body.Level = (byte)Util.Random(10, 11);
-			Body.AutoSetStats();
+			Body.SetStats();
 			hasGrown = true;
 		}
 	}

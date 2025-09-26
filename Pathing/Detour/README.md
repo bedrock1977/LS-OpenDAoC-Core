@@ -8,9 +8,9 @@ Detour offers a simple static navmesh data representation which is suitable for 
 This project is based on [recastnavigation](https://github.com/recastnavigation/recastnavigation).
 
 ## How to use with OpenDAoC
-We recommend generating navmeshes (navigation meshes) with [Uthgard open source tools](https://github.com/thekroko/uthgard-opensource/tree/master/pathing). You can also download them from [our old repository](https://gitlab.com/atlas-freeshard/misc/navmeshes) (classic) or from [Amtenael](https://amtenael.fr/pathing.7z) (some zones are missing).
+We recommend generating navmeshes (navigation meshes) with [our own fork of it](https://github.com/OpenDAoC/OpenDAoC-BuildNav). Navmeshes are expected to be generated with DT_POLYREF64 enabled.
 
-Create a "pathing" folder in your server's folder (where you have DOLServer.exe) and copy the navmeshes in it.
+Create a "pathing" folder in your server's folder (where you have CoreServer.exe) and copy the navmeshes (*.nav) in it.
 
 Caution: if you use all navmeshes, you will need at least 5GB of RAM and the server will be take some time to load.
 
@@ -31,9 +31,8 @@ About Linux, you can use your package manager to install theses tools: cmake, g+
   .. Select "Visual Studio 17 2022" as generator
   .. Click on "Finish"
 5. Click on "Generate" and "Open Project"
-6. Visual Studio should open with DOL_Detour
-7. Select "Release" instead of "Debug" and build the solution
-8. You can copy dol_detour.dll from `Release` in your build folder to your OpenDAoC-Core folder
+6. In Visual Studio, select "Release" instead of "Debug" and build the solution
+7. Copy Detour.dll from `Release` in your build folder to your server's `/lib` folder
 
 ## Build (Linux)
 - Debian / Ubuntu: `sudo apt-get install build-essential cmake`
@@ -42,4 +41,4 @@ About Linux, you can use your package manager to install theses tools: cmake, g+
 1. Open a terminal in this path
 2. `mkdir build && cd build`
 3. `cmake -DCMAKE_BUILD_TYPE=Release .. && make`
-4. Copy `libdol_detour.so` in your OpenDAoC-Core folder
+4. Copy `Detour.so` to your server's `/lib` folder

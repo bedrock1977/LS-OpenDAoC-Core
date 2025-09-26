@@ -1,22 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System.Collections.Generic;
 using DOL.AI.Brain;
 
@@ -25,7 +6,7 @@ namespace DOL.GS.Spells
     /// <summary>
     /// This pet is purely aesthetic and can't be cast in RvR zones
     /// </summary>
-    [SpellHandler("SummonNoveltyPet")]
+    [SpellHandler(eSpellType.SummonNoveltyPet)]
     public class SummonNoveltyPet : SummonSpellHandler
     {
         /// <summary>
@@ -58,7 +39,7 @@ namespace DOL.GS.Spells
                 return false;
             }
 
-			if (Caster.TempProperties.GetProperty<bool>(NoveltyPetBrain.HAS_PET, false))
+			if (Caster.TempProperties.GetProperty<bool>(NoveltyPetBrain.HAS_PET))
 			{
 				// no message
 				MessageToCaster("You already have a pet by your side!", PacketHandler.eChatType.CT_SpellResisted);
@@ -86,7 +67,7 @@ namespace DOL.GS.Spells
 			get
 			{
 				var list = new List<string>();
-				list.Add(string.Format("  {0}", Spell.Description));
+				list.Add(ShortDescription);
 
 				return list;
 			}

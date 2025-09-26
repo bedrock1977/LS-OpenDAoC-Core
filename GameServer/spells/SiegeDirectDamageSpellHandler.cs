@@ -2,7 +2,7 @@
 
 namespace DOL.GS.Spells
 {
-    [SpellHandlerAttribute("SiegeDirectDamage")]
+    [SpellHandler(eSpellType.SiegeDirectDamage)]
     public class SiegeDirectDamageSpellHandler : DirectDamageSpellHandler
     {
         public SiegeDirectDamageSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -12,12 +12,12 @@ namespace DOL.GS.Spells
         /// </summary>
         /// <param name="target">the target of the spell</param>
         /// <returns>chance that spell will be resisted for specific target</returns>
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
-        public override int CalculateToHitChance(GameLiving target)
+        public override double CalculateToHitChance(GameLiving target)
         {
             return 100;
         }
@@ -25,6 +25,11 @@ namespace DOL.GS.Spells
         public override bool CasterIsAttacked(GameLiving attacker)
         {
             return false;
+        }
+
+        public override double CalculateDamageBase(GameLiving target)
+        {
+            return Spell.Damage;
         }
 
         public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
@@ -59,7 +64,7 @@ namespace DOL.GS.Spells
 
         public override void SendDamageMessages(AttackData ad)
         {
-            string modmessage = "";
+            string modmessage = string.Empty;
             if (ad.Modifier > 0)
                 modmessage = " (+" + ad.Modifier + ")";
             if (ad.Modifier < 0)

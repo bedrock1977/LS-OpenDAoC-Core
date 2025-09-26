@@ -5,13 +5,12 @@ using DOL.GS.PacketHandler;
 using DOL.GS.PlayerClass;
 using DOL.GS.ServerProperties;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Keeps
 {
     public class GuardLord : GameKeepGuard
     {
-        private static new readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private eRealm m_lastRealm = eRealm.None;
         private long m_lastSpawnTime = 0;
@@ -140,9 +139,9 @@ namespace DOL.GS.Keeps
         /// <param name="killer">The killer object</param>
         public override void Die(GameObject killer)
         {
-            if (this.isDeadOrDying == false)
+            if (!IsBeingHandledByReaperService)
             {
-                this.isDeadOrDying = true;
+                this.IsBeingHandledByReaperService = true;
                 m_lastRealm = eRealm.None;
 
                 if (Properties.LOG_KEEP_CAPTURES)
@@ -172,18 +171,12 @@ namespace DOL.GS.Keeps
 
                             keeplog.CapturedBy = GlobalConstants.RealmToName(killer.Realm);
 
-                            string listRPGainers = "";
+                            string listRPGainers = string.Empty;
 
-                            lock (XPGainers.SyncRoot)
+                            lock (XpGainersLock)
                             {
-                                foreach (System.Collections.DictionaryEntry de in XPGainers)
-                                {
-                                    GameLiving living = de.Key as GameLiving;
-                                    if (living != null)
-                                    {
-                                        listRPGainers += living.Name + ";";
-                                    }
-                                }
+                                foreach (var pair in XPGainers)
+                                    listRPGainers += pair.Key.Name + ";";
                             }
 
                             keeplog.RPGainerList = listRPGainers.TrimEnd(';');
@@ -208,9 +201,6 @@ namespace DOL.GS.Keeps
             {
                 GameServer.ServerRules.ResetKeep(this, killer);
             }
-
-
-
         }
 
         /// <summary>
@@ -229,14 +219,11 @@ namespace DOL.GS.Keeps
             if (InCombat || Component.Keep.InCombat)
             {
                 player.Out.SendMessage("You can't talk to the lord while under siege.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
-                log.DebugFormat("KEEPWARNING: {0} attempted to interact with {1} of {2} while keep or lord in combat.", player.Name, Name, Component.Keep.Name);
                 return false;
             }
 
             if (GameServer.ServerRules.IsAllowedToClaim(player, CurrentRegion))
-            {
                 player.Out.SendMessage("Would you like to [Claim Keep] now? Or maybe [Release Keep]?", eChatType.CT_System, eChatLoc.CL_PopupWindow);
-            }
 
             return true;
         }
@@ -360,13 +347,13 @@ namespace DOL.GS.Keeps
 
         protected override KeepGuardBrain GetBrain() => new LordBrain();
 
-        public override void AutoSetStats(DbMob dbMob = null)
+        public override void SetStats(DbMob dbMob = null)
         {
-            Strength = (short) (Properties.LORD_AUTOSET_STR_BASE + Level * Properties.LORD_AUTOSET_STR_MULTIPLIER);
-            Constitution = (short) (Properties.LORD_AUTOSET_CON_BASE + Level * Properties.LORD_AUTOSET_CON_MULTIPLIER);
-            Dexterity = (short) (Properties.LORD_AUTOSET_DEX_BASE + Level * Properties.LORD_AUTOSET_DEX_MULTIPLIER);
-            Quickness = (short) (Properties.LORD_AUTOSET_QUI_BASE + Level * Properties.LORD_AUTOSET_QUI_MULTIPLIER);
-            Intelligence = (short) (Properties.LORD_AUTOSET_INT_BASE + Level * Properties.LORD_AUTOSET_INT_MULTIPLIER);
+            Strength = (short) Math.Max(1, Properties.LORD_AUTOSET_STR_BASE + Level * Properties.LORD_AUTOSET_STR_MULTIPLIER);
+            Constitution = (short) Math.Max(1, Properties.LORD_AUTOSET_CON_BASE + Level * Properties.LORD_AUTOSET_CON_MULTIPLIER);
+            Dexterity = (short) Math.Max(1, Properties.LORD_AUTOSET_DEX_BASE + Level * Properties.LORD_AUTOSET_DEX_MULTIPLIER);
+            Quickness = (short) Math.Max(1, Properties.LORD_AUTOSET_QUI_BASE + Level * Properties.LORD_AUTOSET_QUI_MULTIPLIER);
+            Intelligence = (short) Math.Max(1, Properties.LORD_AUTOSET_INT_BASE + Level * Properties.LORD_AUTOSET_INT_MULTIPLIER);
         }
 
         protected override void SetRespawnTime()

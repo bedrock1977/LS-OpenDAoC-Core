@@ -14,24 +14,20 @@ namespace DOL.GS
         {
             get
             {
-                if (Owner is GamePlayer playerOwner)
-                {
-                    return Source != null && Target != null
-                        ? LanguageMgr.GetTranslation(playerOwner.Client, "Effects.GuardEffect.GuardedByName", Target.GetName(0, false), Source.GetName(0, false))
-                        : LanguageMgr.GetTranslation(playerOwner.Client, "Effects.GuardEffect.Name");
-                }
+                GamePlayer playerOwner = Owner as GamePlayer;
 
-                return string.Empty;
+                return Source != null && Target != null
+                    ? LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.GuardEffect.GuardedByName", Target.GetName(0, false), Source.GetName(0, false))
+                    : LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.GuardEffect.Name");
             }
         }
         public override bool HasPositiveEffect => true;
 
-        public GuardECSGameEffect(ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
+        public GuardECSGameEffect(in ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
         {
             Source = source;
             Target = target;
             EffectType = eEffect.Guard;
-            EffectService.RequestStartEffect(this);
         }
 
         public override void OnStartEffect()
@@ -66,7 +62,7 @@ namespace DOL.GS
                     playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.GuardEffect.XIsNowGuardingYou", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 }
 
-                PairedEffect = new GuardECSGameEffect(new ECSGameEffectInitParams(Target, 0, 1, null), Source, Target);
+                PairedEffect = ECSGameEffectFactory.Create(new(Target, 0, 1), Source, Target, static (in ECSGameEffectInitParams i, GameLiving source, GameLiving target) => new GuardECSGameEffect(i, source, target));
                 PairedEffect.PairedEffect = this;
             }
 
@@ -83,7 +79,7 @@ namespace DOL.GS
                 playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.GuardEffect.XNoLongerGuardingYoy", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
             }
 
-            EffectService.RequestCancelEffect(PairedEffect);
+            PairedEffect?.Stop();
             base.OnStopEffect();
         }
     }

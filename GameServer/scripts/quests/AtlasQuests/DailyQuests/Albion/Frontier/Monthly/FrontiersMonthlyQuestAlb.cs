@@ -10,7 +10,6 @@ using DOL.GS.PacketHandler;
 using DOL.GS.PlayerTitles;
 using DOL.GS.Quests;
 using DOL.GS.WeeklyQuests.Albion;
-using log4net;
 
 namespace DOL.GS.MonthlyQuest.Albion
 {
@@ -19,7 +18,7 @@ namespace DOL.GS.MonthlyQuest.Albion
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private const string questTitle = "[Monthly] Bring Order and Security to Albion";
 		private const int minimumLevel = 45;
@@ -378,10 +377,8 @@ namespace DOL.GS.MonthlyQuest.Albion
 			if (m_questPlayer.Inventory.IsSlotsFree(3, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack))
 			{
 				m_questPlayer.ForceGainExperience((m_questPlayer.ExperienceForNextLevel - m_questPlayer.ExperienceForCurrentLevel));
-				m_questPlayer.AddMoney(Money.GetMoney(0, 0, m_questPlayer.Level * 8, 32, Util.Random(50)),
-					"You receive {0} as a reward.");
+				m_questPlayer.AddMoney(Money.GetMoney(0, 0, m_questPlayer.Level * 8, 32, Util.Random(50)), "You receive {0} as a reward.");
 				AtlasROGManager.GenerateReward(m_questPlayer, 5000);
-				AtlasROGManager.GenerateBeetleCarapace(m_questPlayer, 2);
 				AtlasROGManager.GenerateJewel(m_questPlayer, 50);
 				PlayersKilled = 0;
 				CapturedKeeps = 0;

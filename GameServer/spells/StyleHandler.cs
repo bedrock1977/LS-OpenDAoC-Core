@@ -26,7 +26,7 @@ using DOL.GS.Styles;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("StyleHandler")]
+	[SpellHandler(eSpellType.StyleHandler)]
 	public class StyleHandler : SpellHandler
 	{
 		public StyleHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -36,7 +36,7 @@ namespace DOL.GS.Spells
 			get
 			{
 				var list = new List<string>();
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 
 				GamePlayer player = Caster as GamePlayer;
 

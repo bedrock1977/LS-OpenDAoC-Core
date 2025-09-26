@@ -9,17 +9,19 @@ namespace DOL.GS
     {
         public GameGuard() : base()
         {
-            m_ownBrain = new GuardBrain();
-            m_ownBrain.Body = this;
+            SetOwnBrain(new GuardBrain()
+            {
+                Body = this
+            });
         }
 
         public GameGuard(INpcTemplate template) : base(template)
         {
-            m_ownBrain = new GuardBrain();
-            m_ownBrain.Body = this;
+            SetOwnBrain(new GuardBrain()
+            {
+                Body = this
+            });
         }
-
-        public override bool IsStealthed => (Flags & eFlags.STEALTH) != 0;
 
         public override IList GetExamineMessages(GamePlayer player)
         {
@@ -56,7 +58,7 @@ namespace DOL.GS
             if (translatableObject == null)
                 return;
 
-            Message.MessageToArea(this, $"{Name} says, \"{LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, translatableObject)}\"", eChatType.CT_Say, eChatLoc.CL_ChatWindow, 512, null);
+            Message.MessageToArea(this, $"{Name} says, \"{LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, translatableObject)}\"", eChatType.CT_Say, eChatLoc.CL_ChatWindow, 512);
         }
     }
 }

@@ -19,19 +19,11 @@ namespace DOL.GS.Scripts
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(9919);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			Faction = FactionMgr.GetFactionByID(779);
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			BodyType = 1;
-			ScalingFactor = 40;
 			GudlaugrBrain sbrain = new GudlaugrBrain();
 			SetOwnBrain(sbrain);
 			base.AddToWorld();
@@ -39,10 +31,7 @@ namespace DOL.GS.Scripts
 			return true;
 		}
 
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -145,7 +134,6 @@ namespace DOL.GS.Scripts
 				if (!rage)
 				{
 					// transmorph to little white wolf
-					Body.ScalingFactor = 40;
 					Body.Model = 650;
 					Body.Size = 40;
 					Body.Strength = Body.NPCTemplate.Strength;
@@ -153,7 +141,6 @@ namespace DOL.GS.Scripts
 				else
 				{
 					// transmorph to demon wolf
-					Body.ScalingFactor = 60;
 					Body.Strength = 330;
 					Body.Model = 649;
 					Body.Size = 110;

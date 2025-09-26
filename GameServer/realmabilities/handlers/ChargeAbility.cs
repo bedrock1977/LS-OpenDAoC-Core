@@ -1,9 +1,6 @@
 using System.Collections.Generic;
-using System.Reflection;
-using DOL.GS;
-using DOL.GS.PacketHandler;
-using DOL.GS.Effects;
 using DOL.Database;
+using DOL.GS.PacketHandler;
 
 namespace DOL.GS.RealmAbilities
 {
@@ -31,7 +28,7 @@ namespace DOL.GS.RealmAbilities
 				//		}
 				//	}
 				//}
-				var effect = EffectListService.GetSpellEffectOnTarget(living, eEffect.MovementSpeedDebuff);
+				var effect = EffectListService.GetEffectOnTarget(living, eEffect.MovementSpeedDebuff);
 				if (effect != null && effect.SpellHandler.Spell.Value != 99)
                 {
 					GamePlayer player = living as GamePlayer;
@@ -53,7 +50,7 @@ namespace DOL.GS.RealmAbilities
 				return;
 			}
 
-			//if (living.TempProperties.getProperty("Charging", false)
+			//if (living.TempProperties.GetProperty<bool>("Charging")
 			//	|| living.EffectList.CountOfType(typeof(SpeedOfSoundEffect), typeof(ArmsLengthEffect), typeof(ChargeEffect)) > 0)
 			//{
 			//	if (living is GamePlayer)
@@ -67,8 +64,7 @@ namespace DOL.GS.RealmAbilities
 			//if (living is GamePlayer)
 			//	((GamePlayer)living).Out.SendUpdateMaxSpeed();
 
-			//new ChargeEffect().Start(living);
-			new ChargeECSGameEffect(new ECSGameEffectInitParams(living, DURATION, 1, null));
+			ECSGameEffectFactory.Create(new(living, DURATION, 1, null), static (in ECSGameEffectInitParams i) => new ChargeECSGameEffect(i));
 			DisableSkill(living);
 		}
 

@@ -39,7 +39,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Midgard
 {
@@ -48,7 +47,7 @@ namespace DOL.GS.Quests.Midgard
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "An End to the Daggers";
 		protected const int minimumLevel = 50;
@@ -147,7 +146,7 @@ namespace DOL.GS.Quests.Midgard
 				Lynnleigh = new GameNPC();
 				Lynnleigh.Model = 217;
 				Lynnleigh.Name = "Lynnleigh";
-				Lynnleigh.GuildName = "";
+				Lynnleigh.GuildName = string.Empty;
 				Lynnleigh.Realm = eRealm.Midgard;
 				Lynnleigh.CurrentRegionID = 100;
 				Lynnleigh.Size = 51;
@@ -216,7 +215,7 @@ namespace DOL.GS.Quests.Midgard
 				Ydenia = new Ydenia();
 				Ydenia.Model = 439;
 				Ydenia.Name = "Ydenia of the Seithkona";
-				Ydenia.GuildName = "";
+				Ydenia.GuildName = string.Empty;
 				Ydenia.Realm = eRealm.None;
 				Ydenia.CurrentRegionID = 100;
 				Ydenia.Size = 60;
@@ -879,7 +878,7 @@ namespace DOL.GS.Quests.Midgard
 				ThaneEpicHelm.Bonus3Type = (int) eResist.Spirit;
 
 				ThaneEpicHelm.Bonus4 = 6;
-				ThaneEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				ThaneEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 
 				if (SAVE_INTO_DATABASE)

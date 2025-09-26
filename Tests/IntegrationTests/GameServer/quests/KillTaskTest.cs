@@ -1,21 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using DOL.Database;
 using DOL.Events;
@@ -55,7 +37,7 @@ namespace DOL.Tests.Integration.Server
 			// mob for task
 			if (KillTask.BuildTask(player, trainer))
 			{
-				KillTask task = (KillTask)player.Task;
+				KillTask task = (KillTask)player.GameTask;
 
 				ClassicAssert.IsNotNull(task);
 				ClassicAssert.IsTrue(task.TaskActive);
@@ -77,7 +59,7 @@ namespace DOL.Tests.Integration.Server
 				mob.CurrentRegionID = player.CurrentRegionID;
 				mob.AddToWorld();
 
-				lock (mob.XPGainers.SyncRoot)
+				lock (mob.XpGainersLock)
 				{ 
 					// First we kill mob
 					mob.XPGainers.Add(player, 1.0F);
@@ -93,7 +75,7 @@ namespace DOL.Tests.Integration.Server
 				// Now give item tro trainer
 				task.Notify(GamePlayerEvent.GiveItem,player,new GiveItemEventArgs(player,trainer,item));
 
-				if (player.Task.TaskActive || player.Task==null)
+				if (player.GameTask.TaskActive || player.GameTask==null)
 					ClassicAssert.Fail("Task did not finished proper in Notify");
 			}
 		}

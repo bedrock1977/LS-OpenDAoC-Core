@@ -21,10 +21,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -63,13 +60,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60159451);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(140);
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             OtryggAdd.PetsCount = 0;
@@ -87,7 +77,7 @@ namespace DOL.AI.Brain
 {
     public class OtryggBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public OtryggBrain()
             : base()
@@ -184,10 +174,7 @@ namespace DOL.GS
                 default: return 20;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 50 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -207,9 +194,7 @@ namespace DOL.GS
             PetsCount--;
             base.Die(killer);
         }
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public static int PetsCount = 0;
         #region Stats
         public override short Charisma { get => base.Charisma; set => base.Charisma = 200; }
@@ -248,7 +233,7 @@ namespace DOL.AI.Brain
 {
     public class OtryggAddBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public OtryggAddBrain()
             : base()
         {

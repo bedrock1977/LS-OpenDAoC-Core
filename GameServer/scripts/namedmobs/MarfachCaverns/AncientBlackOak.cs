@@ -78,10 +78,6 @@ namespace DOL.GS
                 }
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -100,13 +96,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(8823);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Plant;
             AncientBlackOakBrain.IsPulled = false;
@@ -158,8 +147,7 @@ namespace DOL.AI.Brain
 {
     public class AncientBlackOakBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public AncientBlackOakBrain()
             : base()

@@ -104,7 +104,7 @@ namespace DOL.GS.Commands
 
                             IList<Ingredient> recipeIngredients;
 
-                            lock (recipe)
+                            lock (recipe.Lock)
                             {
                                 recipeIngredients = recipe.Ingredients;
                             }
@@ -115,7 +115,6 @@ namespace DOL.GS.Commands
                                 {
                                     var item =
                                         GameServer.Database.FindObjectByKey<DbItemTemplate>(items.ItemTemplateID);
-                                    if (item.Id_nb == "beetle_carapace") continue;
                                     if (item != ingredient.Material) continue;
                                     merchant.OnPlayerBuy(client.Player, items.SlotPosition, items.PageNumber,
                                         ingredient.Count * amount);
@@ -131,7 +130,7 @@ namespace DOL.GS.Commands
 
                             IList<Ingredient> recipeIngredients;
 
-                            lock (recipe)
+                            lock (recipe.Lock)
                             {
                                 recipeIngredients = recipe.Ingredients;
                             }
@@ -142,36 +141,8 @@ namespace DOL.GS.Commands
                                 {
                                     var item =
                                         GameServer.Database.FindObjectByKey<DbItemTemplate>(items.ItemTemplateID);
-                                    if (item.Id_nb == "beetle_carapace") continue;
                                     if (item != ingredient.Material) continue;
                                     guardMerchant.OnPlayerBuy(client.Player, items.SlotPosition, items.PageNumber,
-                                        ingredient.Count * amount);
-                                }
-                            }
-
-                            return;
-                        }
-                        else if (client.Player.TargetObject is GuardCurrencyMerchant guardCurrencyMerchant)
-                        {
-                            var merchantitems = DOLDB<DbMerchantItem>.SelectObjects(DB.Column("ItemListID")
-                                .IsEqualTo(guardCurrencyMerchant.TradeItems.ItemsListID));
-
-                            IList<Ingredient> recipeIngredients;
-
-                            lock (recipe)
-                            {
-                                recipeIngredients = recipe.Ingredients;
-                            }
-
-                            foreach (var ingredient in recipeIngredients)
-                            {
-                                foreach (var items in merchantitems)
-                                {
-                                    var item =
-                                        GameServer.Database.FindObjectByKey<DbItemTemplate>(items.ItemTemplateID);
-                                    if (item.Id_nb == "beetle_carapace") continue;
-                                    if (item != ingredient.Material) continue;
-                                    guardCurrencyMerchant.OnPlayerBuy(client.Player, items.SlotPosition, items.PageNumber,
                                         ingredient.Count * amount);
                                 }
                             }
@@ -220,14 +191,14 @@ namespace DOL.GS.Commands
 
                             IList<Ingredient> recipeIngredients;
 
-                            lock (recipe)
+                            lock (recipe.Lock)
                             {
                                 recipeIngredients = recipe.Ingredients;
                             }
 
                             var playerItems = new List<DbInventoryItem>(); 
 
-                            lock (client.Player.Inventory)
+                            lock (client.Player.Inventory.Lock)
                             {
                                 foreach (var pItem in client.Player.Inventory.AllItems)
                                 {
@@ -244,7 +215,6 @@ namespace DOL.GS.Commands
                                 {
                                     var item =
                                         GameServer.Database.FindObjectByKey<DbItemTemplate>(items.ItemTemplateID);
-                                    if (item.Id_nb == "beetle_carapace") continue;
                                     if (item != ingredient.Material) continue;
                                     int playerAmount = 0;
 

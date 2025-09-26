@@ -1,22 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
 using DOL.GS.PacketHandler;
 
@@ -188,7 +169,8 @@ namespace DOL.GS.Commands
 						}
 
 						string lineName = string.Join(" ", args, 1, args.Length - 1);
-						Specialization specLine = client.Player.GetSpecializationByName(lineName, false);
+						Specialization specLine = client.Player.GetSpecializationByName(lineName);
+
 						if (specLine == null)
 						{
 							DisplayMessage(client, "No line with name '" + lineName + "' found.");
@@ -216,33 +198,33 @@ namespace DOL.GS.Commands
 			int specPoints = player.SkillSpecialtyPoints;
 			int realmSpecPoints = player.RealmSpecialtyPoints;
 
-			if (player.TempProperties.GetProperty(ALL_RESPEC, false))
+			if (player.TempProperties.GetProperty<bool>(ALL_RESPEC))
 			{
 				player.RespecAll();
 				player.TempProperties.RemoveProperty(ALL_RESPEC);
 			}
-			if (player.TempProperties.GetProperty(DOL_RESPEC, false))
+			if (player.TempProperties.GetProperty<bool>(DOL_RESPEC))
 			{
 				player.RespecDOL();
 				player.TempProperties.RemoveProperty(DOL_RESPEC);
 			}
-			if (player.TempProperties.GetProperty(RA_RESPEC, false))
+			if (player.TempProperties.GetProperty<bool>(RA_RESPEC))
 			{
 				player.RespecRealm();
 				player.TempProperties.RemoveProperty(RA_RESPEC);
 			}
-			if (player.TempProperties.GetProperty(CHAMP_RESPEC, false))
+			if (player.TempProperties.GetProperty<bool>(CHAMP_RESPEC))
 			{
 				player.RespecChampionSkills();
 				player.TempProperties.RemoveProperty(CHAMP_RESPEC);
 			}
-			Specialization specLine = player.TempProperties.GetProperty<Specialization>(LINE_RESPEC, null);
+			Specialization specLine = player.TempProperties.GetProperty<Specialization>(LINE_RESPEC);
 			if (specLine != null)
 			{
 				player.RespecSingle(specLine);
 				player.TempProperties.RemoveProperty(LINE_RESPEC);
 			}
-			if (player.TempProperties.GetProperty(BUY_RESPEC, false))
+			if (player.TempProperties.GetProperty<bool>(BUY_RESPEC))
 			{
 				player.TempProperties.RemoveProperty(BUY_RESPEC);
 				if (player.RespecCost >= 0 && player.RemoveMoney(player.RespecCost * 10000))
@@ -266,7 +248,7 @@ namespace DOL.GS.Commands
 			}
 			player.RefreshSpecDependantSkills(false);
 			// Notify Player of points
-			player.Out.SendUpdatePlayerSkills();
+			player.Out.SendUpdatePlayerSkills(true);
 			player.Out.SendUpdatePoints();
 			player.Out.SendUpdatePlayer();
 			player.SendTrainerWindow();
@@ -276,20 +258,20 @@ namespace DOL.GS.Commands
             DisplayMessage(player, "All self-cast buffs have been removed due to a respec.");
             if (player.effectListComponent != null)
             {
-				foreach (ECSGameEffect e in player.effectListComponent.GetAllEffects())
+				foreach (ECSGameEffect e in player.effectListComponent.GetEffects())
                 {
 					if (e is ECSGameSpellEffect eSpell && eSpell.SpellHandler.Caster == player)
                     {
-						EffectService.RequestCancelEffect(e);
+						e.Stop();
 					}
                 }
 
 				//Remove self-casted pulsing effects
-				foreach (ECSGameEffect e in player.effectListComponent.GetAllPulseEffects())
+				foreach (ECSGameEffect e in player.effectListComponent.GetPulseEffects())
                 {
 					if (e is ECSGameSpellEffect eSpell && eSpell.SpellHandler.Caster == player)
                     {
-						EffectService.RequestCancelEffect(e);
+						e.Stop();
 					}
                 }
             }

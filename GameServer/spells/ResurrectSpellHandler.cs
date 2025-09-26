@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Threading;
 using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
@@ -8,14 +9,16 @@ using DOL.GS.RealmAbilities;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("Resurrect")]
+	[SpellHandler(eSpellType.Resurrect)]
 	public class ResurrectSpellHandler : SpellHandler
 	{
 		private const string RESURRECT_CASTER_PROPERTY = "RESURRECT_CASTER";
 		protected readonly ListDictionary m_resTimersByLiving = new ListDictionary();
+		private readonly Lock _lock = new();
 
-		// constructor
-		public ResurrectSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
+		public override string ShortDescription => $"Brings the target back to life, restores {Spell.ResurrectHealth}% health and {Spell.ResurrectMana}% power and endurance and suffers no experience or constitution loss.";
+
+		public ResurrectSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
 		public override void FinishSpellCast(GameLiving target)
 		{
@@ -42,7 +45,7 @@ namespace DOL.GS.Spells
 				resurrectExpiredTimer.Callback = new ECSGameTimer.ECSTimerCallback(ResurrectExpiredCallback);
 				resurrectExpiredTimer.Properties.SetProperty("targetPlayer", targetPlayer);
 				resurrectExpiredTimer.Start(15000);
-				lock (m_resTimersByLiving.SyncRoot)
+				lock (_lock)
 				{
 					m_resTimersByLiving.Add(target, resurrectExpiredTimer);
 				}
@@ -63,8 +66,6 @@ namespace DOL.GS.Spells
 				return 0;
 
 			float factor = Math.Max (0.1f, 0.5f + (target.Level - m_caster.Level) / (float)m_caster.Level);
-
-			//DOLConsole.WriteLine("res power needed: " + (int) (m_caster.MaxMana * factor) + "; factor="+factor);
 			return (int) (m_caster.MaxMana * factor);
 		}
 
@@ -75,9 +76,8 @@ namespace DOL.GS.Spells
 		/// <param name="response"></param>
 		protected virtual void ResurrectResponceHandler(GamePlayer player, byte response)
 		{
-			//DOLConsole.WriteLine("resurrect responce: " + response);
 			ECSGameTimer resurrectExpiredTimer = null;
-			lock (m_resTimersByLiving.SyncRoot)
+			lock (_lock)
 			{
 				resurrectExpiredTimer = (ECSGameTimer)m_resTimersByLiving[player];
 				m_resTimersByLiving.Remove(player);
@@ -87,7 +87,7 @@ namespace DOL.GS.Spells
 				resurrectExpiredTimer.Stop();
 			}
 
-			GameLiving rezzer = player.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY, null);
+			GameLiving rezzer = player.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY);
 			if (!player.IsAlive)
 			{
 				if (rezzer == null)
@@ -163,7 +163,7 @@ namespace DOL.GS.Spells
 			living.MoveTo(m_caster.CurrentRegionID, m_caster.X, m_caster.Y, m_caster.Z, m_caster.Heading);
 
 			ECSGameTimer resurrectExpiredTimer = null;
-			lock (m_resTimersByLiving.SyncRoot)
+			lock (_lock)
 			{
 				resurrectExpiredTimer = (ECSGameTimer)m_resTimersByLiving[living];
 				m_resTimersByLiving.Remove(living);
@@ -185,7 +185,7 @@ namespace DOL.GS.Spells
 				RezDmgImmunityEffect rezImmune = new RezDmgImmunityEffect();
 				rezImmune.Start(player);
 
-				foreach (GameObject attacker in player.attackComponent.Attackers.Keys)
+				foreach (GameObject attacker in player.attackComponent.AttackerTracker.Attackers)
 				{
 					if (attacker is GameLiving && attacker != living.TargetObject)
 						attacker.Notify(GameLivingEvent.EnemyHealed, attacker, new EnemyHealedEventArgs(living, m_caster, eHealthChangeType.Spell, living.Health));
@@ -202,6 +202,8 @@ namespace DOL.GS.Spells
 						playerCaster.Out.SendMessage("The player you resurrected was not worth realm points on death.", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
 						playerCaster.Out.SendMessage("You thus get no realm points for the resurrect.", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
 					}
+
+					playerCaster.Statistics.AddToResurrectionsPerformed();
 				}
 			}
 		}
@@ -213,7 +215,7 @@ namespace DOL.GS.Spells
 		/// <returns></returns>
 		protected virtual int ResurrectExpiredCallback(ECSGameTimer callingTimer)
 		{
-			GamePlayer player = callingTimer.Properties.GetProperty<GamePlayer>("targetPlayer", null);
+			GamePlayer player = callingTimer.Properties.GetProperty<GamePlayer>("targetPlayer");
 			if (player == null) return 0;
 			player.TempProperties.RemoveProperty(RESURRECT_CASTER_PROPERTY);
 			player.Out.SendMessage("Your resurrection spell has expired.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
@@ -238,7 +240,7 @@ namespace DOL.GS.Spells
 				return false;
             }
 
-			GameLiving resurrectionCaster = target.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY, null);
+			GameLiving resurrectionCaster = target.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY);
 			if (resurrectionCaster != null)
 			{
 				//already considering resurrection - do nothing
@@ -256,7 +258,7 @@ namespace DOL.GS.Spells
 		/// <returns></returns>
 		public override bool CheckEndCast(GameLiving target)
 		{
-			GameLiving resurrectionCaster = target.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY, null);
+			GameLiving resurrectionCaster = target.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY);
 			if (resurrectionCaster != null)
 			{
 				//already considering resurrection - do nothing
@@ -291,9 +293,9 @@ namespace DOL.GS.Spells
 
 				var list = new List<string>();
 
-				list.Add("Function: " + (Spell.SpellType.ToString() == "" ? "(not implemented)" : Spell.SpellType.ToString()));
+				list.Add("Function: " + (Spell.SpellType.ToString() == string.Empty ? "(not implemented)" : Spell.SpellType.ToString()));
 				list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
 				list.Add("Health restored: " + Spell.ResurrectHealth);
 				if(Spell.ResurrectMana != 0) list.Add("Power restored: " + Spell.ResurrectMana);
@@ -305,6 +307,9 @@ namespace DOL.GS.Spells
 			}
 		}
 
-		private bool IsPerfectRecovery() { return SpellLine.Name == "RealmAbilities"; }
+		private bool IsPerfectRecovery()
+		{
+			return SpellLine.Name is GlobalSpellsLines.Realm_Spells;
+		}
 	}
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Specialized;
+using System.Threading;
 using DOL.Database;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
@@ -13,6 +14,7 @@ namespace DOL.GS.RealmAbilities
         private Int32 m_resurrectValue = 5;
 		private const String RESURRECT_CASTER_PROPERTY = "RESURRECT_CASTER";
         protected readonly ListDictionary m_resTimersByLiving = new ListDictionary();
+        private readonly Lock _lock = new();
 
 		public override void Execute(GameLiving living)
 		{
@@ -50,7 +52,7 @@ namespace DOL.GS.RealmAbilities
 				return;
 			}
 			
-			GameLiving resurrectionCaster = targetPlayer.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY, null);
+			GameLiving resurrectionCaster = targetPlayer.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY);
 			if (resurrectionCaster != null)
 			{
 				player.Out.SendMessage("Your target is already considering a resurrection!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
@@ -76,7 +78,7 @@ namespace DOL.GS.RealmAbilities
 				resurrectExpiredTimer.Callback = new ECSGameTimer.ECSTimerCallback(ResurrectExpiredCallback);
 				resurrectExpiredTimer.Properties.SetProperty("targetPlayer", targetPlayer);
 				resurrectExpiredTimer.Start(15000);
-				lock (m_resTimersByLiving.SyncRoot)
+				lock (_lock)
 				{
                     m_resTimersByLiving.Add(player.TargetObject, resurrectExpiredTimer);
 				}
@@ -95,9 +97,8 @@ namespace DOL.GS.RealmAbilities
         /// <param name="response"></param>
         protected virtual void ResurrectResponceHandler(GamePlayer player, byte response)
         {
-            //DOLConsole.WriteLine("resurrect responce: " + response);
             ECSGameTimer resurrectExpiredTimer = null;
-            lock (m_resTimersByLiving.SyncRoot)
+            lock (_lock)
             {
                 resurrectExpiredTimer = (ECSGameTimer)m_resTimersByLiving[player];
                 m_resTimersByLiving.Remove(player);
@@ -107,7 +108,7 @@ namespace DOL.GS.RealmAbilities
                 resurrectExpiredTimer.Stop();
             }
 
-            GameLiving rezzer = player.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY, null);
+            GameLiving rezzer = player.TempProperties.GetProperty<GameLiving>(RESURRECT_CASTER_PROPERTY);
             if (!player.IsAlive)
             {
                 if (rezzer == null)
@@ -144,7 +145,7 @@ namespace DOL.GS.RealmAbilities
         /// <returns></returns>
         protected virtual int ResurrectExpiredCallback(ECSGameTimer callingTimer)
         {
-            GamePlayer player = callingTimer.Properties.GetProperty<GamePlayer>("targetPlayer", null);
+            GamePlayer player = callingTimer.Properties.GetProperty<GamePlayer>("targetPlayer");
             if (player == null) return 0;
             player.TempProperties.RemoveProperty(RESURRECT_CASTER_PROPERTY);
             player.Out.SendMessage("Your resurrection spell has expired.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
@@ -165,7 +166,7 @@ namespace DOL.GS.RealmAbilities
 
             GameLiving living = resurrectedPlayer as GameLiving;
             ECSGameTimer resurrectExpiredTimer = null;
-            lock (m_resTimersByLiving.SyncRoot)
+            lock (_lock)
             {
                 resurrectExpiredTimer = (ECSGameTimer)m_resTimersByLiving[living];
                 m_resTimersByLiving.Remove(living);

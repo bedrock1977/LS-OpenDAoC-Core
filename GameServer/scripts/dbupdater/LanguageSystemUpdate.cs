@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using DOL.Database;
 using DOL.Database.Attributes;
-using log4net;
 
 namespace DOL.GS.DatabaseUpdate
 {
@@ -12,11 +11,11 @@ namespace DOL.GS.DatabaseUpdate
         private class language : DataObject
         {
             protected string m_translationid;
-            protected string m_EN = "";
-            protected string m_DE = "";
-            protected string m_FR = "";
-            protected string m_IT = "";
-            protected string m_CU = "";
+            protected string m_EN = string.Empty;
+            protected string m_DE = string.Empty;
+            protected string m_FR = string.Empty;
+            protected string m_IT = string.Empty;
+            protected string m_CU = string.Empty;
             protected string m_packageID;
 
             public language() { }
@@ -75,7 +74,7 @@ namespace DOL.GS.DatabaseUpdate
         /// <summary>
         /// Defines a logger for this class.
         /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public void Update()
         {

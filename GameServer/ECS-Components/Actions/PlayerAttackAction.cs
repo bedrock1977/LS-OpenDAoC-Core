@@ -1,4 +1,6 @@
-﻿using DOL.GS.PacketHandler;
+﻿using DOL.Database;
+using DOL.GS.PacketHandler;
+using DOL.GS.Styles;
 using DOL.Language;
 
 namespace DOL.GS
@@ -7,9 +9,9 @@ namespace DOL.GS
     {
         private GamePlayer _playerOwner;
 
-        public PlayerAttackAction(GamePlayer playerOwner) : base(playerOwner)
+        public PlayerAttackAction(GamePlayer owner) : base(owner)
         {
-            _playerOwner = playerOwner;
+            _playerOwner = owner;
         }
 
         public override void OnAimInterrupt(GameObject attacker)
@@ -30,6 +32,18 @@ namespace DOL.GS
         protected override bool PrepareMeleeAttack()
         {
             _combatStyle = StyleComponent.GetStyleToUse();
+
+            // Check if we still have enough endurance for the style and update `_weapon` if needed.
+            if (_combatStyle != null)
+            {
+                DbInventoryItem styleWeapon = (eObjectType) _combatStyle.WeaponTypeRequirement is eObjectType.Shield ? _leftWeapon : _weapon;
+
+                if (styleWeapon != null && !StyleProcessor.CheckEnduranceCost(_playerOwner, styleWeapon, _combatStyle))
+                    _combatStyle = null;
+                else
+                    _weapon = styleWeapon;
+            }
+
             return base.PrepareMeleeAttack();
         }
 
@@ -51,6 +65,9 @@ namespace DOL.GS
         {
             _playerOwner.rangeAttackComponent.RemoveEnduranceAndAmmoOnShot();
             base.PerformRangedAttack();
+
+            if (_playerOwner.rangeAttackComponent.Ammo.Count == 0)
+                _playerOwner.rangeAttackComponent.UpdateAmmo(_playerOwner.ActiveWeapon);
         }
 
         protected override bool FinalizeMeleeAttack()
@@ -60,6 +77,8 @@ namespace DOL.GS
                 if (_playerOwner.UseDetailedCombatLog)
                     _playerOwner.Out.SendMessage($"Attack Speed: {_interval / 1000.0}s", eChatType.CT_DamageAdd, eChatLoc.CL_SystemWindow);
 
+                StyleComponent.NextCombatStyle = null;
+                StyleComponent.NextCombatBackupStyle = null;
                 return true;
             }
 
@@ -70,18 +89,25 @@ namespace DOL.GS
         {
             bool stopAttack = false;
 
-            if (_playerOwner.rangeAttackComponent.RangedAttackState != eRangedAttackState.AimFireReload)
+            if (_playerOwner.rangeAttackComponent.RangedAttackState is not eRangedAttackState.AimFireReload)
                 stopAttack = true;
             else if (_playerOwner.Endurance < RangeAttackComponent.DEFAULT_ENDURANCE_COST)
             {
                 stopAttack = true;
                 _playerOwner.Out.SendMessage(LanguageMgr.GetTranslation(_playerOwner.Client.Account.Language, "GamePlayer.StartAttack.TiredUse", _weapon.Name), eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
             }
+            else
+            {
+                DbInventoryItem ammo = _playerOwner.rangeAttackComponent.Ammo;
+
+                if (ammo == null || ammo.Count == 0)
+                    stopAttack = true;
+            }
 
             if (stopAttack)
             {
+                _playerOwner.rangeAttackComponent.RangedAttackState = eRangedAttackState.None;
                 AttackComponent.StopAttack();
-                AttackComponent.attackAction.CleanUp();
                 return false;
             }
 

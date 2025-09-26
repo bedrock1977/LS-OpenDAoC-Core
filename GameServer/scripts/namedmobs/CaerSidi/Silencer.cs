@@ -10,7 +10,7 @@ namespace DOL.GS
 {
     public class Silencer : GameEpicBoss
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Silencer()
             : base()
@@ -18,15 +18,12 @@ namespace DOL.GS
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in this.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in this.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100  * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MaxHealth
         {
             get { return 100000; }
@@ -134,13 +131,6 @@ namespace DOL.GS
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60166029);
             LoadTemplate(npcTemplate);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             attackers_count = 0;
             get_resist = false;
             resist_timer = false;
@@ -162,8 +152,7 @@ namespace DOL.AI.Brain
 {
     public class SilencerBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SilencerBrain()
             : base()
@@ -171,7 +160,7 @@ namespace DOL.AI.Brain
             AggroLevel = 100;
             AggroRange = 500;
             ThinkInterval = 5000;
-            CanBAF = false;
+            CanBaf = false;
         }
         private bool ClearAttackers = false;
         public override void Think()

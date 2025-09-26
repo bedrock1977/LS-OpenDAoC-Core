@@ -1,22 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System.Collections.Generic;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
@@ -27,27 +8,18 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Damages target and decreases speed after
 	/// </summary>
-	[SpellHandlerAttribute("DamageSpeedDecrease")]
+	[SpellHandler(eSpellType.DamageSpeedDecrease)]
 	public class DamageSpeedDecreaseSpellHandler : SpeedDecreaseSpellHandler
 	{
+		protected override bool IsDualComponentSpell => true;
+		public override string ShortDescription => $"Inflicts {Spell.Damage} {Spell.DamageTypeToString()} damage to the target and slows it by {Spell.Value}%.";
+
+		public DamageSpeedDecreaseSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
+
 		public override void ApplyEffectOnTarget(GameLiving target)
 		{
-			// do damage even if immune to duration effect
 			OnDirectEffect(target);
-
-			if ((target is Keeps.GameKeepDoor) == false && (target is Keeps.GameKeepComponent == false))
-			{
-				/*
-				if (Caster.HasAbilityType(typeof(AtlasOF_WildArcanaAbility)))
-				{
-					if (Util.Chance(Caster.SpellCriticalChance))
-					{
-						effectiveness *= 2;
-						if(Caster is GamePlayer c) c.Out.SendMessage($"Your {Spell.Name} critically hits the enemy for 100% additional effect!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
-					}
-				}*/
-				base.ApplyEffectOnTarget(target);
-			}
+			base.ApplyEffectOnTarget(target);
 		}
 
 		public override void OnDirectEffect(GameLiving target)
@@ -68,11 +40,6 @@ namespace DOL.GS.Spells
 		{
 			if(ad == null) return;
 			if(!m_caster.IsAlive) return;
-
-			if (ad.Target is Keeps.GameKeepDoor || ad.Target is Keeps.GameKeepComponent)
-			{
-				return;
-			}
 
 			int heal = (ad.Damage + ad.CriticalDamage) * m_spell.LifeDrainReturn/100;
 			if (m_caster.IsDiseased)
@@ -114,8 +81,7 @@ namespace DOL.GS.Spells
 		/// <returns></returns>
 		protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
 		{
-			int duration = CalculateEffectDuration(target, effectiveness);
-			return new GameSpellEffect(this, duration, 0, effectiveness);
+			return new GameSpellEffect(this, CalculateEffectDuration(target), 0, effectiveness);
 		}
 
 		/// <summary>
@@ -146,7 +112,7 @@ namespace DOL.GS.Spells
 				var list = new List<string>();
                 list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "DamageSpeedDecrease.DelveInfo.Function"));
                 list.Add(" "); //empty line
-                list.Add(Spell.Description);
+                list.Add(ShortDescription);
                 list.Add(" "); //empty line
                 list.Add(LanguageMgr.GetTranslation((Caster as GamePlayer).Client, "DamageSpeedDecrease.DelveInfo.Decrease", Spell.Value));
                 if (Spell.Damage != 0)
@@ -181,8 +147,5 @@ namespace DOL.GS.Spells
                 return list;
 			}
 		}
-
-		// counstructor
-		public DamageSpeedDecreaseSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
 	}
 }

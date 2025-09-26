@@ -85,7 +85,7 @@ namespace DOL.GS.Commands
 						// Player name specified
 						case >= 4:
 						{
-							target = ClientService.GetPlayerByExactName(args[3]);
+							target = ClientService.Instance.GetPlayerByExactName(args[3]);
 
 							if (target == null)
 							{
@@ -145,7 +145,7 @@ namespace DOL.GS.Commands
 						// If full command is entered
 						case >= 4:
 						{
-							target = ClientService.GetPlayerByExactName(args[3]);
+							target = ClientService.Instance.GetPlayerByExactName(args[3]);
 
 							if (target == null)
 							{
@@ -203,7 +203,7 @@ namespace DOL.GS.Commands
 						// If full command is entered
 						case >= 4:
 						{
-							target = ClientService.GetPlayerByExactName(args[3]);
+							target = ClientService.Instance.GetPlayerByExactName(args[3]);
 
 							// If the account doesn't exist
 							if (target == null)
@@ -279,7 +279,7 @@ namespace DOL.GS.Commands
 						// If full command is entered
 						case >= 4:
 						{
-							target = ClientService.GetPlayerByExactName(args[3]);
+							target = ClientService.Instance.GetPlayerByExactName(args[3]);
 
 							// If the account doesn't exist
 							if (target == null)
@@ -342,7 +342,7 @@ namespace DOL.GS.Commands
 						// If a player name is specified
 						if (args.Length > 2)
 						{
-							target = ClientService.GetPlayerByExactName(args[2]);
+							target = ClientService.Instance.GetPlayerByExactName(args[2]);
 
 							if (target == null) 
 							{
@@ -358,7 +358,7 @@ namespace DOL.GS.Commands
 							if (SinglePermission.HasPermission(client.Player, "plvl") == false)
 							{
 								// Message: "You do not have the '/plvl' permission assigned! You will be unable to access the '/plvl' command again as a GM or Player."
-								client.Out.SendDialogBox(eDialogCode.SimpleWarning, 0, 0, 0, 0, eDialogType.Ok, true, LanguageMgr.GetTranslation(client, "AdminCommands.Plvl.Err.NoPlvlPerm", null));
+								client.Out.SendDialogBox(eDialogCode.SimpleWarning, 0, 0, 0, 0, eDialogType.Ok, true, LanguageMgr.GetTranslation(client, "AdminCommands.Plvl.Err.NoPlvlPerm"));
 								return;
 							}
 						}
@@ -369,7 +369,7 @@ namespace DOL.GS.Commands
 
 							// Sets the privilege level to the character's account, saves to DB, and refreshes world for character to reflect the change
 							GameServer.Database.SaveObject(target.Client.Account);
-							client.Player.RefreshWorld();
+							client.Player.PlayerObjectCache.Clear();
 							// Refresh equipment for player so they don't appear naked after changing plvl
 							client.Player.UpdateEquipmentAppearance();
 

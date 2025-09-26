@@ -1,11 +1,9 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+using System.Numerics;
 using DOL.AI.Brain;
 using DOL.Database;
 using DOL.Events;
-using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
 using DOL.Language;
 
@@ -16,7 +14,7 @@ namespace DOL.GS.Keeps
 	/// </summary>
 	public class GameKeepGuard : GameNPC, IKeepItem
 	{
-		private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private Patrol m_Patrol = null;
 		public Patrol PatrolGroup
@@ -25,7 +23,7 @@ namespace DOL.GS.Keeps
 			set { m_Patrol = value; }
 		}
 
-		private string m_templateID = "";
+		private string m_templateID = string.Empty;
 		public string TemplateID
 		{
 			get { return m_templateID; }
@@ -58,16 +56,6 @@ namespace DOL.GS.Keeps
 		{
 			get { return m_modelRealm; }
 			set { m_modelRealm = value; }
-		}
-
-		public override void ProcessDeath(GameObject killer)
-		{
-			if (killer is GamePlayer p && ConquestService.ConquestManager.IsPlayerNearConquestObjective(p))
-			{
-				ConquestService.ConquestManager.AddContributors(this.XPGainers.Keys.OfType<GamePlayer>().ToList());
-			}
-
-			base.ProcessDeath(killer);
 		}
 
 		public bool IsTowerGuard
@@ -146,9 +134,9 @@ namespace DOL.GS.Keeps
 
 		#region Combat
 
-		public void GuardStartSpellHealCheckLos(GamePlayer player, eLosCheckResponse response, ushort sourceOID, ushort targetOID)
+		public void GuardStartSpellHealCheckLos(GamePlayer player, LosCheckResponse response, ushort sourceOID, ushort targetOID)
 		{
-			if (response is eLosCheckResponse.TRUE && HealTarget != null)
+			if (response is LosCheckResponse.True && HealTarget != null)
 			{
 				Spell healSpell = GetGuardHealSmallSpell(Realm);
 
@@ -231,69 +219,6 @@ namespace DOL.GS.Keeps
 			}
 		}
 
-		public void CheckForNuke()
-		{
-			GameLiving target = TargetObject as GameLiving;
-			if (target == null) return;
-			if (!target.IsAlive) return;
-			if (target is GamePlayer && !GameServer.KeepManager.IsEnemy(this, target as GamePlayer, true)) return;
-			if (!IsWithinRadius(target, WorldMgr.VISIBILITY_DISTANCE)) { TargetObject = null; return; }
-			GamePlayer LOSChecker = null;
-			if (target is GamePlayer) LOSChecker = target as GamePlayer;
-			else
-			{
-				foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
-				{
-					LOSChecker = player;
-					break;
-				}
-			}
-			if (LOSChecker == null) return;
-			LOSChecker.Out.SendCheckLos(this, target, new CheckLosResponse(GuardStartSpellNukeCheckLos));
-		}
-
-		public void GuardStartSpellNukeCheckLos(GamePlayer player, eLosCheckResponse response, ushort sourceOID, ushort targetOID)
-		{
-			if (response is eLosCheckResponse.TRUE)
-			{
-				switch (Realm)
-				{
-					case eRealm.None:
-					case eRealm.Albion: LaunchSpell(47, "Pyromancy"); break;
-					case eRealm.Midgard: LaunchSpell(48, "Runecarving"); break;
-					case eRealm.Hibernia: LaunchSpell(47, "Way of the Eclipse"); break;
-				}
-			}
-		}
-
-		private void LaunchSpell(int spellLevel, string spellLineName)
-		{
-			if (TargetObject == null)
-				return;
-
-			Spell castSpell = null;
-			SpellLine castLine = SkillBase.GetSpellLine(spellLineName);
-			List<Spell> spells = SkillBase.GetSpellList(castLine.KeyName);
-
-			foreach (Spell spell in spells)
-			{
-				if (spell.Level == spellLevel)
-				{
-					castSpell = spell;
-					break;
-				}
-			}
-
-			if (attackComponent.AttackState)
-				attackComponent.StopAttack();
-
-			if (IsMoving)
-				StopFollowing();
-
-			TurnTo(TargetObject);
-			CastSpell(castSpell, castLine);
-		}
-
 		/// <summary>
 		/// Method to see if the Guard has been left alone long enough to use Ranged attacks
 		/// </summary>
@@ -316,17 +241,6 @@ namespace DOL.GS.Keeps
 				}
 				return !BeenAttackedRecently;
 			}
-		}
-
-		/// <summary>
-		/// Because of Spell issues, we will always return this true
-		/// </summary>
-		/// <param name="target"></param>
-		/// <param name="viewangle"></param>
-		/// <returns></returns>
-		public override bool IsObjectInFront(GameObject target, double viewangle, int alwaysTrueRange = 32)
-		{
-			return true;
 		}
 
 		/// <summary>
@@ -438,12 +352,6 @@ namespace DOL.GS.Keeps
 			if (!base.AddToWorld())
 				return false;
 
-			if (IsPortalKeepGuard && Brain is KeepGuardBrain keepGuardBrain)
-			{
-				keepGuardBrain.AggroRange = 2000;
-				keepGuardBrain.AggroLevel = 99;
-			}
-
 			if (PatrolGroup != null && !m_changingPositions)
 			{
 				bool foundGuard = false;
@@ -510,12 +418,12 @@ namespace DOL.GS.Keeps
 				list.Add(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameKeepGuard.GetExamineMessages.YouExamine", GetName(0, false), GetPronoun(0, true), GetAggroLevelString(player, false)));
 				if (this.Component != null)
 				{
-					string text = "";
+					string text = string.Empty;
 					if (Component.Keep.Level > 1 && Component.Keep.Level < 250 && GameServer.ServerRules.IsSameRealm(player, this, true))
 						text = LanguageMgr.GetTranslation(player.Client.Account.Language, "GameKeepGuard.GetExamineMessages.Upgraded", GetPronoun(0, true), Component.Keep.Level);
 					if (Properties.USE_KEEP_BALANCING && Component.Keep.Region == 163 && !(Component.Keep is GameKeepTower))
 						text += LanguageMgr.GetTranslation(player.Client.Account.Language, "GameKeepGuard.GetExamineMessages.Balancing", GetPronoun(0, true), (Component.Keep.BaseLevel - 50).ToString());
-					if (text != "")
+					if (text != string.Empty)
 						list.Add(text);
 				}
 			}
@@ -530,7 +438,7 @@ namespace DOL.GS.Keeps
 		/// <returns></returns>
 		public override string GetPronoun(int form, bool firstLetterUppercase)
 		{
-			string s = "";
+			string s = string.Empty;
 			switch (form)
 			{
 				default:
@@ -567,7 +475,7 @@ namespace DOL.GS.Keeps
 			return s;
 		}
 		
-		string m_dataObjectID = "";
+		string m_dataObjectID = string.Empty;
 
         #region Database
         /// <summary>
@@ -585,11 +493,13 @@ namespace DOL.GS.Keeps
 					Component = new GameKeepComponent();
 					Component.Keep = keep;
 					m_dataObjectID = mobobject.ObjectId;
+
 					// mob reload command might be reloading guard, so check to make sure it isn't already added
-					if (Component.Keep.Guards.ContainsKey(m_dataObjectID) == false)
+					lock (Component.Keep.Guards)
 					{
-						Component.Keep.Guards.Add(m_dataObjectID, this);
+						Component.Keep.Guards[m_dataObjectID] = this;
 					}
+
 					break;
 				}
 			}
@@ -602,11 +512,11 @@ namespace DOL.GS.Keeps
 			{
 				if (Component.Keep != null)
 				{
-					string skey = m_dataObjectID;
-					if (Component.Keep.Guards.ContainsKey(skey))
-						Component.Keep.Guards.Remove(skey);
-					else if (log.IsWarnEnabled)
-						log.Warn($"Can't find {Position.ClassType} with dataObjectId {m_dataObjectID} in Component InternalID {Component.InternalID} Guard list.");
+					if (!Component.Keep.Guards.Remove(m_dataObjectID))
+					{
+						if (log.IsWarnEnabled)
+							log.Warn($"Can't find {Position.ClassType} with dataObjectId {m_dataObjectID} in Component InternalID {Component.InternalID} Guard list.");
+					}
 				}
 				else if (log.IsWarnEnabled)
 					log.Warn($"Keep is null on delete of guard {Name} with dataObjectId {m_dataObjectID}");
@@ -694,18 +604,9 @@ namespace DOL.GS.Keeps
 				GuildName = "Merchant";
 				return;
 			}
-			else if (this is GuardCurrencyMerchant)
-			{
-				if (IsAlive)
-				{
-					BroadcastLivingEquipmentUpdate();
-				}
 
-				GuildName = "Orb Merchant";
-				return;
-			}
 			Guild guild = Component.Keep.Guild;
-			string guildname = "";
+			string guildname = string.Empty;
 			if (guild != null)
 				guildname = guild.Name;
 
@@ -717,7 +618,7 @@ namespace DOL.GS.Keeps
 			int emblem = 0;
 			if (guild != null)
 				emblem = guild.Emblem;
-			DbInventoryItem lefthand = Inventory.GetItem(eInventorySlot.LeftHandWeapon);
+			DbInventoryItem lefthand = ActiveLeftWeapon;
 			if (lefthand != null)
 				lefthand.Emblem = emblem;
 
@@ -739,7 +640,7 @@ namespace DOL.GS.Keeps
 		/// <summary>
 		/// Adding special handling for walking to a point for patrol guards to be in a formation
 		/// </summary>
-		public override void WalkTo(Point3D target, short speed)
+		public override void WalkTo(Vector3 target, short speed)
 		{
 			int offX = 0;
 			int offY = 0;
@@ -747,7 +648,7 @@ namespace DOL.GS.Keeps
 			if (IsMovingOnPath && PatrolGroup != null)
 				PatrolGroup.GetMovementOffset(this, out offX, out offY);
 
-			base.WalkTo(new Point3D(target.X - offX, target.Y - offY, target.Z), speed);
+			base.WalkTo(new Vector3(target.X - offX, target.Y - offY, target.Z), speed);
 		}
 
 		public override void ReturnToSpawnPoint(short speed)
@@ -767,7 +668,7 @@ namespace DOL.GS.Keeps
 				return;
 			}
 
-			base.ReturnToSpawnPoint(MaxSpeed);
+			base.ReturnToSpawnPoint(MaxSpeedBase);
 		}
 
 		public void RefreshTemplate()
@@ -782,8 +683,9 @@ namespace DOL.GS.Keeps
 			SetBrain();
 			SetSpeed();
 			SetLevel();
+			SetSpells();
 			SetResists();
-			AutoSetStats();
+			SetStats();
 			SetAggression();
 			ClothingMgr.EquipGuard(this);
 			ClothingMgr.SetEmblem(this);
@@ -843,32 +745,34 @@ namespace DOL.GS.Keeps
 			}
 		}
 
+		public virtual void SetSpells() { }
+
 		private void SetResists()
 		{
-			for (int i = (int)eProperty.Resist_First; i <= (int)eProperty.Resist_Last; i++)
+			for (eProperty property = eProperty.Resist_First; property <= eProperty.Resist_Last; property++)
 			{
 				if (this is GuardLord)
 				{
-					BaseBuffBonusCategory[i] = 40;
+					BaseBuffBonusCategory[property] = 40;
 				}
 				else if (Level < 50)
 				{
-					BaseBuffBonusCategory[i] = Level / 2 + 1;
+					BaseBuffBonusCategory[property] = Level / 2 + 1;
 				}
 				else
 				{
-					BaseBuffBonusCategory[i] = 26;
+					BaseBuffBonusCategory[property] = 26;
 				}
 			}
 		}
 
-		public override void AutoSetStats(DbMob dbMob = null)
+		public override void SetStats(DbMob dbMob = null)
 		{
-			Strength = (short) (Properties.GUARD_AUTOSET_STR_BASE + Level * Properties.GUARD_AUTOSET_STR_MULTIPLIER);
-			Constitution = (short) (Properties.GUARD_AUTOSET_CON_BASE + Level * Properties.GUARD_AUTOSET_CON_MULTIPLIER);
-			Dexterity = (short) (Properties.GUARD_AUTOSET_DEX_BASE + Level * Properties.GUARD_AUTOSET_DEX_MULTIPLIER);
-			Quickness = (short) (Properties.GUARD_AUTOSET_QUI_BASE + Level * Properties.GUARD_AUTOSET_QUI_MULTIPLIER);
-			Intelligence = (short) (Properties.GUARD_AUTOSET_INT_BASE + Level * Properties.GUARD_AUTOSET_INT_MULTIPLIER);
+			Strength = (short) Math.Max(1, Properties.GUARD_AUTOSET_STR_BASE + Level * Properties.GUARD_AUTOSET_STR_MULTIPLIER);
+			Constitution = (short) Math.Max(1, Properties.GUARD_AUTOSET_CON_BASE + Level * Properties.GUARD_AUTOSET_CON_MULTIPLIER);
+			Dexterity = (short) Math.Max(1, Properties.GUARD_AUTOSET_DEX_BASE + Level * Properties.GUARD_AUTOSET_DEX_MULTIPLIER);
+			Quickness = (short) Math.Max(1, Properties.GUARD_AUTOSET_QUI_BASE + Level * Properties.GUARD_AUTOSET_QUI_MULTIPLIER);
+			Intelligence = (short) Math.Max(1, Properties.GUARD_AUTOSET_INT_BASE + Level * Properties.GUARD_AUTOSET_INT_MULTIPLIER);
 		}
 
 		private void SetRealm()
@@ -896,19 +800,15 @@ namespace DOL.GS.Keeps
 		{
 			if (Component == null)
 			{
-				GuildName = "";
+				GuildName = string.Empty;
 			}
 			else if (Component.Keep.Guild == null)
 			{
-				GuildName = "";
+				GuildName = string.Empty;
 			}
 			else if ((Component.Keep.Guild == null || Component.Keep.Guild != null)&& this is GuardMerchant)
 			{
 				GuildName = "Merchant";
-			}
-			else if ((Component.Keep.Guild == null || Component.Keep.Guild != null) && this is GuardCurrencyMerchant)
-			{
-				GuildName = "Orb Merchant";
 			}
 			else
 			{
@@ -925,7 +825,15 @@ namespace DOL.GS.Keeps
 			RespawnInterval = (iRespawn > 1000) ? iRespawn : 1000; // Make sure we don't end up with an impossibly low respawn interval.
 		}
 
-		protected virtual void SetAggression() { }
+		protected virtual void SetAggression()
+		{
+			SetAggression(99, IsPortalKeepGuard ? 2000 : 1000);
+		}
+
+		protected void SetAggression(int aggroLevel, int aggroRange)
+		{
+			(Brain as KeepGuardBrain).SetAggression(aggroLevel, aggroRange);
+		}
 
 		public void SetLevel()
 		{

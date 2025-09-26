@@ -1,28 +1,8 @@
-﻿/*
-* DAWN OF LIGHT - The first free open source DAoC server emulator
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-*
-*/
-using DOL.GS.PacketHandler;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using DOL.Language;
 using DOL.GS.Keeps;
 using DOL.GS.ServerRules;
-using System;
+using DOL.Language;
 
 namespace DOL.GS.Commands
 {
@@ -73,9 +53,9 @@ namespace DOL.GS.Commands
 			if (IsSpammingCommand(client.Player, "realm"))
 				return;
 
-			string albKeeps = "";
-			string midKeeps = "";
-			string hibKeeps = "";
+			string albKeeps = string.Empty;
+			string midKeeps = string.Empty;
+			string hibKeeps = string.Empty;
 			ICollection<AbstractGameKeep> keepList = GameServer.KeepManager.GetFrontierKeeps();
 			ICollection<AbstractGameKeep> albKeepList = GameServer.KeepManager.GetKeepsOfRegion(1);
 			ICollection<AbstractGameKeep> midKeepList = GameServer.KeepManager.GetKeepsOfRegion(100);
@@ -83,37 +63,47 @@ namespace DOL.GS.Commands
 
 			foreach (AbstractGameKeep keep in albKeepList)
 			{
-				if (keep.Name.ToLower().Contains("myrddin") || keep.Name.ToLower().Contains("excalibur"))
+				if (keep.IsPortalKeep)
 					continue;
+
+				if (keep.Name.Contains("myrddin", StringComparison.OrdinalIgnoreCase) ||
+					keep.Name.Contains("excalibur", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
 				
 				if (keep is GameKeep)
-				{
 					albKeeps += KeepStringBuilder(keep);
-				}
-					
 			}
 
 			foreach (AbstractGameKeep keep in midKeepList)
 			{
-				if (keep.Name.ToLower().Contains("grallarhorn") || keep.Name.ToLower().Contains("mjollner"))
+				if (keep.IsPortalKeep)
 					continue;
-				if (keep is GameKeep)
+
+				if (keep.Name.Contains("grallarhorn", StringComparison.OrdinalIgnoreCase) ||
+					keep.Name.Contains("mjollner", StringComparison.OrdinalIgnoreCase))
 				{
-					midKeeps += KeepStringBuilder(keep);
+					continue;
 				}
-					
+
+				if (keep is GameKeep)
+					midKeeps += KeepStringBuilder(keep);
 			}
 			
 			foreach (AbstractGameKeep keep in hibKeepList)
 			{
-				if (keep.Name.ToLower().Contains("dagda") || keep.Name.ToLower().Contains("lamfhota"))
+				if (keep.IsPortalKeep)
 					continue;
+
+				if (keep.Name.Contains("dagda", StringComparison.OrdinalIgnoreCase) ||
+					keep.Name.Contains("lamfhota", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
 				
 				if (keep is GameKeep)
-				{
 					hibKeeps += KeepStringBuilder(keep);
-				}
-					
 			}
 			
 			// foreach (AbstractGameKeep keep in keepList)
@@ -152,7 +142,7 @@ namespace DOL.GS.Commands
 				if (DFEnterJumpPoint.LastRealmSwapTick + DFEnterJumpPoint.GracePeriod >= GameLoop.GameLoopTime)
 				{
 					var pve = DFEnterJumpPoint.LastRealmSwapTick + DFEnterJumpPoint.GracePeriod - GameLoop.GameLoopTime;
-					string realmName = "";
+					string realmName = string.Empty;
 					if (DFEnterJumpPoint.PreviousOwner == eRealm._LastPlayerRealm || 
 					    DFEnterJumpPoint.PreviousOwner == eRealm.Hibernia)
 						realmName = "Hibernia";
@@ -161,7 +151,7 @@ namespace DOL.GS.Commands
 						realmName = "Albion";
 					if (DFEnterJumpPoint.PreviousOwner == eRealm.Midgard)
 						realmName = "Midgard";
-					if(realmName != "")
+					if(realmName != string.Empty)
 						realmInfo.Add(realmName + " can enter Darkness Falls for another " + TimeSpan.FromMilliseconds(pve).Minutes + "m " + TimeSpan.FromMilliseconds(pve).Seconds + "s");
 				}	
 			}
@@ -173,7 +163,7 @@ namespace DOL.GS.Commands
 
 		private string KeepStringBuilder(AbstractGameKeep keep)
 		{
-			string buffer = "";
+			string buffer = string.Empty;
 			buffer += keep.Name + ": " + GlobalConstants.RealmToName(keep.Realm);
 			if (keep.Guild != null)
 			{
@@ -182,7 +172,5 @@ namespace DOL.GS.Commands
 			buffer += "\n";
 			return buffer;
 		}
-
-
 	}
 }

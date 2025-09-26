@@ -194,7 +194,7 @@ namespace DOL.GS.Scripts
             WorldMgr.Zones[(ushort)currentHiberniaZone].BonusExperience = PvEExperienceBonusAmount;
             WorldMgr.Zones[(ushort)currentHiberniaZoneSI].BonusExperience = PvEExperienceBonusAmount;
 
-            foreach (GamePlayer player in ClientService.GetPlayers())
+            foreach (GamePlayer player in ClientService.Instance.GetPlayers())
                 TellPlayer(player);
 
             scheduler.Start(UpdatePvEZones, PvETimer);
@@ -257,7 +257,7 @@ namespace DOL.GS.Scripts
                     break;
             }
 
-            foreach (GamePlayer player in ClientService.GetPlayers())
+            foreach (GamePlayer player in ClientService.Instance.GetPlayers())
                 TellPlayer(player);
 
             scheduler.Start(UpdateRvRZones, RvRTimer);
@@ -512,12 +512,12 @@ namespace DOL.GS.Scripts
                     return "[40-50+]";
             }
 
-            return "";
+            return string.Empty;
         }
 
         public static string GetText()
         {
-            string realm = "";
+            string realm = string.Empty;
             switch (currentRvRRealm)
             {
                 case 1:
@@ -542,7 +542,7 @@ namespace DOL.GS.Scripts
         public static List<string> GetTextList()
         {
             List<string> temp = new List<string>();
-            string realm = "";
+            string realm = string.Empty;
             switch (currentRvRRealm)
             {
                 case 1:

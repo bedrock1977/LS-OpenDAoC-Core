@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.IO;
 
 namespace DOL.Network
@@ -6,24 +7,15 @@ namespace DOL.Network
 	/// <summary>
 	/// Reads primitive data types from an underlying stream.
 	/// </summary>
-	public class PacketIn : MemoryStream, IPacket
+	public abstract class PacketIn : MemoryStream, IPacket
 	{
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="size">Size of the internal buffer</param>
-		public PacketIn(int size) : base(size)
-		{
-		}
+		protected PacketIn() { }
 
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="buf">Buffer containing packet data to read from</param>
-		/// <param name="start">Starting index into buf</param>
-		/// <param name="size">Number of bytes to read from buf</param>
-		public PacketIn(byte[] buf, int start, int size) : base(buf, start, size)
+		protected PacketIn(int size) : base(size) { }
+
+		public virtual PacketIn Init()
 		{
+			return this;
 		}
 
 		/// <summary>
@@ -89,10 +81,37 @@ namespace DOL.Network
 		/// <returns>A string of maxlen or less</returns>
 		public string ReadString(int maxlen)
 		{
-			var buf = new byte[maxlen];
-			Read(buf, 0, maxlen);
+			// Stack for small strings, ArrayPool for large strings.
+			if (maxlen <= 1024)
+			{
+				Span<byte> buffer = stackalloc byte[maxlen];
+				Read(buffer);
+				int actualLength = buffer.IndexOf((byte) 0);
 
-			return Marshal.ConvertToString(buf);
+				if (actualLength == -1)
+					actualLength = maxlen;
+
+				return BaseServer.DefaultEncoding.GetString(buffer[..actualLength]);
+			}
+			else
+			{
+				byte[] buffer = ArrayPool<byte>.Shared.Rent(maxlen);
+
+				try
+				{
+					int actualLength = Array.IndexOf(buffer, (byte) 0, 0, maxlen);
+
+					if (actualLength == -1)
+						actualLength = maxlen;
+
+					Read(buffer, 0, maxlen);
+					return BaseServer.DefaultEncoding.GetString(buffer, 0, actualLength);
+				}
+				finally
+				{
+					ArrayPool<byte>.Shared.Return(buffer);
+				}
+			}
 		}
 
 		/// <summary>
@@ -127,28 +146,29 @@ namespace DOL.Network
 
 			return Marshal.ConvertToUInt32(v4, v3, v2, v1);
 		}
-		
+
 		/// <summary>
 		/// Reads low endian floats used in 1.124 packets
 		/// </summary>
 		/// <returns>converts it to a usable value</returns>
 		public float ReadFloatLowEndian()
-        {
-            var v1 = (byte)ReadByte();
-            var v2 = (byte)ReadByte();
-            var v3 = (byte)ReadByte();
-            var v4 = (byte)ReadByte();            
-            byte[] bytes = new[] { v1, v2, v3, v4 };
-            float data = BitConverter.ToSingle(bytes, 0);
-            return data;
-        } 
-		
+		{
+			uint v = (uint) ((byte) ReadByte() | ((byte) ReadByte() << 8) | ((byte) ReadByte() << 16) | ((byte) ReadByte() << 24));
+			return BitConverter.UInt32BitsToSingle(v);
+		}
+
 		/// <summary>
 		/// Returns a <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
 		/// </summary>		
 		public override string ToString()
 		{
 			return GetType().Name;
+		}
+
+		public override void Close()
+		{
+			// Called by Dispose and normally invalidates the stream.
+			// But this is both pointless (`MemoryStream` doesn't have any unmanaged resource) and undesirable (we always want the buffer to remain accessible)
 		}
 	}
 }

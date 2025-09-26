@@ -14,23 +14,19 @@ namespace DOL.Database
 		protected int       m_realm;
 		protected string	m_characterClass = string.Empty;
 		protected int 		m_level;
-		protected int		m_solo;
 		protected int		m_hardcore;
 		protected string	m_timetolevel = string.Empty;
 		protected long 	    m_secondstolevel;
 		protected long 	    m_hourstolevel;
-		protected int 	    m_boosted;
 
-		public DbTimeXLevel()
-		{
-		}
+		public DbTimeXLevel() { }
 
 		[PrimaryKey(AutoIncrement=true)]
 		public int TimeXLevel_ID {
 			get { return m_TimeXLevel_ID; }
 			set { m_TimeXLevel_ID = value; }
 		}
-		
+
 		[DataElement(AllowDbNull=false,Unique=false)]
 		public string Character_ID
 		{
@@ -52,7 +48,7 @@ namespace DOL.Database
 				m_characterName = value;
 			}
 		}
-		
+
 		[DataElement(AllowDbNull=false,Unique=false)]
 		public int Character_Realm
 		{
@@ -63,7 +59,7 @@ namespace DOL.Database
 				m_realm = value;
 			}
 		}
-		
+
 		[DataElement(AllowDbNull=false,Unique=false)]
 		public string Character_Class
 		{
@@ -74,7 +70,7 @@ namespace DOL.Database
 				m_characterClass = value;
 			}
 		}
-		
+
 		[DataElement(AllowDbNull=false,Unique=false)]
 		public int Character_Level
 		{
@@ -87,17 +83,6 @@ namespace DOL.Database
 		}
 
 		[DataElement(AllowDbNull= false, Unique=false)]
-		public int Solo
-		{
-			get {return m_solo;}
-			set
-			{
-				Dirty = true;
-				m_solo = value;
-			}
-		}
-		
-		[DataElement(AllowDbNull= false, Unique=false)]
 		public int Hardcore
 		{
 			get {return m_hardcore;}
@@ -107,18 +92,7 @@ namespace DOL.Database
 				m_hardcore = value;
 			}
 		}
-		
-		[DataElement(AllowDbNull= false, Unique=false)]
-		public int Boosted
-		{
-			get {return m_boosted;}
-			set
-			{
-				Dirty = true;
-				m_boosted = value;
-			}
-		}
-		
+
 		[DataElement(AllowDbNull= false, Unique=false)]
 		public string TimeToLevel
 		{
@@ -129,7 +103,7 @@ namespace DOL.Database
 				m_timetolevel = value;
 			}
 		}
-		
+
 		[DataElement(AllowDbNull= false, Unique=false)]
 		public long SecondsToLevel
 		{
@@ -140,7 +114,7 @@ namespace DOL.Database
 				m_secondstolevel = value;
 			}
 		}
-		
+
 		[DataElement(AllowDbNull= false, Unique=false)]
 		public long HoursToLevel
 		{

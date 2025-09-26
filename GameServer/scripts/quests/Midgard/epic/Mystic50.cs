@@ -46,7 +46,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Midgard
 {
@@ -55,7 +54,7 @@ namespace DOL.GS.Quests.Midgard
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "Saving the Clan";
 		protected const int minimumLevel = 50;
@@ -134,7 +133,7 @@ namespace DOL.GS.Quests.Midgard
 				Danica = new GameNPC();
 				Danica.Model = 227;
 				Danica.Name = "Danica";
-				Danica.GuildName = "";
+				Danica.GuildName = string.Empty;
 				Danica.Realm = eRealm.Midgard;
 				Danica.CurrentRegionID = 100;
 				Danica.LoadEquipmentTemplateFromDatabase("Danica");
@@ -169,7 +168,7 @@ namespace DOL.GS.Quests.Midgard
 				Kelic = new Kelic();
 				Kelic.Model = 26;
 				Kelic.Name = "Kelic";
-				Kelic.GuildName = "";
+				Kelic.GuildName = string.Empty;
 				Kelic.Realm = eRealm.None;
 				Kelic.CurrentRegionID = 100;
 				Kelic.Size = 100;
@@ -296,7 +295,7 @@ namespace DOL.GS.Quests.Midgard
 				SpiritmasterEpicHelm.Bonus3Type = (int) eStat.PIE;
 
 				SpiritmasterEpicHelm.Bonus4 = 4;
-				SpiritmasterEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				SpiritmasterEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -339,7 +338,7 @@ namespace DOL.GS.Quests.Midgard
 				SpiritmasterEpicGloves.Bonus3Type = (int) eStat.PIE;
 
 				SpiritmasterEpicGloves.Bonus4 = 4;
-				SpiritmasterEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				SpiritmasterEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -552,7 +551,7 @@ namespace DOL.GS.Quests.Midgard
 				RunemasterEpicHelm.Bonus3Type = (int) eStat.PIE;
 
 				RunemasterEpicHelm.Bonus4 = 4;
-				RunemasterEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				RunemasterEpicHelm.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -594,7 +593,7 @@ namespace DOL.GS.Quests.Midgard
 				RunemasterEpicGloves.Bonus3Type = (int) eStat.PIE;
 
 				RunemasterEpicGloves.Bonus4 = 6;
-				RunemasterEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				RunemasterEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{
@@ -802,7 +801,7 @@ namespace DOL.GS.Quests.Midgard
 				BonedancerEpicHelm.Bonus2Type = (int) eStat.PIE;
 
 				BonedancerEpicHelm.Bonus3 = 4;
-				BonedancerEpicHelm.Bonus3Type = (int) eProperty.PowerRegenerationRate;
+				BonedancerEpicHelm.Bonus3Type = (int) eProperty.PowerRegenerationAmount;
 
 				BonedancerEpicHelm.Bonus4 = 4;
 				BonedancerEpicHelm.Bonus4Type = (int) eProperty.Focus_BoneArmy;
@@ -849,7 +848,7 @@ namespace DOL.GS.Quests.Midgard
 				BonedancerEpicGloves.Bonus3Type = (int) eStat.PIE;
 
 				BonedancerEpicGloves.Bonus4 = 6;
-				BonedancerEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationRate;
+				BonedancerEpicGloves.Bonus4Type = (int) eProperty.PowerRegenerationAmount;
 
 				if (SAVE_INTO_DATABASE)
 				{

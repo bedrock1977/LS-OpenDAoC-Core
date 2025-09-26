@@ -57,10 +57,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -91,13 +88,6 @@ namespace DOL.GS
 			}
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158846);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_QUEST_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 			CaileanBrain sbrain = new CaileanBrain();
@@ -127,7 +117,7 @@ namespace DOL.AI.Brain
 {
 	public class CaileanBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public CaileanBrain() : base()
 		{
 			AggroLevel = 100;
@@ -396,7 +386,7 @@ namespace DOL.AI.Brain
 {
 	public class WalkingTreeBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public WalkingTreeBrain() : base()
 		{
 			AggroLevel = 100;
@@ -538,7 +528,7 @@ namespace DOL.AI.Brain
 {
 	public class WalkingTree2Brain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public WalkingTree2Brain() : base()
 		{
 			AggroLevel = 100;
@@ -556,7 +546,7 @@ namespace DOL.AI.Brain
                     {
 						var effect = EffectListService.GetEffectOnTarget(target, eEffect.SnareImmunity);
 						if(effect != null)
-							EffectService.RequestImmediateCancelEffect(effect);//remove snare immunity here
+							effect.Stop();//remove snare immunity here
 					}
 					if(!target.effectListComponent.ContainsEffectForEffectType(eEffect.SnareImmunity) && !target.effectListComponent.ContainsEffectForEffectType(eEffect.MovementSpeedDebuff) && target != null && target.IsAlive)
 						Body.CastSpell(TreeRoot2, SkillBase.GetSpellLine(GlobalSpellsLines.Mob_Spells), false);

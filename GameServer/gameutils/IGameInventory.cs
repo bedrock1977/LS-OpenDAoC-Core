@@ -1,4 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using DOL.Database;
 
 namespace DOL.GS
@@ -74,13 +77,15 @@ namespace DOL.GS
         HousingInventory_First = 150,
         HousingInventory_Last  = 249,
 
+        MarketExplorerFirst = 1000, // Used for client slots.
         HouseVault_First    = 1000,
-        HouseVault_Last     = 1399,
+        HouseVault_Last     = 1799,
 
-        Consignment_First   = 1500,
-        Consignment_Last    = 1599,
+        Consignment_First   = 2000,
+        Consignment_Last    = 2099,
 
-        MarketExplorerFirst = 1000,
+        AccountVault_First  = 2500, // See `AccountVaultKeeper.LastDbSlot`.
+        AccountVault_Last   = 2699, // Unused. Just here so that people don't add anything in between. See `AccountVaultKeeper.LastDbSlot`.
 
         //FirstFixLoot      = 256, //You can define drops that will ALWAYS occur (eg quest drops etc.)
         //LastFixLoot       = 356, //100 drops should be enough ... if not, just raise this var, we have thousands free
@@ -117,8 +122,10 @@ namespace DOL.GS
     /// </summary>
     public interface IGameInventory
     {
-        bool LoadFromDatabase(string inventoryID);
-        bool SaveIntoDatabase(string inventoryID);
+        bool LoadFromDatabase(string inventoryId);
+        Task<IList> StartLoadFromDatabaseTask(string inventoryId);
+        bool LoadInventory(string inventoryId, IList items);
+        bool SaveIntoDatabase(string inventoryId);
 
         bool AddItem(eInventorySlot slot, DbInventoryItem item);
         bool AddItemWithoutDbAddition(eInventorySlot slot, DbInventoryItem item);
@@ -131,6 +138,7 @@ namespace DOL.GS
         bool MoveItem(eInventorySlot fromSlot, eInventorySlot toSlot, int itemCount);
         bool CheckItemsBeforeMovingFromOrToExternalInventory(DbInventoryItem fromItem, DbInventoryItem toItem, eInventorySlot externalSlot, eInventorySlot playerInventorySlot, int itemCount);
         void OnItemMove(DbInventoryItem fromItem, DbInventoryItem toItem, eInventorySlot fromSlot, eInventorySlot toSlot);
+        bool UpdateInventoryWeight();
         DbInventoryItem GetItem(eInventorySlot slot);
         ICollection<DbInventoryItem> GetItemRange(eInventorySlot minSlot, eInventorySlot maxSlot);
 
@@ -157,6 +165,6 @@ namespace DOL.GS
         ICollection<DbInventoryItem> EquippedItems { get; }
         ICollection<DbInventoryItem> AllItems { get; }
         int InventoryWeight { get; }
-        object LockObject { get; }
+        Lock Lock { get; }
     }
 }

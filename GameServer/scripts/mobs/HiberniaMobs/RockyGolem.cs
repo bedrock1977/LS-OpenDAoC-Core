@@ -1,6 +1,7 @@
-﻿using DOL.AI.Brain;
+﻿using System;
+using DOL.AI;
+using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
-using System;
 
 namespace DOL.GS
 {
@@ -249,6 +250,8 @@ namespace DOL.GS
 					break;
 					#endregion
 			}
+
+			Brain.FSM.SetCurrentState(eFSMStateType.RETURN_TO_SPAWN);
             return 0;
         }		
 	}
@@ -257,7 +260,7 @@ namespace DOL.AI.Brain
 {
 	public class RockyGolemBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public RockyGolemBrain() : base()
 		{
 			AggroLevel = 0;

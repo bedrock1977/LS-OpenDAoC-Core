@@ -1,15 +1,14 @@
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using DOL.Database;
 using DOL.Events;
 using DOL.GS.Keeps;
 using DOL.GS.ServerProperties;
-using log4net;
 
 namespace DOL.GS
 {
@@ -22,7 +21,7 @@ namespace DOL.GS
     /// </summary>
     public class Region
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         #region Region Variables
 
@@ -42,7 +41,7 @@ namespace DOL.GS
         /// <summary>
         /// Object to lock when changing objects in the array
         /// </summary>
-        public readonly object ObjectsSyncLock = new object();
+        public readonly Lock ObjectsSyncLock = new();
 
         /// <summary>
         /// This holds a counter with the absolute count of all objects that are actually in this region
@@ -75,13 +74,14 @@ namespace DOL.GS
         /// Player unique id(string) -> GameGraveStone
         /// </summary>
         protected readonly Hashtable m_graveStones;
+        private readonly Lock _graveStonesLock = new();
 
         /// <summary>
         /// Holds all the Zones inside this Region
         /// </summary>
         protected readonly List<Zone> m_zones;
 
-        protected object m_lockAreas = new object();
+        protected readonly Lock _lockAreas = new();
 
         /// <summary>
         /// Holds all the Areas inside this Region
@@ -160,21 +160,23 @@ namespace DOL.GS
                         if (r != null)
                         {
                             // Success with requested classtype
-                            log.InfoFormat("Created Region {0} using ClassType '{1}'", r.ID, data.ClassType);
+                            if (log.IsInfoEnabled)
+                                log.InfoFormat("Created Region {0} using ClassType '{1}'", r.ID, data.ClassType);
+
                             return r;
                         }
 
-                        log.ErrorFormat("Failed to Invoke Region {0} using ClassType '{1}'", r.ID, data.ClassType);
+                        if (log.IsErrorEnabled)
+                            log.ErrorFormat("Failed to Invoke Region {0} using ClassType '{1}'", r.ID, data.ClassType);
                     }
-                    else
-                    {
+                    else if (log.IsErrorEnabled)
                         log.ErrorFormat("Failed to find ClassType '{0}' for region {1}!", data.ClassType, data.Id);
-                    }
                 }
             }
             catch (Exception ex)
             {
-                log.ErrorFormat("Failed to start region {0} with requested classtype: {1}.  Exception: {2}!", data.Id, data.ClassType, ex.Message);
+                if (log.IsErrorEnabled)
+                    log.ErrorFormat("Failed to start region {0} with requested classtype: {1}.  Exception: {2}!", data.Id, data.ClassType, ex.Message);
             }
 
             // Create region using default type
@@ -427,7 +429,7 @@ namespace DOL.GS
         /// <summary>
         /// An ArrayList of all Zones within this Region
         /// </summary>
-        public IList<Zone> Zones
+        public List<Zone> Zones
         {
             get { return m_zones; }
         }
@@ -707,7 +709,7 @@ namespace DOL.GS
 
             if (mobObjs.Length > 0)
             {
-                foreach (DbMob mob in mobObjs)
+                Parallel.ForEach(mobObjs, (mob) =>
                 {
                     GameNPC myMob = null;
                     string error = string.Empty;
@@ -742,7 +744,6 @@ namespace DOL.GS
                         }
                     }
 
-  
                     if (myMob == null)
                     {
                     	if(template != null && template.ClassType != null && template.ClassType.Length > 0 && template.ClassType != DbMob.DEFAULT_NPC_CLASSTYPE && template.ReplaceMobValues)
@@ -800,11 +801,11 @@ namespace DOL.GS
 
                             if (myMob is GameMerchant)
                             {
-                                myMerchantCount++;
+                                Interlocked.Increment(ref myMerchantCount);
                             }
                             else
                             {
-                                myMobCount++;
+                                Interlocked.Increment(ref myMobCount);
                             }
                         }
                         catch (Exception e)
@@ -816,12 +817,12 @@ namespace DOL.GS
 
                         myMob.AddToWorld();
                     }
-                }
+                });
             }
 
             if (staticObjs.Count > 0)
             {
-                foreach (DbWorldObject item in staticObjs)
+                Parallel.ForEach(staticObjs, (item) =>
                 {
                     GameStaticItem myItem;
                     if (!string.IsNullOrEmpty(item.ClassType))
@@ -848,28 +849,24 @@ namespace DOL.GS
 
                     myItem.LoadFromDatabase(item);
                     myItem.AddToWorld();
-                    //						if (!myItem.AddToWorld())
-                    //							log.ErrorFormat("Failed to add the item to the world: {0}", myItem.ToString());
-                }
+                });
             }
 
-            foreach (DbBindPoint point in bindPoints)
-            {
-                AddArea(new Area.BindArea("bind point", point));
-            }
+            foreach (DbBindPoint bindPoint in bindPoints)
+                AddArea(new Area.BindArea("bind point", bindPoint));
 
             if (myMobCount + myItemCount + myMerchantCount + myBindCount > 0)
             {
                 if (log.IsInfoEnabled)
                     log.Info(string.Format("Region: {0} ({1}) loaded {2} mobs, {3} merchants, {4} items {5} bindpoints", Description, ID, myMobCount, myMerchantCount, myItemCount, myBindCount));
 
-                log.Debug("Used Memory: " + GC.GetTotalMemory(false) / 1024 / 1024 + "MB");
+                if (log.IsDebugEnabled)
+                    log.Debug("Used Memory: " + GC.GetTotalMemory(false) / 1024 / 1024 + "MB");
 
-                if (allErrors != string.Empty)
+                if (allErrors != string.Empty && log.IsErrorEnabled)
                     log.Error("Error loading the following NPC ClassType(s), GameNPC used instead:" + allErrors.TrimEnd(','));
-
-                Thread.Sleep(0);  // give up remaining thread time to other resources
             }
+
             Interlocked.Add(ref mobCount, myMobCount);
             Interlocked.Add(ref merchantCount, myMerchantCount);
             Interlocked.Add(ref itemCount, myItemCount);
@@ -886,7 +883,7 @@ namespace DOL.GS
             //Assign a new id
             lock (ObjectsSyncLock)
             {
-                if (obj.ObjectID != -1)
+                if (obj.ObjectID != 0)
                 {
                     if (obj.ObjectID < m_objects.Length && obj == m_objects[obj.ObjectID - 1])
                     {
@@ -1014,7 +1011,7 @@ namespace DOL.GS
                     objectsRef[objID] = obj;
                     m_nextObjectSlot = objID + 1;
                     m_objectsInRegion++;
-                    obj.ObjectID = objID + 1;
+                    obj.ObjectID = (ushort) (objID + 1); // Safe.
                     m_objectsAllocatedSlots[objID / 32] |= (uint)1 << (objID % 32);
                     Thread.MemoryBarrier();
                     m_objects = objectsRef;
@@ -1027,7 +1024,7 @@ namespace DOL.GS
                     {
                         if (obj is GameGravestone)
                         {
-                            lock (m_graveStones.SyncRoot)
+                            lock (_graveStonesLock)
                             {
                                 m_graveStones[obj.InternalID] = obj;
                             }
@@ -1069,7 +1066,7 @@ namespace DOL.GS
                 {
                     if (obj is GameGravestone)
                     {
-                        lock (m_graveStones.SyncRoot)
+                        lock (_graveStonesLock)
                         {
                             m_graveStones.Remove(obj.InternalID);
                         }
@@ -1079,20 +1076,29 @@ namespace DOL.GS
                 GameObject inPlace = m_objects[obj.ObjectID - 1];
                 if (inPlace == null)
                 {
-                    log.Error("RemoveObject conflict! OID" + obj.ObjectID + " " + obj.Name + "(" + obj.CurrentRegionID + ") but there was no object at that slot");
-                    log.Error(new StackTrace().ToString());
+                    if (log.IsErrorEnabled)
+                    {
+                        log.Error("RemoveObject conflict! OID" + obj.ObjectID + " " + obj.Name + "(" + obj.CurrentRegionID + ") but there was no object at that slot");
+                        log.Error(new StackTrace().ToString());
+                    }
+
                     return;
                 }
                 if (obj != inPlace)
                 {
-                    log.Error("RemoveObject conflict! OID" + obj.ObjectID + " " + obj.Name + "(" + obj.CurrentRegionID + ") but there was another object already " + inPlace.Name + " region:" + inPlace.CurrentRegionID + " state:" + inPlace.ObjectState);
-                    log.Error(new StackTrace().ToString());
+                    if (log.IsErrorEnabled)
+                    {
+                        log.Error("RemoveObject conflict! OID" + obj.ObjectID + " " + obj.Name + "(" + obj.CurrentRegionID + ") but there was another object already " + inPlace.Name + " region:" + inPlace.CurrentRegionID + " state:" + inPlace.ObjectState);
+                        log.Error(new StackTrace().ToString());
+                    }
+
                     return;
                 }
 
                 if (m_objects[index] != obj)
                 {
-                    log.Error("Object OID is already used by another object! (used by:" + m_objects[index].ToString() + ")");
+                    if (log.IsErrorEnabled)
+                        log.Error("Object OID is already used by another object! (used by:" + m_objects[index].ToString() + ")");
                 }
                 else
                 {
@@ -1100,7 +1106,7 @@ namespace DOL.GS
                     m_nextObjectSlot = index;
                     m_objectsAllocatedSlots[index / 32] &= ~(uint)(1 << (index % 32));
                 }
-                obj.ObjectID = -1; // invalidate object id
+                obj.ObjectID = 0; // invalidate object id
                 m_objectsInRegion--;
             }
         }
@@ -1112,7 +1118,7 @@ namespace DOL.GS
         /// <returns>the found gravestone or null</returns>
         public GameGravestone FindGraveStone(GamePlayer player)
         {
-            lock (m_graveStones.SyncRoot)
+            lock (_graveStonesLock)
             {
                 return (GameGravestone)m_graveStones[player.InternalID];
             }
@@ -1233,7 +1239,7 @@ namespace DOL.GS
         /// <returns></returns>
         public virtual IArea AddArea(IArea area)
         {
-            lock (m_lockAreas)
+            lock (_lockAreas)
             {
                 ushort nextAreaID = 0;
 
@@ -1266,7 +1272,7 @@ namespace DOL.GS
         /// <param name="area"></param>
         public virtual void RemoveArea(IArea area)
         {
-            lock (m_lockAreas)
+            lock (_lockAreas)
             {
                 if (m_Areas.ContainsKey(area.ID) == false)
                 {
@@ -1301,7 +1307,7 @@ namespace DOL.GS
         /// Gets the areas for given location,
         /// less performant than getAreasOfZone so use other on if possible
         /// </summary>
-        public virtual IList<IArea> GetAreasOfSpot(IPoint3D point)
+        public virtual List<IArea> GetAreasOfSpot(IPoint3D point)
         {
             Zone zone = GetZone(point.X, point.Y);
             return GetAreasOfZone(zone, point);
@@ -1311,14 +1317,14 @@ namespace DOL.GS
         /// Gets the areas for a certain spot,
         /// less performant than getAreasOfZone so use other on if possible
         /// </summary>
-        public virtual IList<IArea> GetAreasOfSpot(int x, int y, int z)
+        public virtual List<IArea> GetAreasOfSpot(int x, int y, int z)
         {
             Zone zone = GetZone(x, y);
             Point3D p = new Point3D(x, y, z);
             return GetAreasOfZone(zone, p);
         }
 
-        public virtual IList<IArea> GetAreasOfZone(Zone zone, IPoint3D p)
+        public virtual List<IArea> GetAreasOfZone(Zone zone, IPoint3D p)
         {
             return GetAreasOfZone(zone, p, true);
         }
@@ -1330,9 +1336,9 @@ namespace DOL.GS
         /// <param name="p"></param>
         /// <param name="checkZ"></param>
         /// <returns></returns>
-        public virtual IList<IArea> GetAreasOfZone(Zone zone, IPoint3D p, bool checkZ)
+        public virtual List<IArea> GetAreasOfZone(Zone zone, IPoint3D p, bool checkZ)
         {
-            lock (m_lockAreas)
+            lock (_lockAreas)
             {
                 int zoneIndex = Zones.IndexOf(zone);
                 var areas = new List<IArea>();
@@ -1343,7 +1349,7 @@ namespace DOL.GS
                     {
                         for (int i = 0; i < m_ZoneAreasCount[zoneIndex]; i++)
                         {
-                            IArea area = (IArea)m_Areas[m_ZoneAreas[zoneIndex][i]];
+                            IArea area = m_Areas[m_ZoneAreas[zoneIndex][i]];
                             if (area.IsContaining(p, checkZ))
                             {
                                 areas.Add(area);
@@ -1352,7 +1358,8 @@ namespace DOL.GS
                     }
                     catch (Exception e)
                     {
-                        log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
+                        if (log.IsErrorEnabled)
+                            log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
                     }
                 }
 
@@ -1360,9 +1367,9 @@ namespace DOL.GS
             }
         }
 
-        public virtual IList<IArea> GetAreasOfZone(Zone zone, int x, int y, int z)
+        public virtual List<IArea> GetAreasOfZone(Zone zone, int x, int y, int z)
         {
-            lock (m_lockAreas)
+            lock (_lockAreas)
             {
                 int zoneIndex = Zones.IndexOf(zone);
                 var areas = new List<IArea>();
@@ -1373,14 +1380,15 @@ namespace DOL.GS
                     {
                         for (int i = 0; i < m_ZoneAreasCount[zoneIndex]; i++)
                         {
-                            IArea area = (IArea)m_Areas[m_ZoneAreas[zoneIndex][i]];
+                            IArea area = m_Areas[m_ZoneAreas[zoneIndex][i]];
                             if (area.IsContaining(x, y, z))
                                 areas.Add(area);
                         }
                     }
                     catch (Exception e)
                     {
-                        log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
+                        if (log.IsErrorEnabled)
+                            log.Error("GetArea exception.Area count " + m_ZoneAreasCount[zoneIndex], e);
                     }
                 }
                 return areas;
@@ -1415,31 +1423,28 @@ namespace DOL.GS
 
         #region Get in radius
 
-        public List<T> GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius) where T : GameObject
+        public void GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> list) where T : GameObject
         {
-            // Check if we are around borders of a zone.
+            if (list.Count > 0)
+            {
+                if (log.IsErrorEnabled)
+                    log.Error($"GetInRadius: list is not empty, clearing it.{Environment.NewLine}{Environment.StackTrace}");
+
+                list.Clear();
+            }
+
             Zone startingZone = GetZone(point.X, point.Y);
 
-            if (startingZone != null)
+            if (startingZone == null)
+                return;
+
+            startingZone.GetObjectsInRadius(point, objectType, radius, list);
+            uint sqRadius = (uint) radius * radius;
+
+            foreach (Zone currentZone in m_zones)
             {
-                List<T> list = new();
-                startingZone.GetObjectsInRadius(point, objectType, radius, list);
-                uint sqRadius = (uint) radius * radius;
-
-                foreach (Zone currentZone in m_zones)
-                {
-                    if (currentZone != startingZone && currentZone.ObjectCount > 0 && CheckShortestDistance(currentZone, point.X, point.Y, sqRadius))
-                        currentZone.GetObjectsInRadius(point, objectType, radius, list);
-                }
-
-                return list;
-            }
-            else
-            {
-                if (log.IsDebugEnabled)
-                    log.Error("GetInRadius starting zone is null for (" + objectType + ", " + point.X + ", " + point.Y + ", " + point.Z + ", " + radius + ") in Region ID=" + ID);
-
-                return new();
+                if (currentZone != startingZone && currentZone.ObjectCount > 0 && CheckShortestDistance(currentZone, point.X, point.Y, sqRadius))
+                    currentZone.GetObjectsInRadius(point, objectType, radius, list);
             }
         }
 
@@ -1483,24 +1488,36 @@ namespace DOL.GS
             return (distance <= squareRadius);
         }
 
+        [Obsolete("Deprecated. Use GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> list) instead.")]
         public List<GameStaticItem> GetItemsInRadius(Point3D point, ushort radius)
         {
-            return GetInRadius<GameStaticItem>(point, eGameObjectType.ITEM, radius);
+            List<GameStaticItem> result = new();
+            GetInRadius(point, eGameObjectType.ITEM, radius, result);
+            return result;
         }
 
+        [Obsolete("Deprecated. Use GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> list) instead.")]
         public List<GameNPC> GetNPCsInRadius(Point3D point, ushort radius)
         {
-            return GetInRadius<GameNPC>(point, eGameObjectType.NPC, radius);
+            List<GameNPC> result = new();
+            GetInRadius(point, eGameObjectType.NPC, radius, result);
+            return result;
         }
 
+        [Obsolete("Deprecated. Use GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> list) instead.")]
         public List<GamePlayer> GetPlayersInRadius(Point3D point, ushort radius)
         {
-            return GetInRadius<GamePlayer>(point, eGameObjectType.PLAYER, radius);
+            List<GamePlayer> result = new();
+            GetInRadius(point, eGameObjectType.PLAYER, radius, result);
+            return result;
         }
 
+        [Obsolete("Deprecated. Use GetInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> list) instead.")]
         public List<GameDoorBase> GetDoorsInRadius(Point3D point, ushort radius)
         {
-            return GetInRadius<GameDoorBase>(point, eGameObjectType.DOOR, radius);
+            List<GameDoorBase> result = new();
+            GetInRadius(point, eGameObjectType.DOOR, radius, result);
+            return result;
         }
 
         #endregion

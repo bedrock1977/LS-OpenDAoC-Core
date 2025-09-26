@@ -36,7 +36,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Hibernia
 {
@@ -45,7 +44,7 @@ namespace DOL.GS.Quests.Hibernia
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "Unnatural Powers";
 		protected const int minimumLevel = 50;
@@ -164,7 +163,7 @@ namespace DOL.GS.Quests.Hibernia
 				GreenMaw = new GreenMaw();
 				GreenMaw.Model = 146;
 				GreenMaw.Name = "Green Maw";
-				GreenMaw.GuildName = "";
+				GreenMaw.GuildName = string.Empty;
 				GreenMaw.Realm = eRealm.None;
 				GreenMaw.CurrentRegionID = 200;
 				GreenMaw.Size = 50;
@@ -801,7 +800,7 @@ namespace DOL.GS.Quests.Hibernia
 				WardenEpicHelm.Bonus1Type = (int) eStat.EMP;
 
 				WardenEpicHelm.Bonus2 = 2;
-				WardenEpicHelm.Bonus2Type = (int) eProperty.PowerRegenerationRate;
+				WardenEpicHelm.Bonus2Type = (int) eProperty.PowerRegenerationAmount;
 
 				WardenEpicHelm.Bonus3 = 30;
 				WardenEpicHelm.Bonus3Type = (int) eProperty.MaxHealth;
@@ -848,7 +847,7 @@ namespace DOL.GS.Quests.Hibernia
 				WardenEpicGloves.Bonus2Type = (int) eResist.Slash;
 
 				WardenEpicGloves.Bonus3 = 4;
-				WardenEpicGloves.Bonus3Type = (int) eProperty.PowerRegenerationRate;
+				WardenEpicGloves.Bonus3Type = (int) eProperty.PowerRegenerationAmount;
 
 				WardenEpicGloves.Bonus4 = 33;
 				WardenEpicGloves.Bonus4Type = (int) eProperty.MaxHealth;
@@ -1020,7 +1019,7 @@ namespace DOL.GS.Quests.Hibernia
 				EldritchEpicBoots.Bonus2Type = (int) eStat.DEX;
 
 				EldritchEpicBoots.Bonus3 = 6;
-				EldritchEpicBoots.Bonus3Type = (int) eProperty.PowerRegenerationRate;
+				EldritchEpicBoots.Bonus3Type = (int) eProperty.PowerRegenerationAmount;
 
 				EldritchEpicBoots.Bonus4 = 21;
 				EldritchEpicBoots.Bonus4Type = (int) eProperty.MaxHealth;
@@ -1108,7 +1107,7 @@ namespace DOL.GS.Quests.Hibernia
 				EldritchEpicGloves.Bonus2Type = (int) eStat.DEX;
 
 				EldritchEpicGloves.Bonus3 = 4;
-				EldritchEpicGloves.Bonus3Type = (int) eProperty.PowerRegenerationRate;
+				EldritchEpicGloves.Bonus3Type = (int) eProperty.PowerRegenerationAmount;
 
 				EldritchEpicGloves.Bonus4 = 24;
 				EldritchEpicGloves.Bonus4Type = (int) eProperty.MaxHealth;

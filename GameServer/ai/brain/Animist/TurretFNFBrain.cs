@@ -1,27 +1,30 @@
 using System.Collections.Generic;
-using System.Linq;
 using DOL.GS;
-using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
 
 namespace DOL.AI.Brain
 {
     public class TurretFNFBrain : TurretBrain
     {
-        private List<GameLiving> _filteredAggroList = [];
+        private List<GameLiving> _filteredAggroList = new();
+
+        public TurretFNFBrain(GameLiving owner) : base(owner) { }
+
         protected override bool CheckLosBeforeCastingOffensiveSpells => Properties.CHECK_LOS_BEFORE_AGGRO_FNF;
 
-        public TurretFNFBrain(GameLiving owner) : base(owner)
+        public override void Think()
         {
-            // Forced to aggressive, otherwise 'CheckProximityAggro()' won't be called.
-            AggressionState = eAggressionState.Aggressive;
+            CheckProximityAggro();
+
+            if (!CheckSpells(eCheckSpellType.Offensive))
+                CheckSpells(eCheckSpellType.Defensive);
         }
 
         public override bool CheckProximityAggro()
         {
             // FnF turrets need to add all players and NPCs to their aggro list to be able to switch target randomly and effectively.
             CheckPlayerAggro();
-            CheckNPCAggro();
+            CheckNpcAggro();
             return HasAggro;
         }
 
@@ -40,13 +43,13 @@ namespace DOL.AI.Brain
                     continue;
 
                 if (Properties.CHECK_LOS_BEFORE_AGGRO_FNF)
-                    player.Out.SendCheckLos(Body, player, new CheckLosResponse(LosCheckForAggroCallback));
+                    SendLosCheckForAggro(player, player);
                 else
-                    AddToAggroList(player, 1);
+                    AddToAggroList(player);
             }
         }
 
-        protected override void CheckNPCAggro()
+        protected override void CheckNpcAggro()
         {
             // Copy paste of 'base.CheckNPCAggro()' except we add all NPCs in range.
             foreach (GameNPC npc in Body.GetNPCsInRadius((ushort) AggroRange))
@@ -61,31 +64,21 @@ namespace DOL.AI.Brain
                 {
                     if (npc.Brain is ControlledMobBrain theirControlledNpcBrain && theirControlledNpcBrain.GetPlayerOwner() is GamePlayer theirOwner)
                     {
-                        theirOwner.Out.SendCheckLos(Body, npc, new CheckLosResponse(LosCheckForAggroCallback));
+                        SendLosCheckForAggro(theirOwner, npc);
                         continue;
                     }
-                    else if (this is ControlledMobBrain ourControlledNpcBrain && ourControlledNpcBrain.GetPlayerOwner() is GamePlayer ourOwner)
+                    else if (GetPlayerOwner() is GamePlayer ourOwner)
                     {
-                        ourOwner.Out.SendCheckLos(Body, npc, new CheckLosResponse(LosCheckForAggroCallback));
+                        SendLosCheckForAggro(ourOwner, npc);
                         continue;
                     }
                 }
 
-                AddToAggroList(npc, 1);
+                AddToAggroList(npc);
             }
         }
 
-        protected override void LosCheckForAggroCallback(GamePlayer player, eLosCheckResponse response, ushort sourceOID, ushort targetOID)
-        {
-            // Copy paste of 'base.LosCheckForAggroCallback()' except we don't care if we already have aggro.
-            if (response is eLosCheckResponse.TRUE)
-            {
-                GameObject gameObject = Body.CurrentRegion.GetObject(targetOID);
-
-                if (gameObject is GameLiving gameLiving)
-                    AddToAggroList(gameLiving, 1);
-            }
-        }
+        protected override bool CanAddToAggroListFromMultipleLosChecks => true;
 
         protected override bool ShouldBeIgnoredFromAggroList(GameLiving living)
         {
@@ -114,11 +107,12 @@ namespace DOL.AI.Brain
 
             // Prioritize targets that don't already have our effect and aren't immune to it.
             // If there's none, allow them to be attacked again but only if our spell does damage.
-            if (_filteredAggroList.Any())
+            if (_filteredAggroList.Count > 0)
                 return _filteredAggroList[Util.Random(_filteredAggroList.Count - 1)];
-            else if (((TurretPet) Body).TurretSpell.Damage > 0)
+            else if ((Body as TurretPet).TurretSpell.Damage > 0)
             {
-                List<GameLiving> tempAggroList = AggroList.Keys.ToList();
+                List<GameLiving> tempAggroList = GameLoop.GetListForTick<GameLiving>();
+                tempAggroList.AddRange(AggroList.Keys); // Wasteful, but we don't expect this to be called often.
 
                 if (tempAggroList.Count != 0)
                     return tempAggroList[Util.Random(tempAggroList.Count - 1)];
@@ -128,5 +122,6 @@ namespace DOL.AI.Brain
         }
 
         public override void UpdatePetWindow() { }
+        public override void OnAttackedByEnemy(AttackData ad) { }
     }
 }

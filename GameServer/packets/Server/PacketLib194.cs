@@ -22,7 +22,6 @@ using System.Reflection;
 using DOL.Database;
 using DOL.GS.Behaviour;
 using DOL.GS.Quests;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
@@ -32,7 +31,7 @@ namespace DOL.GS.PacketHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 
 		public override void SendQuestOfferWindow(GameNPC questNPC, GamePlayer player, DataQuest quest)
@@ -50,7 +49,7 @@ namespace DOL.GS.PacketHandler
 
 		protected override void SendQuestWindow(GameNPC questNPC, GamePlayer player, DataQuest quest, bool offer)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.Dialog)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.Dialog)))
 			{
 				ushort QuestID = quest.ClientQuestID;
 				pak.WriteShort((offer) ? (byte)0x22 : (byte)0x21); // Dialog
@@ -136,7 +135,7 @@ namespace DOL.GS.PacketHandler
 
 		protected override void SendQuestWindow(GameNPC questNPC, GamePlayer player, RewardQuest quest,	bool offer)
 		{
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.Dialog)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.Dialog)))
 			{
 				ushort QuestID = QuestMgr.GetIDForQuestType(quest.GetType());
 				pak.WriteShort((offer) ? (byte)0x22 : (byte)0x21); // Dialog

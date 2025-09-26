@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using DOL.Database;
 using DOL.GS.Housing;
 using DOL.GS.PacketHandler;
@@ -8,11 +9,12 @@ namespace DOL.GS
 {
     public class MarketExplorer : GameNPC, IGameInventoryObject
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public const string EXPLORER_ITEM_LIST = "MarketExplorerItems";
 
-        public object LockObject { get; } = new();
+        private readonly Lock _lock = new();
+        public Lock Lock => _lock;
 
         public override bool Interact(GamePlayer player)
         {
@@ -49,7 +51,7 @@ namespace DOL.GS
         /// <summary>
         /// List of items in this objects inventory
         /// </summary>
-        public virtual IList<DbInventoryItem> DBItems(GamePlayer player = null)
+        public virtual IList<DbInventoryItem> GetDbItems(GamePlayer player)
         {
             return MarketCache.Items;
         }
@@ -93,7 +95,7 @@ namespace DOL.GS
         {
             MarketSearch marketSearch = new(player);
 
-            if (marketSearch.FindItemsInList(DBItems(), searchData) is List<DbInventoryItem> items)
+            if (marketSearch.FindItemsInList(GetDbItems(player), searchData) is List<DbInventoryItem> items)
             {
                 int maxPerPage = 20;
                 byte maxPages = (byte) (Math.Ceiling((double) items.Count / maxPerPage) - 1);
@@ -162,7 +164,7 @@ namespace DOL.GS
                 GameInventoryObjectExtensions.IsBackpackSlot(toClientSlot) &&
                 player.ActiveInventoryObject == this)
             {
-                List<DbInventoryItem> list = player.TempProperties.GetProperty<List<DbInventoryItem>>(EXPLORER_ITEM_LIST, null);
+                List<DbInventoryItem> list = player.TempProperties.GetProperty<List<DbInventoryItem>>(EXPLORER_ITEM_LIST);
 
                 if (list == null)
                     return false;
@@ -176,17 +178,24 @@ namespace DOL.GS
             return false;
         }
 
-        public virtual bool OnAddItem(GamePlayer player, DbInventoryItem item)
+        public virtual bool OnAddItem(GamePlayer player, DbInventoryItem item, int previousSlot)
         {
             return true;
         }
+
+        public virtual bool OnRemoveItem(GamePlayer player, DbInventoryItem item, int previousSlot)
+        {
+            return true;
+        }
+
+        public virtual bool OnMoveItem(GamePlayer player, DbInventoryItem firstItem, int previousFirstSlot, DbInventoryItem secondItem, int previousSecondSlot)
+        {
+            return true;
+        }
+
+        public virtual void OnItemManipulationError(GamePlayer player) { }
 
         public virtual bool SetSellPrice(GamePlayer player, eInventorySlot clientSlot, uint price)
-        {
-            return true;
-        }
-
-        public virtual bool OnRemoveItem(GamePlayer player, DbInventoryItem item)
         {
             return true;
         }

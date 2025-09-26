@@ -69,8 +69,7 @@ namespace DOL.AI.Brain
 {
     public class BeliathanInitBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public BeliathanInitBrain()
             : base()
@@ -126,7 +125,7 @@ namespace DOL.AI.Brain
 
         public void BroadcastMessage(string message)
         {
-            foreach (GamePlayer player in ClientService.GetPlayersOfRegion(Body.CurrentRegion))
+            foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(Body.CurrentRegion))
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
         }
     }
@@ -152,10 +151,7 @@ namespace DOL.GS
         public static void ScriptUnloaded(DOLEvent e, object sender, EventArgs args)
         {
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int AttackSpeed(DbInventoryItem mainWeapon, DbInventoryItem leftWeapon = null)
         {
             return base.AttackSpeed(mainWeapon, leftWeapon) * 2;
@@ -258,8 +254,7 @@ namespace DOL.AI.Brain
 {
     public class BeliathanBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private bool RemoveAdds = false;
         public override void Think()
@@ -307,7 +302,6 @@ namespace DOL.GS
             RoamingRange = 350;
             RespawnInterval = -1;
             TetherRange = 2000;
-            IsWorthReward = false; // worth no reward
             Realm = eRealm.None;
             BeliathanMinionBrain adds = new BeliathanMinionBrain();
             LoadedFromScript = true;
@@ -321,9 +315,7 @@ namespace DOL.GS
             base.AddToWorld();
             return true;
         }
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public override long ExperienceValue => 0;
         public override void Die(GameObject killer)
         {
@@ -336,8 +328,7 @@ namespace DOL.AI.Brain
 {
     public class BeliathanMinionBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public BeliathanMinionBrain()
         {

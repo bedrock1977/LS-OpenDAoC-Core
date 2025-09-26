@@ -39,10 +39,7 @@ namespace DOL.GS
             return 0.20;
         }
         
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MaxHealth
         {
             get { return 100000; }
@@ -88,8 +85,7 @@ namespace DOL.AI.Brain
 {
     public class PrincessNahemahBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public static bool spawnMinions = true;
         private bool RemoveAdds = false;
@@ -125,7 +121,7 @@ namespace DOL.AI.Brain
 
                 foreach (GameNPC mob_c in Body.GetNPCsInRadius(2000))
                 {
-                    if (mob_c?.Brain is NahemahMinionBrain && mob_c.IsAlive && mob_c.CanJoinFight)
+                    if (mob_c?.Brain is NahemahMinionBrain && mob_c.IsAlive && mob_c.IsAvailableToJoinFight)
                     {
                         AddAggroListTo(mob_c.Brain as NahemahMinionBrain);
                     }
@@ -150,7 +146,6 @@ namespace DOL.AI.Brain
                 Add.Y = Body.Y + Util.Random(100, 350);
                 Add.Z = Body.Z;
                 Add.CurrentRegion = Body.CurrentRegion;
-                Add.IsWorthReward = false;
                 Add.Heading = Body.Heading;
                 Add.AddToWorld();
             }
@@ -174,7 +169,6 @@ namespace DOL.GS
             RoamingRange = 350;
             RespawnInterval = -1;
             TetherRange = 2000;
-            IsWorthReward = false; // worth no reward
             Realm = eRealm.None;
             NahemahMinionBrain adds = new NahemahMinionBrain();
             LoadedFromScript = true;
@@ -188,9 +182,7 @@ namespace DOL.GS
             base.AddToWorld();
             return true;
         }
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public override void Die(GameObject killer)
         {
             base.Die(null); // null to not gain experience
@@ -253,8 +245,7 @@ namespace DOL.AI.Brain
 {
     public class NahemahMinionBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public NahemahMinionBrain()
         {

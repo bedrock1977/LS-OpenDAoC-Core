@@ -1,22 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
 using System.Collections.Generic;
 using DOL.Database;
@@ -29,7 +10,7 @@ namespace DOL.GS.Spells
     //http://www.camelotherald.com/masterlevels/ma.php?ml=Stormlord
     //shared timer 1
     #region Stormlord-1
-    [SpellHandlerAttribute("DazzlingArray")]
+    [SpellHandler(eSpellType.DazzlingArray)]
     public class DazzlingArraySpellHandler : StormSpellHandler
     {
         // constructor
@@ -72,14 +53,14 @@ namespace DOL.GS.Spells
             tempest = ScriptMgr.CreateSpellHandler(m_caster, s, sl);
         }
     }
-    [SpellHandlerAttribute("StormMissHit")]
+    [SpellHandler(eSpellType.StormMissHit)]
     public class StormMissHit : MasterlevelBuffHandling
     {
         public override eProperty Property1 { get { return eProperty.MissHit; } }
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -96,7 +77,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -108,7 +89,7 @@ namespace DOL.GS.Spells
 
     //no shared timer
     #region Stormlord-2
-    [SpellHandlerAttribute("VacuumVortex")]
+    [SpellHandler(eSpellType.VacuumVortex)]
     public class VacuumVortexSpellHandler : SpellHandler
     {
         /// <summary>
@@ -121,17 +102,18 @@ namespace DOL.GS.Spells
             base.FinishSpellCast(target);
         }
 
-        public override IList<GameLiving> SelectTargets(GameObject CasterTarget)
+        public override List<GameLiving> SelectTargets(GameObject CasterTarget)
         {
             
-            var list = new List<GameLiving>(8);
+            var list = GameLoop.GetListForTick<GameLiving>();
             foreach (GameNPC storms in Caster.GetNPCsInRadius(350))
             {
                 if ((storms is GameStorm) && (GameServer.ServerRules.IsSameRealm(storms, Caster, true))) list.Add(storms);
             }
             return list;
         }
-        public override int CalculateSpellResistChance(GameLiving target)
+
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -160,7 +142,7 @@ namespace DOL.GS.Spells
 
     //shared timer 2
     #region Stormlord-3
-    [SpellHandlerAttribute("EnervatingGas")]
+    [SpellHandler(eSpellType.EnervatingGas)]
     public class EnervatingGasSpellHandler : StormSpellHandler
     {
         // constructor
@@ -205,7 +187,7 @@ namespace DOL.GS.Spells
             tempest = ScriptMgr.CreateSpellHandler(m_caster, s, sl);
         }
     }
-    [SpellHandlerAttribute("StormEnduDrain")]
+    [SpellHandler(eSpellType.StormEnduDrain)]
     public class StormEndudrain : SpellHandler
     {
 
@@ -213,7 +195,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
 
             neweffect.Start(target);
 
@@ -235,7 +217,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -244,7 +226,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Stormlord-4
-    [SpellHandlerAttribute("InebriatingFumes")]
+    [SpellHandler(eSpellType.InebriatingFumes)]
     public class InebriatingFumesSpellHandler : StormSpellHandler
     {
         // constructor
@@ -290,7 +272,7 @@ namespace DOL.GS.Spells
     /// <summary>
     /// Dex/Qui stat specline debuff
     /// </summary>
-    [SpellHandlerAttribute("StormDexQuickDebuff")]
+    [SpellHandler(eSpellType.StormDexQuickDebuff)]
     public class StormDexQuickDebuff : DualStatDebuff
     {
         public override eProperty Property1 { get { return eProperty.Dexterity; } }
@@ -298,7 +280,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -315,7 +297,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -327,7 +309,7 @@ namespace DOL.GS.Spells
 
     //shared timer 2
     #region Stormlord-5
-    [SpellHandlerAttribute("MentalSiphon")]
+    [SpellHandler(eSpellType.MentalSiphon)]
     public class MentalSiphonSpellHandler : StormSpellHandler
     {
         // constructor
@@ -371,19 +353,19 @@ namespace DOL.GS.Spells
         }
     }
 
-    [SpellHandlerAttribute("PowerDrainStorm")]
+    [SpellHandler(eSpellType.PowerDrainStorm)]
     public class PowerDrainStormSpellHandler : SpellHandler
     {
         public PowerDrainStormSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -432,11 +414,11 @@ namespace DOL.GS.Spells
 
     //no shared timer
     #region Stormlord-6
-    [SpellHandlerAttribute("FocusingWinds")]
+    [SpellHandler(eSpellType.FocusingWinds)]
     public class FocusingWindsSpellHandler : SpellHandler
     {
         private GameSpellEffect m_effect;
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -481,7 +463,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Stormlord-7
-    [SpellHandlerAttribute("ChokingVapors")]
+    [SpellHandler(eSpellType.ChokingVapors)]
     public class ChokingVaporsSpellHandler : StormSpellHandler
     {
         // constructor
@@ -527,7 +509,7 @@ namespace DOL.GS.Spells
     /// <summary>
     /// Str/Con stat specline debuff
     /// </summary>
-    [SpellHandlerAttribute("StormStrConstDebuff")]
+    [SpellHandler(eSpellType.StormStrConstDebuff)]
     public class StormStrConstDebuff : DualStatDebuff
     {
         public override eProperty Property1 { get { return eProperty.Strength; } }
@@ -535,7 +517,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -552,7 +534,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -564,7 +546,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Stormlord-8
-    [SpellHandlerAttribute("SenseDullingCloud")]
+    [SpellHandler(eSpellType.SenseDullingCloud)]
     public class SenseDullingCloudSpellHandler : StormSpellHandler
     {
         // constructor
@@ -610,7 +592,7 @@ namespace DOL.GS.Spells
     /// <summary>
     /// Acuity stat baseline debuff
     /// </summary>
-    [SpellHandlerAttribute("StormAcuityDebuff")]
+    [SpellHandler(eSpellType.StormAcuityDebuff)]
     public class StormAcuityDebuff : SingleStatDebuff
     {
         public override eProperty Property1
@@ -629,7 +611,7 @@ namespace DOL.GS.Spells
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -646,7 +628,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }
@@ -658,7 +640,7 @@ namespace DOL.GS.Spells
 
     //no shared timer
     #region Stormlord-9
-    [SpellHandlerAttribute("EnergyTempest")]
+    [SpellHandler(eSpellType.EnergyTempest)]
     public class EnergyTempestSpellHandler : StormSpellHandler
     {
         // constructor
@@ -701,7 +683,7 @@ namespace DOL.GS.Spells
             tempest = ScriptMgr.CreateSpellHandler(m_caster, s, sl);
         }
     }
-    [SpellHandlerAttribute("StormEnergyTempest")]
+    [SpellHandler(eSpellType.StormEnergyTempest)]
     public class StormEnergyTempest : SpellHandler
     {
         /// <summary>
@@ -743,7 +725,7 @@ namespace DOL.GS.Spells
         }
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             if (target == null) return;
             if (!target.IsAlive || target.ObjectState != GameLiving.eObjectState.Active) return;
             neweffect.Start(target);
@@ -763,7 +745,7 @@ namespace DOL.GS.Spells
             return base.OnEffectExpires(effect, noMessages);
         }
 
-        public override int CalculateSpellResistChance(GameLiving target)
+        public override double CalculateSpellResistChance(GameLiving target)
         {
             return 0;
         }

@@ -10,8 +10,7 @@ namespace DOL.GS
 {
     public class OlcasarGeomancer : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public OlcasarGeomancer()
             : base()
@@ -27,10 +26,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100  * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override void OnAttackEnemy(AttackData ad)
         {
             if(ad != null)
@@ -78,14 +74,7 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60164613);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
+
             GameNpcInventoryTemplate template = new GameNpcInventoryTemplate();
             template.AddNPCEquipment(eInventorySlot.TwoHandWeapon, 19, 0, 0, 0);
             Inventory = template.CloseTemplate();
@@ -189,8 +178,7 @@ namespace DOL.AI.Brain
 {
     public class OlcasarGeomancerBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public OlcasarGeomancerBrain()
             : base()
@@ -200,7 +188,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -524,12 +512,10 @@ namespace DOL.GS
             get { return 10000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -585,8 +571,7 @@ namespace DOL.AI.Brain
 {
     public class OGAddsBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public OGAddsBrain()
             : base()

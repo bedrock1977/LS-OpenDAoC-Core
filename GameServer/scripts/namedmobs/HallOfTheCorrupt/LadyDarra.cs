@@ -99,10 +99,7 @@ namespace DOL.GS
                 }
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -115,13 +112,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(7720);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
             RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             BodyType = (ushort)NpcTemplateMgr.eBodyType.Humanoid;
@@ -241,8 +231,7 @@ namespace DOL.AI.Brain
 {
     public class LadyDarraBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public LadyDarraBrain()
             : base()
         {
@@ -318,10 +307,7 @@ namespace DOL.GS
                 default: return 25; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 60;
-        }
+
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -377,8 +363,7 @@ namespace DOL.AI.Brain
 {
     public class SpectralPaladinBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SpectralPaladinBrain()
             : base()

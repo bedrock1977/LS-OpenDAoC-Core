@@ -7,13 +7,12 @@ using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Housing
 {
 	public class HouseMgr
 	{
-		public static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		public static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private static ECSGameTimer CheckRentTimer = null;
 		private static Dictionary<ushort, Dictionary<int, House>> _houseList;
@@ -25,7 +24,6 @@ namespace DOL.GS.Housing
 			Marker,
 			House
 		}
-
 
 		public static bool Start(GameClient client = null)
 		{
@@ -103,7 +101,7 @@ namespace DOL.GS.Housing
 		/// <returns></returns>
 		public static string LoadHousingForRegion(ushort regionID)
 		{
-			string result = "";
+			string result = string.Empty;
 			var regionHousing = DOLDB<DbHouse>.SelectObjects(DB.Column("RegionID").IsEqualTo(regionID));
 
 			if (regionHousing == null || regionHousing.Count == 0)
@@ -204,15 +202,8 @@ namespace DOL.GS.Housing
 		/// <param name="regionID"></param>
 		public static void RemoveHousingForRegion(ushort regionID)
 		{
-			if (_houseList.ContainsKey(regionID))
-			{
-				_houseList.Remove(regionID);
-			}
-
-			if (_idList.ContainsKey(regionID))
-			{
-				_idList.Remove(regionID);
-			}
+			_houseList.Remove(regionID);
+			_idList.Remove(regionID);
 		}
 
 		public static void Stop()
@@ -231,16 +222,15 @@ namespace DOL.GS.Housing
 		public static House GetHouse(ushort regionID, int houseNumber)
 		{
 			// try and get the houses for the given region
-			Dictionary<int, House> housesByRegion;
-			_houseList.TryGetValue(regionID, out housesByRegion);
+			_houseList.TryGetValue(regionID, out Dictionary<int, House> housesByRegion);
 
 			// if we couldn't find houses for the region, return null
 			if (housesByRegion == null)
 				return null;
 
 			// if the house number exists, return the house
-			if (housesByRegion.ContainsKey(houseNumber))
-				return housesByRegion[houseNumber];
+			if (housesByRegion.TryGetValue(houseNumber, out House house))
+				return house;
 
 			// couldn't find the house, return null
 			return null;
@@ -252,8 +242,8 @@ namespace DOL.GS.Housing
 			// the given house number, return it
 			foreach (var housingRegion in _houseList.Values)
 			{
-				if (housingRegion.ContainsKey(houseNumber))
-					return housingRegion[houseNumber];
+				if (housingRegion.TryGetValue(houseNumber, out House house))
+					return house;
 			}
 
 			// couldn't find the house, return null
@@ -266,8 +256,8 @@ namespace DOL.GS.Housing
 			// the given house number, return the consignment merchant
 			foreach (var housingRegion in _houseList.Values)
 			{
-				if (housingRegion.ContainsKey(houseNumber))
-					return housingRegion[houseNumber].ConsignmentMerchant;
+				if (housingRegion.TryGetValue(houseNumber, out House house))
+					return house.ConsignmentMerchant;
 			}
 
 			// couldn't find the house, return null
@@ -306,13 +296,10 @@ namespace DOL.GS.Housing
 				// create a new set of permissions
 				for (int i = HousingConstants.MinPermissionLevel; i < HousingConstants.MaxPermissionLevel + 1; i++)
 				{
-					if (house.PermissionLevels.ContainsKey(i))
+					if (house.PermissionLevels.TryGetValue(i, out DbHousePermissions housePermissions))
 					{
-						var oldPermission = house.PermissionLevels[i];
-						if (oldPermission != null)
-						{
-							GameServer.Database.DeleteObject(oldPermission);
-						}
+						if (housePermissions != null)
+							GameServer.Database.DeleteObject(housePermissions);
 					}
 
 					// create a new, blank permission
@@ -423,7 +410,7 @@ namespace DOL.GS.Housing
 			}
 
 			// remove the house for all nearby players
-			foreach (GamePlayer player in WorldMgr.GetPlayersCloseToSpot(house, WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in WorldMgr.GetPlayersCloseToSpot(house, WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendRemoveHouse(house);
 				player.Out.SendGarden(house);
@@ -438,9 +425,9 @@ namespace DOL.GS.Housing
 			RemoveHousePermissions(house);
 			ResetHouseData(house);
 
-			house.OwnerID = "";
+			house.OwnerID = string.Empty;
 			house.KeptMoney = 0;
-			house.Name = ""; // not null !
+			house.Name = string.Empty; // not null !
 			house.DatabaseItem.CreationTime = DateTime.Now;
 			house.DatabaseItem.LastPaid = DateTime.MinValue;
 
@@ -570,34 +557,32 @@ namespace DOL.GS.Housing
 		/// <summary>
 		/// Get the house object from the owner player
 		/// </summary>
-		/// <param name="p">The player owner</param>
-		/// <returns>The house object</returns>
-		public static House GetHouseByPlayer(GamePlayer p)
+		public static House GetHouseByPlayer(GamePlayer player)
 		{
-			List<String> acctObjectIds = new List<string>();
-			foreach (var character in p.Client.Account.Characters)
-			{
-				if (character.Realm == (int)p.Realm)
-				{
-					acctObjectIds.Add(character.ObjectId);	
-				}
-			}
-			
-			// check every house in every region until we find
-			// a house that belongs to this player
-			foreach (var regs in _houseList.ToList())
-			{
-				foreach (var entry in regs.Value.ToList())
-				{
-					var house = entry.Value;
+			HashSet<string> characterIds = new();
 
-					if (acctObjectIds.Contains(house.OwnerID))
+			foreach (DbCoreCharacter character in player.Client.Account.Characters)
+			{
+				if ((eRealm) character.Realm == player.Realm)
+					characterIds.Add(character.ObjectId);
+			}
+
+			return GetHouseByCharacterIds(characterIds);
+		}
+
+		public static House GetHouseByCharacterIds(HashSet<string> characterIds)
+		{
+			foreach (var housesInWorld in _houseList.ToList())
+			{
+				foreach (var housesInRegion in housesInWorld.Value.ToList())
+				{
+					House house = housesInRegion.Value;
+
+					if (characterIds.Contains(house.OwnerID))
 						return house;
 				}
 			}
 
-			// didn't find a house that belonged to the player,
-			// so return null
 			return null;
 		}
 
@@ -670,9 +655,9 @@ namespace DOL.GS.Housing
 
 			// Demand any consignment merchant inventory is removed before allowing a transfer
 			var consignmentMerchant = house.ConsignmentMerchant;
-			if (consignmentMerchant != null && (consignmentMerchant.DBItems().Count > 0 || consignmentMerchant.TotalMoney > 0))
+			if (consignmentMerchant != null && (consignmentMerchant.GetDbItems(player).Count > 0 || consignmentMerchant.TotalMoney > 0))
 			{
-				ChatUtil.SendSystemMessage(player, "All items and money must be removed from your consigmment merchant in order to transfer this house!");
+				ChatUtil.SendSystemMessage(player, "All items and money must be removed from your consignment merchant in order to transfer this house!");
 				return false;
 			}
 
@@ -711,7 +696,6 @@ namespace DOL.GS.Housing
 
 			// save the guild and broadcast updates
 			player.Guild.SaveIntoDatabase();
-			player.Guild.UpdateGuildWindow();
 
 			// save the house and broadcast updates
 			playerHouse.SaveIntoDatabase();
@@ -742,8 +726,6 @@ namespace DOL.GS.Housing
 		{
 			if (Properties.RENT_DUE_DAYS == 0)
 				return 0;
-
-			Console.WriteLine("[Housing] Starting timed rent check");
 
 			TimeSpan diff;
 			var houseRemovalList = new List<House>();

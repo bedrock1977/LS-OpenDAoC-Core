@@ -69,7 +69,7 @@ namespace DOL.GS.ServerRules
 		public override void OnReleased(DOLEvent e, object sender, EventArgs args)
 		{
 			GamePlayer player = (GamePlayer)sender;
-			if (player.TempProperties.GetProperty<string>(KILLED_BY_PLAYER_PROP, null) != null)
+			if (player.TempProperties.GetProperty<string>(KILLED_BY_PLAYER_PROP) != null)
 			{
 				player.TempProperties.RemoveProperty(KILLED_BY_PLAYER_PROP);
 				StartImmunityTimer(player, ServerProperties.Properties.TIMER_KILLED_BY_PLAYER * 1000);//When Killed by a Player
@@ -177,7 +177,7 @@ namespace DOL.GS.ServerRules
 					}
 
 				    // Player can't hit other members of the same BattleGroup
-				    BattleGroup mybattlegroup = playerAttacker.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY, null);
+				    BattleGroup mybattlegroup = playerAttacker.TempProperties.GetProperty<BattleGroup>(BattleGroup.BATTLEGROUP_PROPERTY);
 
 				    if (mybattlegroup != null && mybattlegroup.IsInTheBattleGroup(playerDefender))
 				    {
@@ -274,41 +274,6 @@ namespace DOL.GS.ServerRules
 			}
 			#endregion
 
-			return true;
-		}
-
-		/// <summary>
-		/// Is caster allowed to cast a spell
-		/// </summary>
-		/// <param name="caster"></param>
-		/// <param name="target"></param>
-		/// <param name="spell"></param>
-		/// <param name="spellLine"></param>
-		/// <returns>true if allowed</returns>
-		public override bool IsAllowedToCastSpell(GameLiving caster, GameLiving target, Spell spell, SpellLine spellLine)
-		{
-			if (!base.IsAllowedToCastSpell(caster, target, spell, spellLine))
-				return false;
-
-			GamePlayer casterPlayer = caster as GamePlayer;
-			if (casterPlayer != null)
-			{
-				if (casterPlayer.IsInvulnerableToAttack)
-				{
-					// always allow selftargeted spells
-					if (spell.Target == eSpellTarget.SELF)
-						return true;
-
-					// only caster can be the target, can't buff/heal other players
-					// PBAE/GTAE doesn't need a target so we check spell type as well
-					if (caster != target || spell.Target == eSpellTarget.AREA || spell.Target == eSpellTarget.ENEMY || (spell.Target == eSpellTarget.GROUP && spell.SpellType != eSpellType.SpeedEnhancement))
-					{
-						MessageToLiving(caster, "You can only cast spells on yourself until your PvP invulnerability timer wears off!", eChatType.CT_Important);
-						return false;
-					}
-				}
-
-			}
 			return true;
 		}
 

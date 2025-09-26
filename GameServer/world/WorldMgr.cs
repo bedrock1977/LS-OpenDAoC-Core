@@ -3,9 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using DOL.Database;
 using DOL.GS.PacketHandler;
-using log4net;
+using DOL.Logging;
 
 namespace DOL.GS
 {
@@ -19,7 +20,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Holds the distance which player get experience from a living object
@@ -58,17 +59,9 @@ namespace DOL.GS
 		/// </summary>
 		public const int VISIBILITY_DISTANCE = 6000;
 		/// <summary>
-		/// Moving greater than this distance requires the player to do a full world refresh
-		/// </summary>
-		public const int REFRESH_DISTANCE = 1000;
-		/// <summary>
 		/// Is the square distance a player can see
 		/// </summary>
 		public const int VISIBILITY_SQUARE_DISTANCE = 36000000;
-		/// <summary>
-		/// Holds the distance at which objects are updated
-		/// </summary>
-		public const int OBJ_UPDATE_DISTANCE = 6144;
 
 		/// <summary>
 		/// This will store available teleport destinations as read from the 'teleport' table.  These are
@@ -77,10 +70,7 @@ namespace DOL.GS
 		/// 'TeleportID' fields are permitted so long as the 'Realm' field is different for each.
 		/// </summary>
 		private static Dictionary<eRealm, Dictionary<string, DbTeleport>> m_teleportLocations;
-		private static object m_syncTeleport = new object();
-
-		// this is used to hold the player ids with timestamp of ld, that ld near an enemy keep structure, to allow grace period relog
-		public static ConcurrentDictionary<string, DateTime> RvrLinkDeadPlayers = new();
+		private static readonly Lock _syncTeleport = new();
 
 		/// <summary>
 		/// Returns the teleport given an ID and a realm
@@ -98,15 +88,17 @@ namespace DOL.GS
 		/// </param>
 		/// <param name="teleportKey">Composite key into teleport dictionary.</param>
 		/// <returns></returns>
-		public static DbTeleport GetTeleportLocation(eRealm realm, String teleportKey)
+		public static DbTeleport GetTeleportLocation(eRealm realm, string teleportKey)
 		{
-			lock (m_syncTeleport)
+			lock (_syncTeleport)
 			{
-				return (m_teleportLocations.ContainsKey(realm)) ?
-					(m_teleportLocations[realm].ContainsKey(teleportKey) ?
-					 m_teleportLocations[realm][teleportKey] :
-					 null) :
-					null;
+				if (m_teleportLocations.TryGetValue(realm, out Dictionary<string, DbTeleport> teleportLocations))
+				{
+					if (teleportLocations.TryGetValue(teleportKey, out DbTeleport teleportLocation))
+						return teleportLocation;
+				}
+
+				return null;
 			}
 		}
 
@@ -117,23 +109,20 @@ namespace DOL.GS
 		/// <returns></returns>
 		public static bool AddTeleportLocation(DbTeleport teleport)
 		{
-			eRealm realm = (eRealm)teleport.Realm;
-			String teleportKey = String.Format("{0}:{1}", teleport.Type, teleport.TeleportID);
+			eRealm realm = (eRealm) teleport.Realm;
+			string teleportKey = $"{teleport.Type}:{teleport.TeleportID}";
 
-			lock (m_syncTeleport)
+			lock (_syncTeleport)
 			{
-				Dictionary<String, DbTeleport> teleports = null;
-				if (m_teleportLocations.ContainsKey(realm))
+				if (m_teleportLocations.TryGetValue(realm, out Dictionary<string, DbTeleport> teleports))
 				{
-					if (m_teleportLocations[realm].ContainsKey(teleportKey))
+					if (teleports.ContainsKey(teleportKey))
 						return false;   // Double entry.
-
-					teleports = m_teleportLocations[realm];
 				}
 
 				if (teleports == null)
 				{
-					teleports = new Dictionary<String, DbTeleport>();
+					teleports = [];
 					m_teleportLocations.Add(realm, teleports);
 				}
 
@@ -259,7 +248,8 @@ namespace DOL.GS
 
 			#endregion
 
-			log.Info(LoadTeleports());
+			if (log.IsInfoEnabled)
+				log.Info(LoadTeleports());
 
 			// sort the regions by mob count
 
@@ -324,14 +314,18 @@ namespace DOL.GS
 
 				//Dinberg - save the data by ID.
 				if (m_regionData.ContainsKey(data.Id))
-					log.ErrorFormat("Duplicate key in region table - {0}, EarlyInit in WorldMgr failed.", data.Id);
+				{
+					if (log.IsErrorEnabled)
+						log.ErrorFormat("Duplicate key in region table - {0}, EarlyInit in WorldMgr failed.", data.Id);
+				}
 				else
 					m_regionData.Add(data.Id, data);
 			}
 
 			regions.Sort();
 
-			log.DebugFormat("{0}MB - Region Data Loaded", GC.GetTotalMemory(true) / 1024 / 1024);
+			if (log.IsDebugEnabled)
+				log.DebugFormat("{0}MB - Region Data Loaded", GC.GetTotalMemory(true) / 1024 / 1024);
 
 			for (int i = 0; i < regions.Count; i++)
 			{
@@ -339,7 +333,8 @@ namespace DOL.GS
 				RegisterRegion(region);
 			}
 
-			log.DebugFormat("{0}MB - {1} Regions Loaded", GC.GetTotalMemory(true) / 1024 / 1024, m_regions.Count);
+			if (log.IsDebugEnabled)
+				log.DebugFormat("{0}MB - {1} Regions Loaded", GC.GetTotalMemory(true) / 1024 / 1024, m_regions.Count);
 
 			// if we don't have at least one frontier region add the default
 			if (hasFrontierRegion == false)
@@ -349,10 +344,8 @@ namespace DOL.GS
 				{
 					frontier.IsFrontier = true;
 				}
-				else
-				{
+				else if (log.IsErrorEnabled)
 					log.ErrorFormat("Can't find default Frontier region {0}!", Keeps.DefaultKeepManager.DEFAULT_FRONTIERS_REGION);
-				}
 			}
 
 			foreach (DbZone dbZone in GameServer.Database.SelectAllObjects<DbZone>())
@@ -378,8 +371,8 @@ namespace DOL.GS
 				m_zonesData[zoneData.RegionID].Add(zoneData);
 			}
 
-
-			log.DebugFormat("{0}MB - Zones Loaded for All Regions", GC.GetTotalMemory(true) / 1024 / 1024);
+			if (log.IsDebugEnabled)
+				log.DebugFormat("{0}MB - Zones Loaded for All Regions", GC.GetTotalMemory(true) / 1024 / 1024);
 
 			regionsData = regions.ToArray();
 			return true;
@@ -407,7 +400,9 @@ namespace DOL.GS
 				String teleportKey = String.Format("{0}:{1}", teleport.Type, teleport.TeleportID);
 				if (teleportList.ContainsKey(teleportKey))
 				{
-					log.Error("WorldMgr.EarlyInit teleporters - Cannot add " + teleportKey + " already exists");
+					if (log.IsErrorEnabled)
+						log.Error("WorldMgr.EarlyInit teleporters - Cannot add " + teleportKey + " already exists");
+
 					continue;
 				}
 				teleportList.Add(teleportKey, teleport);
@@ -435,11 +430,12 @@ namespace DOL.GS
 				long merchants = 0;
 				long items = 0;
 				long bindpoints = 0;
-				regionsData.AsParallel().WithDegreeOfParallelism(GameServer.Instance.Configuration.CPUUse << 2).ForAll(data => {
-				                                	Region reg;
-				                                	if (m_regions.TryGetValue(data.Id, out reg))
-				                                		reg.LoadFromDatabase(data.Mobs, ref mobs, ref merchants, ref items, ref bindpoints);
-				});
+
+				foreach (var data in regionsData)
+				{
+					if (m_regions.TryGetValue(data.Id, out Region region))
+						region.LoadFromDatabase(data.Mobs, ref mobs, ref merchants, ref items, ref bindpoints);
+				}
 
 				if (log.IsInfoEnabled)
 				{
@@ -587,7 +583,9 @@ namespace DOL.GS
 			Region region = GetRegion(regionID);
 			if (region == null)
 			{
-				log.Warn($"Could not find Region {regionID} for Zone {zoneData.Description}");
+				if (log.IsWarnEnabled)
+					log.Warn($"Could not find Region {regionID} for Zone {zoneData.Description}");
+
 				return;
 			}
 			
@@ -635,7 +633,9 @@ namespace DOL.GS
 
 			region.Zones.Add(zone);
 			m_zones[zoneID] = zone;
-			log.InfoFormat("Added a zone, {0}, to region {1}", zoneData.Description, region.Name);
+
+			if (log.IsInfoEnabled)
+				log.InfoFormat("Added a zone, {0}, to region {1}", zoneData.Description, region.Name);
 		}
 
 		/// <summary>
@@ -693,7 +693,9 @@ namespace DOL.GS
 			
 			if (m_lastZoneError != zoneID)
 			{
-				log.ErrorFormat("Trying to access inexistent ZoneID {0} {1}", zoneID, Environment.StackTrace);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Trying to access inexistent ZoneID {0} {1}", zoneID, Environment.StackTrace);
+
 				m_lastZoneError = zoneID;
 			}
 
@@ -967,7 +969,9 @@ namespace DOL.GS
 		{
 			if ((instanceType.IsSubclassOf(typeof(BaseInstance)) || instanceType == typeof(BaseInstance)) == false)
 			{
-				log.Error("Invalid type given for instance creation: " + instanceType + ". Returning null instance now.");
+				if (log.IsErrorEnabled)
+					log.Error("Invalid type given for instance creation: " + instanceType + ". Returning null instance now.");
+
 				return null;
 			}
 
@@ -976,7 +980,9 @@ namespace DOL.GS
 
 			if (data == null)
 			{
-				log.Error("Data for region " + skinID + " not found on instance create!");
+				if (log.IsErrorEnabled)
+					log.Error("Data for region " + skinID + " not found on instance create!");
+
 				return null;
 			}
 
@@ -984,7 +990,9 @@ namespace DOL.GS
 
 			if (info == null)
 			{
-				log.Error("Classtype " + instanceType + " did not have a cosntructor that matched the requirement!");
+				if (log.IsErrorEnabled)
+					log.Error("Classtype " + instanceType + " did not have a cosntructor that matched the requirement!");
+
 				return null;
 			}
 
@@ -1008,7 +1016,9 @@ namespace DOL.GS
 
 			if (!success)
 			{
-				log.Error($"Failed to add new instance to region table (ID: {ID})");
+				if (log.IsErrorEnabled)
+					log.Error($"Failed to add new instance to region table (ID: {ID})");
+
 				return null;
 			}
 
@@ -1019,18 +1029,19 @@ namespace DOL.GS
 			}
 			catch (Exception e)
 			{
-				log.ErrorFormat("Error on instance creation - {0} {1}", e.Message, e.StackTrace);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Error on instance creation - {0} {1}", e.Message, e.StackTrace);
+
 				return null;
 			}
 
-			List<ZoneData> list = null;
-
-			if (m_zonesData.ContainsKey(data.Id))
-				list = m_zonesData[data.Id];
+			m_zonesData.TryGetValue(data.Id, out List<ZoneData> list);
 
 			if (list == null)
 			{
-				log.Warn("No zones found for given skinID on instance creation, " + skinID);
+				if (log.IsWarnEnabled)
+					log.Warn("No zones found for given skinID on instance creation, " + skinID);
+
 				return null;
 			}
 

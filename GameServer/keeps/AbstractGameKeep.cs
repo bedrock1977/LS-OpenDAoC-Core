@@ -4,7 +4,6 @@ using System.Reflection;
 using DOL.Database;
 using DOL.Events;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Keeps
 {
@@ -16,7 +15,7 @@ namespace DOL.GS.Keeps
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public bool HasCommander = false;
 		public bool HasHastener = false;
@@ -312,7 +311,7 @@ namespace DOL.GS.Keeps
 			return (byte)Math.Max(0, level - 1);
 		}
 
-		string m_name = "";
+		string m_name = string.Empty;
 
 		/// <summary>
 		/// The Keep Name linked to the DBKeep
@@ -493,7 +492,7 @@ namespace DOL.GS.Keeps
 				door.Delete();
 				GameDoor d = new GameDoor();
 				d.CurrentRegionID = door.CurrentRegionID;
-				d.DoorID = door.DoorID;
+				d.DoorId = door.DoorId;
 				d.Heading = door.Heading;
 				d.Level = door.Level;
 				d.Model = door.Model;
@@ -529,7 +528,7 @@ namespace DOL.GS.Keeps
 			m_difficultyLevel[0] = DBKeep.AlbionDifficultyLevel;
 			m_difficultyLevel[1] = DBKeep.MidgardDifficultyLevel;
 			m_difficultyLevel[2] = DBKeep.HiberniaDifficultyLevel;
-			if (DBKeep.ClaimedGuildName != null && DBKeep.ClaimedGuildName != "")
+			if (DBKeep.ClaimedGuildName != null && DBKeep.ClaimedGuildName != string.Empty)
 			{
 				Guild myguild = GuildMgr.GetGuildByName(DBKeep.ClaimedGuildName);
 				if (myguild != null)
@@ -562,7 +561,7 @@ namespace DOL.GS.Keeps
 			if (Guild != null)
 				DBKeep.ClaimedGuildName = Guild.Name;
 			else
-				DBKeep.ClaimedGuildName = "";
+				DBKeep.ClaimedGuildName = string.Empty;
 			if(InternalID == null)
 			{
 				GameServer.Database.AddObject(DBKeep);
@@ -813,7 +812,7 @@ namespace DOL.GS.Keeps
 			{
 				comp.UpdateLevel();
 
-				foreach (GamePlayer player in ClientService.GetPlayersOfRegion(CurrentRegion))
+				foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(CurrentRegion))
 					player.Out.SendKeepComponentDetailUpdate(comp);
 
 				comp.FillPositions();
@@ -887,6 +886,7 @@ namespace DOL.GS.Keeps
 				}
 
 				guard.Level = (byte)(GetBaseLevel(guard) + (bonusLevel * multiplier));
+				guard.Health = guard.MaxHealth;
 			}
 
 			guard.StartHealthRegeneration();
@@ -1079,7 +1079,7 @@ namespace DOL.GS.Keeps
 			}
 
 			//change realm
-			foreach (GamePlayer player in ClientService.GetPlayersOfRegion(CurrentRegion))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(CurrentRegion))
 				player.Out.SendKeepComponentUpdate(this, false);
 
 			//we reset all doors
@@ -1202,7 +1202,7 @@ namespace DOL.GS.Keeps
 		/// </summary>
 		protected void SendRemoveKeep()
 		{
-			foreach (GamePlayer player in ClientService.GetPlayersOfRegion(CurrentRegion))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(CurrentRegion))
 			{
 				foreach(GameKeepComponent keepComponent in KeepComponents)
 					player.Out.SendKeepComponentRemove(keepComponent);
@@ -1216,7 +1216,7 @@ namespace DOL.GS.Keeps
 		/// </summary>
 		protected void SendKeepInfo()
 		{
-			foreach (GamePlayer player in ClientService.GetPlayersOfRegion(CurrentRegion))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRegion(CurrentRegion))
 			{
 				player.Out.SendKeepInfo(this);
 

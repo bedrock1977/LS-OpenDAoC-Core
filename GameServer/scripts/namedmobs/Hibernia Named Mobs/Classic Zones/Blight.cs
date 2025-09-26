@@ -27,10 +27,7 @@ namespace DOL.GS
 				default: return 70;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override void StartAttack(GameObject target)
 		{
@@ -190,7 +187,7 @@ namespace DOL.AI.Brain
 {
     public class BlightBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public BlightBrain() : base()
 		{
 			AggroLevel = 100;
@@ -251,10 +248,7 @@ namespace DOL.GS
 				default: return 15;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MaxHealth
 		{
 			get { return 2500; }
@@ -316,7 +310,7 @@ namespace DOL.AI.Brain
 {
     public class FireBlightBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public FireBlightBrain() : base()
 		{
 			AggroLevel = 100;
@@ -361,10 +355,7 @@ namespace DOL.GS
 				default: return 15;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MaxHealth
 		{
 			get { return 5000; }
@@ -425,7 +416,7 @@ namespace DOL.AI.Brain
 {
     public class LateBlightBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LateBlightBrain() : base()
 		{
 			AggroLevel = 100;
@@ -470,10 +461,7 @@ namespace DOL.GS
 				default: return 15;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MaxHealth
 		{
 			get { return 10000; }
@@ -534,7 +522,7 @@ namespace DOL.AI.Brain
 {
     public class FleshBlightBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public FleshBlightBrain() : base()
 		{
 			AggroLevel = 100;
@@ -620,8 +608,7 @@ namespace DOL.AI.Brain
 {
     public class BlightControllerBrain : APlayerVicinityBrain
 	{
-		private static readonly log4net.ILog log =
-			log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public BlightControllerBrain()
 			: base()

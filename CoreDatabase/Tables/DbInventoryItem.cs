@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
 using DOL.Database.Attributes;
-using log4net;
 
 namespace DOL.Database
 {
@@ -13,29 +12,11 @@ namespace DOL.Database
 	[DataTable(TableName = "Inventory")]
 	public class DbInventoryItem : DataObject
 	{
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public const string BLANK_ITEM = "blank_item";
 
 		protected bool m_hasLoggedError = false;
-		private PendingDatabaseAction _pendingDatabaseAction = PendingDatabaseAction.SAVE;
-
-		public PendingDatabaseAction PendingDatabaseAction
-		{
-			get => _pendingDatabaseAction;
-			set
-			{
-				// If an addition is cancelled by a deletion, no action will be necessary.
-				if (_pendingDatabaseAction is PendingDatabaseAction.ADD && value is PendingDatabaseAction.DELETE)
-				{
-					_pendingDatabaseAction = PendingDatabaseAction.NONE;
-					return;
-				}
-
-				_pendingDatabaseAction = value;
-				Dirty = true;
-			}
-		}
 
 		#region Inventory fields
 
@@ -243,18 +224,26 @@ namespace DOL.Database
 			set { Dirty =true;m_cooldown = value; }
 		}
 
-		[Relation(LocalField = "ITemplate_Id", RemoteField = "Id_nb", AutoLoad = true, AutoDelete=false)]
+		[Relation(LocalField = "ITemplate_Id", RemoteField = "Id_nb", AutoLoad = true, AutoDelete = false)]
 		public DbItemTemplate ITWrapper
 		{
-			get { return Template.GetType() == typeof(DbItemTemplate) ? Template as DbItemTemplate : null; }
-			set { if (value != null) Template = value as DbItemTemplate; }
+			get => string.IsNullOrEmpty(ITemplate_Id) ? null : Template;
+			set
+			{
+				if (value != null)
+					Template = value;
+			}
 		}
 
-		[Relation(LocalField = "UTemplate_Id", RemoteField = "Id_nb", AutoLoad = true, AutoDelete=true)]
+		[Relation(LocalField = "UTemplate_Id", RemoteField = "Id_nb", AutoLoad = true, AutoDelete = true)]
 		public DbItemUnique IUWrapper
 		{
-			get { return Template.GetType() == typeof(DbItemUnique) ? Template as DbItemUnique : null; }
-			set { if (value != null) Template = value; }
+			get => string.IsNullOrEmpty(UTemplate_Id) ? null : Template as DbItemUnique;
+			set
+			{
+				if (value != null)
+					Template = value;
+			}
 		}
 
 		protected DbItemTemplate m_item;
@@ -270,7 +259,10 @@ namespace DOL.Database
 						m_hasLoggedError = true;
 					}
 
-					return new DbItemTemplate() { AllowAdd = false };
+					m_item = new DbItemTemplate()
+					{
+						AllowAdd = false
+					};
 				}
 
 				return m_item;
@@ -298,8 +290,6 @@ namespace DOL.Database
 			m_creator = string.Empty;
 			m_itemplate_id = null;
 			m_utemplate_id = null;
-			ITWrapper = new DbItemTemplate();
-			ITWrapper.AllowAdd = false;
 		}
 
 		/// <summary>
@@ -309,24 +299,10 @@ namespace DOL.Database
 		/// or from an Artifact will never be saved too.
 		/// </summary>
 		/// <param name="itemTemplate"></param>
-		protected DbInventoryItem(DbItemTemplate template):base()
+		protected DbInventoryItem(DbItemTemplate template) : base()
 		{
-			m_ownerID = null;
-			Template = template;
 			m_itemplate_id = template.Id_nb;
-			m_utemplate_id = null;
-			m_color = template.Color;
-			m_emblem = template.Emblem;
-			m_count = template.PackSize;
-			m_extension = template.Extension;
-			m_salvageextension = template.SalvageExtension;
-			m_condition = template.MaxCondition;
-			m_durability = template.MaxDurability;
-			m_charges = template.Charges > 0 ? template.Charges : template.MaxCharges;
-			m_charges1 = template.Charges1 > 0 ? template.Charges1 : template.MaxCharges1;
-			m_poisonCharges = template.PoisonCharges;
-			m_poisonMaxCharges = template.PoisonMaxCharges;
-			m_poisonSpellID = template.PoisonSpellID;
+			InitializeFromTemplate(template);
 		}
 		
 		/// <summary>
@@ -334,13 +310,15 @@ namespace DOL.Database
 		/// ItemUnique will always be created in the ItemUnique table
 		/// </summary>
 		/// <param name="itemTemplate"></param>
-		protected DbInventoryItem(DbItemUnique template):base()
+		protected DbInventoryItem(DbItemUnique template) : base()
 		{
-			m_ownerID = null;
-			Template = (DbItemTemplate)template;
-			Template.Dirty = true;
 			m_utemplate_id = template.Id_nb;
-			m_itemplate_id = null;
+			InitializeFromTemplate(template);
+		}
+
+		private void InitializeFromTemplate(DbItemTemplate template)
+		{
+			m_item = template;
 			m_color = template.Color;
 			m_emblem = template.Emblem;
 			m_count = template.PackSize;
@@ -354,35 +332,36 @@ namespace DOL.Database
 			m_poisonMaxCharges = template.PoisonMaxCharges;
 			m_poisonSpellID = template.PoisonSpellID;
 		}
-		
+
 		/// <summary>
 		/// Creates a new Inventoryitem based on the given InventoryItem
 		/// </summary>
 		/// <param name="inventoryItem"></param>
-		protected DbInventoryItem(DbInventoryItem template)
+		protected DbInventoryItem(DbInventoryItem dbInventoryItem)
 		{
-			Template = template.Template;
-			m_itemplate_id = template.ITemplate_Id;
-			m_utemplate_id = template.UTemplate_Id;
-			m_color = template.Color;
-			m_extension = template.Extension;
-			m_salvageextension = template.SalvageExtension;
-			m_slot_pos = template.SlotPosition;
-			m_count = template.Count;
-			m_creator = template.Creator;
-			m_iscrafted = template.IsCrafted;
-			m_sellPrice = template.SellPrice;
-			m_condition = template.Condition;
-			m_durability = template.Durability;
-			m_emblem = template.Emblem;
-			m_cooldown = template.Cooldown;
-			m_charges = template.Charges;
-			m_charges1 = template.Charges1;
-			m_poisonCharges = template.PoisonCharges ;
-			m_poisonMaxCharges = template.PoisonMaxCharges ;
-			m_poisonSpellID = template.PoisonSpellID;
-			m_experience = template.Experience;
-			m_ownerLot = template.OwnerLot;
+			Template = dbInventoryItem.Template;
+			IsPersisted = dbInventoryItem.IsPersisted;
+			m_itemplate_id = dbInventoryItem.ITemplate_Id;
+			m_utemplate_id = dbInventoryItem.UTemplate_Id;
+			m_color = dbInventoryItem.Color;
+			m_extension = dbInventoryItem.Extension;
+			m_salvageextension = dbInventoryItem.SalvageExtension;
+			m_slot_pos = dbInventoryItem.SlotPosition;
+			m_count = dbInventoryItem.Count;
+			m_creator = dbInventoryItem.Creator;
+			m_iscrafted = dbInventoryItem.IsCrafted;
+			m_sellPrice = dbInventoryItem.SellPrice;
+			m_condition = dbInventoryItem.Condition;
+			m_durability = dbInventoryItem.Durability;
+			m_emblem = dbInventoryItem.Emblem;
+			m_cooldown = dbInventoryItem.Cooldown;
+			m_charges = dbInventoryItem.Charges;
+			m_charges1 = dbInventoryItem.Charges1;
+			m_poisonCharges = dbInventoryItem.PoisonCharges;
+			m_poisonMaxCharges = dbInventoryItem.PoisonMaxCharges;
+			m_poisonSpellID = dbInventoryItem.PoisonSpellID;
+			m_experience = dbInventoryItem.Experience;
+			m_ownerLot = dbInventoryItem.OwnerLot;
 		}
 
 		public virtual void SetCooldown()
@@ -460,11 +439,11 @@ namespace DOL.Database
 		{
 			get
 			{
-				if (Object_Type is (43 or 46)) // halved weight for arrows and poisons
-				{
-					return (int)Math.Round((double)(Template.Weight * m_count * 0.6)) ;
-				}
-				return (int)Math.Round((double)(Template.Weight * m_count)) ;
+				// Should find a way to use `eObjectType` instead.
+				if (Object_Type is 43 or 44 or 46) // Halved weight for arrows, bolts, and poisons.
+					return Template.Weight * m_count / 2;
+
+				return Template.Weight * m_count;
 			}
 			set { Template.Weight = value; }
 		}

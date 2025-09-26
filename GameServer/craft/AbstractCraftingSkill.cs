@@ -6,16 +6,15 @@ using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
-	/// <summary>
-	/// AbstractCraftingSkill is the base class for all crafting skill
-	/// </summary>
-	public abstract class AbstractCraftingSkill
+    /// <summary>
+    /// AbstractCraftingSkill is the base class for all crafting skill
+    /// </summary>
+    public abstract class AbstractCraftingSkill
 	{
-		protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private bool finishedCraft = false; 
 		#region Declaration
@@ -60,7 +59,7 @@ namespace DOL.GS
 		{
 			get
 			{
-				return "";
+				return string.Empty;
 			}
 		}
 		public eCraftingSkill eSkill
@@ -259,7 +258,7 @@ namespace DOL.GS
 			ArrayList missingMaterials = null;
 
 			long totalPrice = 0;
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				foreach (var ingredient in recipe.Ingredients)
 				{
@@ -373,7 +372,7 @@ namespace DOL.GS
 		{
 			Dictionary<int, int?> dataSlots = new Dictionary<int, int?>(10);
 
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				foreach (var ingredient in recipe.Ingredients)
 				{
@@ -443,7 +442,7 @@ namespace DOL.GS
 
 			Dictionary<int, int> changedSlots = new Dictionary<int, int>(5); // key : > 0 inventory ; < 0 ground || value: < 0 = new item count; > 0 = add to old
 
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				int count = product.PackSize < 1 ? 1 : product.PackSize;
 				foreach (DbInventoryItem item in player.Inventory.GetItemRange(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack))
@@ -513,7 +512,6 @@ namespace DOL.GS
 				else
 				{
 					DbItemUnique unique = new DbItemUnique(product);
-					GameServer.Database.AddObject(unique);
 					newItem = GameInventoryItem.Create(unique);
 					newItem.Quality = GetQuality(player, recipe.Level);
 				}
@@ -635,6 +633,9 @@ namespace DOL.GS
 		}
 		public virtual int GetCraftingTime(GamePlayer player, Recipe recipe)
 		{
+			if ((ePrivLevel) player.Client.Account.PrivLevel >= ePrivLevel.GM)
+				return 0;
+
 			double baseMultiplier = (recipe.Level / 100) + 1;
 			if (baseMultiplier < 1) baseMultiplier = 1;
 
@@ -647,10 +648,6 @@ namespace DOL.GS
 			}
 
 			var divisorMod = 4;
-			var loyalDays = LoyaltyManager.GetPlayerRealmLoyalty(player).Days;
-			if ( loyalDays > 30) divisorMod++;
-			if ( loyalDays > 20) divisorMod++;
-			if ( loyalDays > 10) divisorMod++;
 			int craftingTime = (int)(baseMultiplier * materialsCount / divisorMod);
 
 			// Player does check for capital city bonus as well

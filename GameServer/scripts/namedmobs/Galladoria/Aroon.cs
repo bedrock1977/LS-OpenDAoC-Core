@@ -10,8 +10,7 @@ namespace DOL.GS
 {
     public class Aroon : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Aroon()
             : base()
@@ -276,10 +275,7 @@ namespace DOL.GS
         }
         #endregion Aroon resist damage checks
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MaxHealth
         {
@@ -320,14 +316,7 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158075);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
+
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
 
@@ -413,8 +402,7 @@ namespace DOL.AI.Brain
 {
     public class AroonBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public AroonBrain()
             : base()
@@ -424,7 +412,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -625,10 +613,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -649,9 +634,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer) //slash resist
         {
@@ -687,8 +670,7 @@ namespace DOL.AI.Brain
 {
     public class CorpScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public CorpScaithBrain()
             : base()
@@ -699,7 +681,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -797,10 +779,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -820,9 +799,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -883,8 +860,7 @@ namespace DOL.AI.Brain
 {
     public class SpioradScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SpioradScaithBrain()
             : base()
@@ -895,7 +871,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -985,10 +961,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1009,9 +982,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -1072,8 +1043,7 @@ namespace DOL.AI.Brain
 {
     public class RopadhScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public RopadhScaithBrain()
             : base()
@@ -1084,7 +1054,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -1180,10 +1150,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1204,9 +1171,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -1267,8 +1232,7 @@ namespace DOL.AI.Brain
 {
     public class DamhnaScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public DamhnaScaithBrain()
             : base()
@@ -1279,7 +1243,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -1375,10 +1339,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1399,9 +1360,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -1463,8 +1422,7 @@ namespace DOL.AI.Brain
 {
     public class FuinneamgScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public FuinneamgScaithBrain()
             : base()
@@ -1475,7 +1433,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -1572,10 +1530,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1596,9 +1551,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -1660,8 +1613,7 @@ namespace DOL.AI.Brain
 {
     public class BruScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public BruScaithBrain()
             : base()
@@ -1672,7 +1624,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -1769,10 +1721,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1793,9 +1742,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -1857,8 +1804,7 @@ namespace DOL.AI.Brain
 {
     public class FuarScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public FuarScaithBrain()
             : base()
@@ -1869,7 +1815,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -1966,10 +1912,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -1990,9 +1933,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -2055,8 +1996,7 @@ namespace DOL.AI.Brain
 {
     public class TaesScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public TaesScaithBrain()
             : base()
@@ -2067,7 +2007,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -2164,10 +2104,7 @@ namespace DOL.GS
                 default: return 60; // dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override short Strength { get => base.Strength; set => base.Strength = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override int MeleeAttackRange => 350;
@@ -2188,9 +2125,7 @@ namespace DOL.GS
             get { return 30000; }
         }
 
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
 
         public override void Die(GameObject killer)
         {
@@ -2253,8 +2188,7 @@ namespace DOL.AI.Brain
 {
     public class ScorScaithBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public ScorScaithBrain()
             : base()
@@ -2265,7 +2199,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }

@@ -1,101 +1,71 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-using System;
-using DOL.GS.PacketHandler;
-using DOL.Language;
 using System.Collections.Generic;
+using System.Threading;
+using DOL.Language;
 
 namespace DOL.GS.Commands
 {
-	[CmdAttribute("&cmdhelp", //command to handle
-		ePrivLevel.Player, //minimum privelege level
-		"Displays available commands", //command description
-		//usage
-		"'/cmdhelp' displays a list of all the commands and their descriptions",
-		"'/cmdhelp <plvl>' displays a list of all commands that require at least plvl",
-		"'/cmdhelp <cmd>' displays the usage for cmd")]
-	public class CmdHelpCommandHandler : AbstractCommandHandler, ICommandHandler
-	{
-		public void OnCommand(GameClient client, string[] args)
-		{
-			if (IsSpammingCommand(client.Player, "cmdhelp"))
-				return;
+    [CmdAttribute("&cmdhelp",
+        ePrivLevel.Player,
+        "Displays available commands",
+        "'/cmdhelp' displays a list of all the commands and their descriptions",
+        "'/cmdhelp <cmd>' displays the usage for cmd")]
+    public class CmdHelpCommandHandler : AbstractCommandHandler, ICommandHandler
+    {
+        private static SortedDictionary<ePrivLevel, List<string>> m_commandLists;
+        private readonly static Lock _lock = new();
 
-			ePrivLevel privilegeLevel = (ePrivLevel)client.Account.PrivLevel;
-			bool isCommand = true;
-
-			if (args.Length > 1)
-			{
-				try
-				{
-					privilegeLevel = (ePrivLevel)Convert.ToUInt32(args[1]);
-				}
-				catch (Exception)
-				{
-					isCommand = false;
-				}
-			}
-
-			if (isCommand)
-			{
-                String[] commandList = GetCommandList(privilegeLevel);
-				DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.PlvlCommands", privilegeLevel.ToString()));
-
-                foreach (String command in commandList)
-					DisplayMessage(client, command);
-			}
-			else
-			{
-				string command = args[1];
-
-				if (command[0] != '&')
-					command = "&" + command;
-
-				ScriptMgr.GameCommand gameCommand = ScriptMgr.GetCommand(command);
-
-				if (gameCommand == null)
-                    DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.NoCommand", command));
-                else
-				{
-					DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.Usage", command));
-
-					foreach (String usage in gameCommand.Usage)
-						DisplayMessage(client, usage);
-				}
-			}
-		}
-
-        private static IDictionary<ePrivLevel, String[]> m_commandLists = new Dictionary<ePrivLevel, String[]>();
-        private static object m_syncObject = new object();
-
-        private String[] GetCommandList(ePrivLevel privilegeLevel)
+        public void OnCommand(GameClient client, string[] args)
         {
-            lock (m_syncObject)
-            {
-                if (!m_commandLists.Keys.Contains(privilegeLevel))
-                {
-                    String[] commandList = ScriptMgr.GetCommandList(privilegeLevel, true);
-                    Array.Sort(commandList);
-                    m_commandLists.Add(privilegeLevel, commandList);
-                }
+            if (IsSpammingCommand(client.Player, "cmdhelp"))
+                return;
 
-                return m_commandLists[privilegeLevel];
+            ePrivLevel privilegeLevel = (ePrivLevel) client.Account.PrivLevel;
+
+            if (args.Length == 1)
+            {
+                ShowUseableCommands(client);
+                return;
+            }
+
+            string commandArg = args[1];
+
+            if (commandArg[0] != '/')
+                commandArg = $"/{commandArg}";
+
+            ScriptMgr.GameCommand gameCommand = ScriptMgr.GetCommand($"&{commandArg[1..]}");
+
+            if (gameCommand == null || (ePrivLevel) gameCommand.m_lvl > privilegeLevel)
+            {
+                DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.NoCommand", commandArg));
+                return;
+            }
+
+            DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.Usage", commandArg));
+
+            foreach (string usage in gameCommand.Usage)
+                DisplayMessage(client, usage);
+        }
+
+        private void ShowUseableCommands(GameClient client)
+        {
+            if (m_commandLists == null)
+            {
+                lock (_lock)
+                {
+                    m_commandLists = ScriptMgr.GetCommandList(true);
+                }
+            }
+
+            foreach (var pair in m_commandLists)
+            {
+                if (pair.Key > (ePrivLevel) client.Account.PrivLevel)
+                    continue;
+
+                DisplayMessage(client, "\n");
+                DisplayMessage(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Cmdhelp.PlvlCommands", pair.Key));
+
+                foreach (string usage in pair.Value)
+                    DisplayMessage(client, usage);
             }
         }
     }

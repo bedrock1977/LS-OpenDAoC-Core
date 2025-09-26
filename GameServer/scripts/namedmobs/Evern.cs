@@ -35,10 +35,7 @@ namespace DOL.GS
         {
             get { return 100000; }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -82,13 +79,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60160628);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             EvernBrain.spawnfairy = false;
             //Idle = false;
@@ -169,7 +159,7 @@ namespace DOL.AI.Brain
 {
     public class EvernBrain : EpicBossBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public EvernBrain() : base()
         {
@@ -260,10 +250,7 @@ namespace DOL.GS
         {
         }
         public override long ExperienceValue => 0;
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override double GetArmorAF(eArmorSlot slot)
         {
             return 400;
@@ -287,9 +274,7 @@ namespace DOL.GS
         {
             get { return 2000; }
         }
-        public override void DropLoot(GameObject killer)
-        {
-        }
+        public override bool CanDropLoot => false;
         public override short Dexterity { get => base.Dexterity; set => base.Dexterity = 200; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override short Strength { get => base.Strength; set => base.Strength = 120; }
@@ -316,7 +301,7 @@ namespace DOL.AI.Brain
 {
     public class EvernFairyBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public EvernFairyBrain()
             : base()
         {

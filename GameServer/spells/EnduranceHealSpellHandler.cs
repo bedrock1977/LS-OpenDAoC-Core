@@ -3,13 +3,14 @@ using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	/// <summary>
-	///
-	/// </summary>
-	[SpellHandlerAttribute("EnduranceHeal")]
+	[SpellHandler(eSpellType.EnduranceHeal)]
 	public class EnduranceHealSpellHandler : SpellHandler
 	{
-		// constructor
+		public override string ShortDescription =>
+			Spell.Value > 0 ?
+			$"Replenishes {Spell.Value} endurance." :
+			$"Replenishes {Math.Abs(Spell.Value)}% endurance.";
+
 		public EnduranceHealSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
 		/// <summary>
@@ -113,16 +114,6 @@ namespace DOL.GS.Spells
 					MessageToCaster(target.GetName(0, true) + " endurance is full.", eChatType.CT_Spell);
 			}
 			return true;
-		}
-
-		public override bool CheckBeginCast(GameLiving selectedTarget)
-		{
-			if (selectedTarget != null && selectedTarget.EndurancePercent >= 90)
-			{
-				MessageToCaster("You cannot cast an endurance heal the target has above 90% endurance!", eChatType.CT_SpellResisted);
-				return false;
-			}
-			return base.CheckBeginCast(selectedTarget);
 		}
 	}
 }

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using DOL.AI.Brain;
 using DOL.Database;
 using DOL.GS.Keeps;
@@ -17,59 +16,56 @@ namespace DOL.GS.ServerRules
 			return "standard Normal server rules";
 		}
 
-		/// <summary>
-		/// Invoked on NPC death and deals out
-		/// experience/realm points if needed
-		/// </summary>
-		/// <param name="killedNPC">npc that died</param>
-		/// <param name="killer">killer</param>
-		public override void OnNPCKilled(GameNPC killedNPC, GameObject killer)
-		{
-			base.OnNPCKilled(killedNPC, killer); 	
-		}
-
 		public override bool IsAllowedToAttack(GameLiving attacker, GameLiving defender, bool quiet)
 		{
 			if (!base.IsAllowedToAttack(attacker, defender, quiet))
 				return false;
 
-			// if controlled NPC - do checks for owner instead
-			if (attacker is GameNPC)
+			GameNPC npcAttacker = attacker as GameNPC;
+
+			if (npcAttacker != null && npcAttacker.Brain is IControlledBrain attackerBrain)
 			{
-				IControlledBrain controlled = ((GameNPC)attacker).Brain as IControlledBrain;
-				if (controlled != null)
-				{
-                    attacker = controlled.GetLivingOwner();
-					quiet = true; // silence all attacks by controlled npc
-				}
-			}
-			if (defender is GameNPC)
-			{
-				IControlledBrain controlled = ((GameNPC)defender).Brain as IControlledBrain;
-				if (controlled != null)
-                    defender = controlled.GetLivingOwner();
+				attacker = attackerBrain.GetLivingOwner();
+				quiet = true; // Silence all attacks by controlled npcs.
 			}
 
-			//"You can't attack yourself!"
-			if(attacker == defender)
+			if (defender is GameNPC npcDefender)
 			{
-				if (quiet == false) MessageToLiving(attacker, "You can't attack yourself!");
+				if (npcDefender.Brain is IControlledBrain defenderBrain)
+					defender = defenderBrain.GetLivingOwner();
+			}
+
+			// "You can't attack yourself!"
+			if (attacker == defender)
+			{
+				if (!quiet)
+					MessageToLiving(attacker, "You can't attack yourself!");
+
 				return false;
 			}
 
-			//Don't allow attacks on same realm members on Normal Servers
-			if (attacker.Realm == defender.Realm && !(attacker is GamePlayer && ((GamePlayer) attacker).IsDuelPartner(defender)))
+			// Don't allow attacks on same realm members.
+			if (attacker.Realm == defender.Realm)
 			{
-				// allow confused mobs to attack same realm
-				if (attacker is GameNPC && (attacker as GameNPC).IsConfused)
+				// Allow players to attack their duel partner.
+				if (attacker is GamePlayer player && player.IsDuelPartner(defender))
 					return true;
 
-				if (attacker.Realm == 0)
+				if (npcAttacker != null)
 				{
-					return FactionMgr.CanLivingAttack(attacker, defender);
+					// Allow confused NPCs to attack realm mates.
+					// Pets can't attack their owner however, since attacker == defender.
+					if (npcAttacker.IsConfused)
+						return true;
+
+					// If the NPC is neutral, delegate to `FactionMgr`.
+					if (attacker.Realm == 0)
+						return FactionMgr.CanLivingAttack(attacker, defender);
 				}
 
-				if(quiet == false) MessageToLiving(attacker, "You can't attack a member of your realm!");
+				if (!quiet)
+					MessageToLiving(attacker, "You can't attack a member of your realm!");
+
 				return false;
 			}
 
@@ -170,20 +166,6 @@ namespace DOL.GS.ServerRules
 				if ((source as GamePlayer).Client.Account.PrivLevel > 1 || (target as GamePlayer).Client.Account.PrivLevel > 1)
 					return true;
 			}
-			
-			if((source as GamePlayer).NoHelp)
-			{
-				if(quiet == false) MessageToLiving(source, "You have renounced to any kind of help!");
-				if(quiet == false) MessageToLiving(target, "This player has chosen to receive no help!");
-				return false;
-			}
-			
-			if((target as GamePlayer).NoHelp)
-			{
-				if(quiet == false) MessageToLiving(target, "You have renounced to any kind of help!");
-				if(quiet == false) MessageToLiving(source, "This player has chosen to receive no help!");
-				return false;
-			}
 
 			//Peace flag NPCs can trade with everyone
 			if (target is GameNPC)
@@ -275,7 +257,7 @@ namespace DOL.GS.ServerRules
 				m_compatibleObjectTypes[(int)eObjectType.Hammer]       = new eObjectType[] { eObjectType.Hammer };
 				m_compatibleObjectTypes[(int)eObjectType.Sword]        = new eObjectType[] { eObjectType.Sword };
 				m_compatibleObjectTypes[(int)eObjectType.LeftAxe]      = new eObjectType[] { eObjectType.LeftAxe };
-				m_compatibleObjectTypes[(int)eObjectType.Axe]          = new eObjectType[] { eObjectType.Axe, eObjectType.LeftAxe };
+				m_compatibleObjectTypes[(int)eObjectType.Axe]          = new eObjectType[] { eObjectType.Axe };
 				m_compatibleObjectTypes[(int)eObjectType.HandToHand]   = new eObjectType[] { eObjectType.HandToHand };
 				m_compatibleObjectTypes[(int)eObjectType.Spear]        = new eObjectType[] { eObjectType.Spear };
 				m_compatibleObjectTypes[(int)eObjectType.CompositeBow] = new eObjectType[] { eObjectType.CompositeBow };
@@ -366,16 +348,6 @@ namespace DOL.GS.ServerRules
 		{
 			base.ResetKeep(lord, killer);
 			lord.Component.Keep.Reset((eRealm)killer.Realm);
-			
-			if (ConquestService.ConquestManager.ActiveObjective != null && ConquestService.ConquestManager.ActiveObjective.Keep == lord.Component.Keep)
-			{
-				ConquestService.ConquestManager.ConquestCapture(ConquestService.ConquestManager.ActiveObjective.Keep);
-			}
-			
-			if (ConquestService.ConquestManager.GetSecondaryObjectives().FirstOrDefault(conq => conq.Keep == lord.Component.Keep) != null)
-			{
-				ConquestService.ConquestManager.ConquestSubCapture(lord.Component.Keep);
-			}
 		}
 	}
 }

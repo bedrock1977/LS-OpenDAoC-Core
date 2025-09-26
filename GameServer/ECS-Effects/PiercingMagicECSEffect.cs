@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DOL.GS
+﻿namespace DOL.GS
 {
     public class PiercingMagicECSGameEffect : ECSGameSpellEffect
     {
-        public PiercingMagicECSGameEffect(ECSGameEffectInitParams initParams)
+        public PiercingMagicECSGameEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.PiercingMagic;
@@ -17,14 +11,14 @@ namespace DOL.GS
         public override void OnStartEffect()
         {
             //Owner.Effectiveness += (SpellHandler.Spell.Value / 100);
-            OnEffectStartsMsg(Owner, true, false, true);
+            OnEffectStartsMsg(true, false, true);
 
         }
 
         public override void OnStopEffect()
         {
              //Owner.Effectiveness -= (SpellHandler.Spell.Value / 100);
-             OnEffectExpiresMsg(Owner, true, false, true);
+             OnEffectExpiresMsg(true, false, true);
         }
     }
 }

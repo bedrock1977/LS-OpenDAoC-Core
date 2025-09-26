@@ -8,8 +8,7 @@ namespace DOL.GS
 {
     public class SoulReckoner : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SoulReckoner()
             : base()
@@ -25,10 +24,7 @@ namespace DOL.GS
                 default: return 70;// dmg reduction for rest resists
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
 
         public override int MaxHealth
         {
@@ -60,13 +56,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60166369);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
 
             MeleeDamageType = eDamageType.Spirit;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
@@ -127,7 +116,7 @@ namespace DOL.GS
 
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -182,15 +171,14 @@ namespace DOL.AI.Brain
 {
     public class SoulReckonerBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public SoulReckonerBrain()
             : base()
         {
             AggroLevel = 100;
             AggroRange = 400;
-            CanBAF = false;
+            CanBaf = false;
         }
 
         public static bool InRoom = false;
@@ -341,10 +329,7 @@ namespace DOL.GS
         {
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
 
         public override int MeleeAttackRange => 350;
 
@@ -369,9 +354,7 @@ namespace DOL.GS
             --SoulCount;
             base.Die(killer);
         }
-        public override void DropLoot(GameObject killer)
-        {
-        }
+        public override bool CanDropLoot => false;
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
         public override short Strength { get => base.Strength; set => base.Strength = 150; }
         public static int SoulCount = 0;
@@ -409,15 +392,14 @@ namespace DOL.AI.Brain
 {
     public class ReckonedSoulBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public ReckonedSoulBrain()
             : base()
         {
             AggroLevel = 100;
             AggroRange = 500;
-            CanBAF = false;
+            CanBaf = false;
         }
         public override void Think()
         {

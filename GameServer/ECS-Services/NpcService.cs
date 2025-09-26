@@ -2,69 +2,58 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using DOL.AI;
-using DOL.AI.Brain;
+using DOL.Logging;
 using ECS.Debug;
-using log4net;
 
 namespace DOL.GS
 {
-    public static class NpcService
+    public sealed class NpcService : GameServiceBase
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private const string SERVICE_NAME = nameof(NpcService);
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static int _nonNullBrainCount;
-        private static int _nullBrainCount;
+        private List<ABrain> _list;
 
-        public static int DebugTickCount { get; set; } // Will print active brain count/array size info for debug purposes if superior to 0.
-        private static bool Debug => DebugTickCount > 0;
-        private static List<ABrain> _list;
+        public static NpcService Instance { get; }
 
-        public static void Tick()
+        static NpcService()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-
-            if (Debug)
-            {
-                _nonNullBrainCount = 0;
-                _nullBrainCount = 0;
-            }
-
-            _list = EntityManager.UpdateAndGetAll<ABrain>(EntityManager.EntityType.Brain, out int lastValidIndex);
-            Parallel.For(0, lastValidIndex + 1, TickInternal);
-
-            if (Debug)
-            {
-                log.Debug($"==== Non-null NCs in EntityManager array: {_nonNullBrainCount} | Null NPCs: {_nullBrainCount} | Total size: {_list.Count} ====");
-                DebugTickCount--;
-            }
-
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
+            Instance = new();
         }
 
-        private static void TickInternal(int index)
+        public override void Tick()
         {
-            ABrain brain = _list[index];
+            ProcessPostedActionsParallel();
+            int lastValidIndex;
 
-            if (brain?.EntityManagerId.IsSet != true)
+            try
             {
-                if (Debug)
-                    Interlocked.Increment(ref _nullBrainCount);
+                _list = ServiceObjectStore.UpdateAndGetAll<ABrain>(ServiceObjectType.Brain, out lastValidIndex);
+            }
+            catch (Exception e)
+            {
+                if (log.IsErrorEnabled)
+                    log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
 
                 return;
             }
 
-            if (Debug)
-                Interlocked.Increment(ref _nonNullBrainCount);
+            GameLoop.ExecuteForEach(_list, lastValidIndex + 1, TickInternal);
 
+            if (Diagnostics.CheckServiceObjectCount)
+                Diagnostics.PrintServiceObjectCount(ServiceName, ref EntityCount, _list.Count);
+        }
+
+        private static void TickInternal(ABrain brain)
+        {
             try
             {
+                if (Diagnostics.CheckServiceObjectCount)
+                    Interlocked.Increment(ref Instance.EntityCount);
+
                 GameNPC npc = brain.Body;
 
-                if (ServiceUtils.ShouldTickAdjust(ref brain.NextThinkTick))
+                if (GameServiceUtils.ShouldTick(brain.NextThinkTick))
                 {
                     if (!brain.IsActive)
                     {
@@ -72,25 +61,19 @@ namespace DOL.GS
                         return;
                     }
 
-                    long startTick = GameLoop.GetCurrentTime();
+                    long startTick = GameLoop.GetRealTime();
                     brain.Think();
-                    long stopTick = GameLoop.GetCurrentTime();
+                    long stopTick = GameLoop.GetRealTime();
 
-                    if (stopTick - startTick > 25)
-                        log.Warn($"Long {SERVICE_NAME}.{nameof(Tick)} for {npc.Name}({npc.ObjectID}) Interval: {brain.ThinkInterval} BrainType: {brain.GetType()} Time: {stopTick - startTick}ms");
+                    if (stopTick - startTick > Diagnostics.LongTickThreshold)
+                        log.Warn($"Long {Instance.ServiceName}.{nameof(Tick)} for {npc.Name}({npc.ObjectID}) Interval: {brain.ThinkInterval} BrainType: {brain.GetType()} Time: {stopTick - startTick}ms");
 
-                    brain.NextThinkTick += brain.ThinkInterval;
-
-                    // Offset LastThinkTick for non-controlled mobs so that 'Think' ticks are not all "grouped" in one server tick.
-                    if (brain is not ControlledMobBrain)
-                        brain.NextThinkTick += Util.Random(-2, 2) * GameLoop.TickRate;
+                    brain.NextThinkTick = GameLoop.GameLoopTime + brain.ThinkInterval;
                 }
-
-                npc.movementComponent.Tick();
             }
             catch (Exception e)
             {
-                ServiceUtils.HandleServiceException(e, SERVICE_NAME, brain, brain.Body);
+                GameServiceUtils.HandleServiceException(e, Instance.ServiceName, brain, brain.Body);
             }
         }
     }

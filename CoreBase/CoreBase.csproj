@@ -6,34 +6,39 @@
     </PropertyGroup>
     <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
         <OutputType>Library</OutputType>
         <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
         <IntermediateOutputPath>..\build\CoreBase\$(Configuration)\obj\</IntermediateOutputPath>
         <OutputPath>..\$(Configuration)\lib\</OutputPath>
-        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
         <Deterministic>false</Deterministic>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <RegisterForComInterop>false</RegisterForComInterop>
+        <AssemblyTitle>OpenDAoC - CoreBase</AssemblyTitle>
+        <AssemblyDescription>Base code for OpenDAoC server</AssemblyDescription>
+        <AssemblyCompany>OpenDAoC Development Team</AssemblyCompany>
+        <AssemblyProduct>DAoC Server Side Emulation Package - OpenDAoC</AssemblyProduct>
+        <AssemblyCopyright>OpenDAoC Development Team</AssemblyCopyright>
+        <AssemblyTrademark>OpenDAoC Development Team</AssemblyTrademark>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <Optimize>False</Optimize>
-        <DebugType>Full</DebugType>
+        <Optimize>false</Optimize>
+        <DebugType>full</DebugType>
         <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <Optimize>true</Optimize>
-        <DebugType>None</DebugType>
-        <DebugSymbols>false</DebugSymbols>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
-        <RegisterForComInterop>False</RegisterForComInterop>
+        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="log4net" Version="3.1.0" />
+        <PackageReference Include="NLog" Version="5.4.0" />
         <PackageReference Include="SharpZipLib" Version="1.4.2" />
-        <PackageReference Include="log4net" Version="2.0.16" />
-        <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+        <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.5" />
     </ItemGroup>
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>

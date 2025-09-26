@@ -1,7 +1,5 @@
-using System;
 using DOL.AI.Brain;
 using DOL.Database;
-using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.Keeps;
 using DOL.GS.PacketHandler;
@@ -9,379 +7,243 @@ using DOL.Language;
 
 namespace DOL.GS.Spells
 {
-	/// <summary>
-	/// Effect that stays on target and does additional
-	/// damage after each melee attack
-	/// </summary>
-	[SpellHandler("DamageAdd")]
-	public class DamageAddSpellHandler : AbstractDamageAddSpellHandler
-	{
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
-		{
-			return new DamageAddECSEffect(initParams);
-		}
+    [SpellHandler(eSpellType.DamageAdd)]
+    public class DamageAddSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : AbstractDamageAddSpellHandler(caster, spell, spellLine)
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} melee attacks inflict an additional {Spell.Damage} damage per second.";
 
-		/// <summary>
-		/// The event type to hook on
-		/// </summary>
-		protected override DOLEvent EventType { get { return GameLivingEvent.AttackFinished; } }
-
-		public virtual double DPSCap(int Level)
-		{
-			return (1.2 + 0.3 * Level) * 0.7;
-		}
-		
-		/// <summary>
-		/// Handler fired on every melee attack by effect target
-		/// </summary>
-		/// <param name="e"></param>
-		/// <param name="sender"></param>
-		/// <param name="arguments"></param>
-		public void EventHandler(DOLEvent e, object sender, EventArgs arguments, double effectiveness)
-		{
-			AttackFinishedEventArgs atkArgs = arguments as AttackFinishedEventArgs;
-			if (atkArgs == null) return;
-
-			if (atkArgs.AttackData.AttackResult != eAttackResult.HitUnstyled
-				&& atkArgs.AttackData.AttackResult != eAttackResult.HitStyle) return;
-
-			GameLiving target = atkArgs.AttackData.Target;
-			if (target == null) return;
-
-			if (target.ObjectState != GameObject.eObjectState.Active) return;
-			if (target.IsAlive == false) return;
-			if (target is GameKeepComponent || target is GameKeepDoor) return;
-
-			GameLiving attacker = sender as GameLiving;
-			if (attacker == null) return;
-
-			if (attacker.ObjectState != GameObject.eObjectState.Active) return;
-			if (attacker.IsAlive == false) return;
-
-			double minVariance;
-			double maxVariance;
-			CalculateDamageVariance(target, out minVariance, out maxVariance);
-			//spread += Util.Random(50);
-			double dpsCap = DPSCap(attacker.Level);
-			double dps = IgnoreDamageCap ? Spell.Damage : Math.Min(Spell.Damage, dpsCap);
-			double damage = Util.Random((int)(minVariance * dps * atkArgs.AttackData.WeaponSpeed * 0.1), (int)(maxVariance * dps * atkArgs.AttackData.WeaponSpeed * 0.1)); ; // attack speed is 10 times higher (2.5spd=25)
-			double damageResisted = damage * target.GetResist(Spell.DamageType) * -0.01;
-
-			//Console.WriteLine("dps: {0}, damage: {1}, damageResisted: {2}, minDamageSpread: {3}", dps, damage, damageResisted, m_minDamageSpread);
-
-			if (Spell.Damage < 0)
-			{
-				damage = atkArgs.AttackData.Damage * Spell.Damage / -100.0;
-				damageResisted = damage * target.GetResist(Spell.DamageType) * -0.01;
-			}
-
-			AttackData ad = new AttackData();
-			ad.Attacker = attacker;
-			ad.Target = target;
-			ad.Damage = (int)((damage + damageResisted) * effectiveness);
-			ad.Modifier = (int)damageResisted;
-			ad.DamageType = Spell.DamageType;
-			ad.AttackType = AttackData.eAttackType.Spell;
-			ad.SpellHandler = this;
-			ad.AttackResult = eAttackResult.HitUnstyled;
-
-			if ( ad.Attacker is GameNPC )
-			{
-				IControlledBrain brain = ((GameNPC)ad.Attacker).Brain as IControlledBrain;
-				if (brain != null)
-				{
-					GamePlayer owner = brain.GetPlayerOwner();
-					if (owner != null)
-					{
-                        MessageToLiving(owner, String.Format(LanguageMgr.GetTranslation( owner.Client, "DamageAddAndShield.EventHandlerDA.YourHitFor" ), ad.Attacker.Name, target.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
-                    }
-				}
-			}
-			else
-			{
-				GameClient attackerClient = null;
-				if ( attacker is GamePlayer ) attackerClient = ( (GamePlayer)attacker ).Client;
-
-				if ( attackerClient != null )
-				{
-					MessageToLiving( attacker, String.Format( LanguageMgr.GetTranslation( attackerClient, "DamageAddAndShield.EventHandlerDA.YouHitExtra" ), target.GetName( 0, false ), ad.Damage ), eChatType.CT_Spell );
-				}
-            }
-
-			GameClient targetClient = null;
-			if ( target is GamePlayer ) targetClient = ( (GamePlayer)target ).Client;
-
-			if ( targetClient != null )
-			{
-				MessageToLiving( target, String.Format( LanguageMgr.GetTranslation( targetClient, "DamageAddAndShield.EventHandlerDA.DamageToYou" ), attacker.GetName( 0, false ), ad.Damage ), eChatType.CT_Spell );
-			}
-
-            target.OnAttackedByEnemy(ad);
-			attacker.DealDamage(ad);
-
-			foreach (GamePlayer player in ad.Attacker.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
-			{
-				if (player == null) continue;
-				player.Out.SendCombatAnimation(null, target, 0, 0, 0, 0, 0x0A, target.HealthPercent);
-			}
-		}
-
-        public override void EventHandler(DOLEvent e, object sender, EventArgs arguments)
+        public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
         {
-            throw new NotImplementedException();
+            return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new DamageAddECSEffect(i));
         }
 
-        // constructor
-        public DamageAddSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
-	}
+        public override void Handle(AttackData attackData, double effectiveness)
+        {
+            if (!AreArgumentsValid(attackData, out GameLiving attacker, out GameLiving target))
+                return;
 
-	/// <summary>
-	/// Effect that stays on target and does addition
-	/// damage on every attack against this target
-	/// </summary>
-	[SpellHandler("DamageShield")]
-	public class DamageShieldSpellHandler : AbstractDamageAddSpellHandler
-	{
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
-		{
-			return new DamageShieldECSEffect(initParams);
-		}
+            double damage;
 
-		/// <summary>
-		/// The event type to hook on
-		/// </summary>
-		protected override DOLEvent EventType { get { return GameLivingEvent.AttackedByEnemy; } }
-
-		/// <summary>
-		/// Handler fired whenever effect target is attacked
-		/// </summary>
-		/// <param name="e"></param>
-		/// <param name="sender"></param>
-		/// <param name="arguments"></param>
-		public override void EventHandler(DOLEvent e, object sender, EventArgs arguments)
-		{
-			AttackedByEnemyEventArgs args = arguments as AttackedByEnemyEventArgs;
-			if (args == null) return;
-			if (args.AttackData.AttackResult != eAttackResult.HitUnstyled
-				&& args.AttackData.AttackResult != eAttackResult.HitStyle) return;
-			if (!args.AttackData.IsMeleeAttack) return;
-			GameLiving attacker = sender as GameLiving; //sender is target of attack, becomes attacker for damage shield
-			if (attacker == null) return;
-			if (attacker.ObjectState != GameObject.eObjectState.Active) return;
-			if (attacker.IsAlive == false) return;
-			GameLiving target = args.AttackData.Attacker; //attacker becomes target for damage shield
-			if (target == null) return;
-			if (target.ObjectState != GameObject.eObjectState.Active) return;
-			if (target.IsAlive == false) return;
-
-			int spread = m_minDamageSpread;
-			spread += Util.Random(50);
-			double damage = Spell.Damage * target.AttackSpeed(target.ActiveWeapon) * spread * 0.00001;
-			double damageResisted = damage * target.GetResist(Spell.DamageType) * -0.01;
-
-            if (!Spell.IsFocus)
+            if (Spell.Damage > 0)
             {
-				var effectiveness = 1 + Caster.GetModified(eProperty.BuffEffectiveness) * 0.01;
-				damage *= effectiveness;
-			}
-			
-
-			if (Spell.Damage < 0)
-			{
-				damage = args.AttackData.Damage * Spell.Damage / -100.0;
-				damageResisted = damage * target.GetResist(Spell.DamageType) * -0.01;
-			}
-
-			AttackData ad = new AttackData();
-			ad.Attacker = attacker;
-			ad.Target = target;
-			ad.Damage = (int)(damage + damageResisted);
-			ad.Modifier = (int)damageResisted;
-			ad.DamageType = Spell.DamageType;
-			ad.SpellHandler = this;
-			ad.AttackType = AttackData.eAttackType.Spell;
-			ad.AttackResult = eAttackResult.HitUnstyled;
-
-			GamePlayer owner = null;
-
-			GameClient attackerClient = null;
-			if ( attacker is GamePlayer ) attackerClient = ( (GamePlayer)attacker ).Client;
-
-			if ( ad.Attacker is GameNPC )
-			{
-				IControlledBrain brain = ((GameNPC)ad.Attacker).Brain as IControlledBrain;
-				if (brain != null)
-				{
-					owner = brain.GetPlayerOwner();
-					if (owner != null && owner.ControlledBrain != null && ad.Attacker == owner.ControlledBrain.Body)
-					{
-                        MessageToLiving(owner, String.Format(LanguageMgr.GetTranslation( owner.Client, "DamageAddAndShield.EventHandlerDS.YourHitFor" ), ad.Attacker.Name, target.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
-                    }
-				}
-			}
-			else if( attackerClient != null )
-			{
-                MessageToLiving(attacker, String.Format(LanguageMgr.GetTranslation( attackerClient, "DamageAddAndShield.EventHandlerDS.YouHitFor" ), target.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
+                CalculateDamageVariance(target, out double minVariance, out double maxVariance);
+                double variance = minVariance + Util.RandomDoubleIncl() * (maxVariance - minVariance);
+                effectiveness *= 1 + Caster.GetModified(eProperty.BuffEffectiveness) * 0.01;
+                damage = Spell.Damage * variance * effectiveness * attackData.Interval * 0.001;
             }
+            else
+                damage = attackData.Damage * Spell.Damage / -100.0;
 
-			GameClient targetClient = null;
-			if ( target is GamePlayer ) targetClient = ( (GamePlayer)target ).Client;
+            AttackData ad = CreateAttackData(damage, attacker, target);
 
-			//if ( targetClient != null )
-			//	MessageToLiving(target, String.Format(LanguageMgr.GetTranslation( targetClient, "DamageAddAndShield.EventHandlerDS.DamageToYou" ), attacker.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
+            if (ad.Attacker is GameNPC npcAttacker && npcAttacker.Brain is IControlledBrain brain)
+            {
+                GamePlayer owner = brain.GetPlayerOwner();
+
+                if (owner != null)
+                    MessageToLiving(owner, string.Format(LanguageMgr.GetTranslation(owner.Client, "DamageAddAndShield.EventHandlerDA.YourHitFor"), ad.Attacker.Name, target.GetName(0, false), ad.Damage), eChatType.CT_Spell);
+            }
+            else if (attacker is GamePlayer attackerPlayer)
+                MessageToLiving(attacker, string.Format(LanguageMgr.GetTranslation(attackerPlayer.Client, "DamageAddAndShield.EventHandlerDA.YouHitExtra"), target.GetName(0, false), ad.Damage), eChatType.CT_Spell);
+
+            if (target is GamePlayer targetPlayer)
+                MessageToLiving(target, string.Format(LanguageMgr.GetTranslation(targetPlayer.Client, "DamageAddAndShield.EventHandlerDA.DamageToYou"), attacker.GetName(0, false), ad.Damage), eChatType.CT_Spell);
 
             target.OnAttackedByEnemy(ad);
-			attacker.DealDamage(ad);
-			foreach (GamePlayer player in attacker.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
-			{
-				if (player == null)
-					continue;
-				player.Out.SendCombatAnimation(null, target, 0, 0, 0, 0, 0x14, target.HealthPercent);
-			}
-			//			Log.Debug(String.Format("spell damage: {0}; damage: {1}; resisted damage: {2}; damage type {3}; minSpread {4}.", Spell.Damage, ad.Damage, ad.Modifier, ad.DamageType, m_minDamageSpread));
-			//			Log.Debug(String.Format("dmg {0}; spread: {4}; resDmg: {1}; atkSpeed: {2}; resist: {3}.", damage, damageResisted, target.AttackSpeed(null), ad.Target.GetResist(Spell.DamageType), spread));
-		}
+            attacker.DealDamage(ad);
 
-		// constructor
-		public DamageShieldSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
-	}
+            foreach (GamePlayer player in ad.Attacker.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
+                player.Out.SendCombatAnimation(null, target, 0, 0, 0, 0, 0x0A, target.HealthPercent);
+        }
 
-	/// <summary>
-	/// Contains all common code for damage add and shield spell handlers
-	/// </summary>
-	public abstract class AbstractDamageAddSpellHandler : SpellHandler
-	{
-		/// <summary>
-		/// The event type to hook on
-		/// </summary>
-		protected abstract DOLEvent EventType { get; }
+        public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
+        {
+            // Incomplete implementation. See base method for details.
+            min = 0.8;
+            max = min * (5 / 3.0);
+        }
+    }
 
-		/// <summary>
-		/// The event handler of given event type
-		/// </summary>
-		public abstract void EventHandler(DOLEvent e, object sender, EventArgs arguments);
+    [SpellHandler(eSpellType.DamageShield)]
+    public class DamageShieldSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : AbstractDamageAddSpellHandler(caster, spell, spellLine)
+    {
+        public override string ShortDescription => $"{TargetPronounCapitalized} melee attackers receive {Spell.Damage} damage per second.";
 
-		/// <summary>
-		/// Holds min damage spread based on spec level caster
-		/// had the moment spell was casted
-		/// </summary>
-		protected int m_minDamageSpread = 50;
-		
-		/// <summary>
-		/// called when spell effect has to be started and applied to targets
-		/// </summary>
-		/// <param name="target"></param>
-		public override void FinishSpellCast(GameLiving target)
-		{
-			m_caster.Mana -= PowerCost(target);
-			base.FinishSpellCast(target);
-		}
+        public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
+        {
+            return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new DamageShieldECSEffect(i));
+        }
 
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
-		{
-			double duration = Spell.Duration;
-			duration *= (1.0 + m_caster.GetModified(eProperty.SpellDuration) * 0.01);
-			return (int)duration;
-		}
-		
-		/// <summary>
-		/// called when spell effect has to be started and applied to targets
-		/// </summary>
-		public override bool StartSpell(GameLiving target)
-		{
-			// set min spread based on spec
-			if (Caster is GamePlayer)
-			{
-				int lineSpec = Caster.GetModifiedSpecLevel(m_spellLine.Spec);
-				m_minDamageSpread = 50;
-				if (Spell.Level > 0)
-				{
-					m_minDamageSpread += (lineSpec - 1) * 50 / Spell.Level;
-					if (m_minDamageSpread > 100) m_minDamageSpread = 100;
-					else if (m_minDamageSpread < 50) m_minDamageSpread = 50;
-				}
-				else
-				{
-					// For level 0 spells, like realm abilities, always work off of full spec to achieve live like damage amounts.
-					// If spec level is used at all it most likely should only be for baseline spells. - tolakram
-					m_minDamageSpread = 100;
-				}
-			}
+        public override void Handle(AttackData attackData, double effectiveness)
+        {
+            // Damage shields only work on melee attacks.
+            if (!attackData.IsMeleeAttack)
+                return;
 
-			return base.StartSpell(target);
-		}
+            // Swap attacker and target.
+            if (!AreArgumentsValid(attackData, out GameLiving target, out GameLiving attacker))
+                return;
 
-		/// <summary>
-		/// When an applied effect starts
-		/// duration spells only
-		/// </summary>
-		/// <param name="effect"></param>
-		public override void OnEffectStart(GameSpellEffect effect)
-		{
-			base.OnEffectStart(effect);
-			// "Your weapon is blessed by the gods!"
-			// "{0}'s weapon glows with the power of the gods!"
-			eChatType chatType = eChatType.CT_SpellPulse;
-			if (Spell.Pulse == 0)
-			{
-				chatType = eChatType.CT_Spell;
-			}
-			bool upperCase = Spell.Message2.StartsWith("{0}");
-			MessageToLiving(effect.Owner, Spell.Message1, chatType);
-			Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message2, 
-				effect.Owner.GetName(0, upperCase)), chatType, effect.Owner);
-			GameEventMgr.AddHandler(effect.Owner, EventType, new DOLEventHandler(EventHandler));
-		}
+            double damage;
 
-		/// <summary>
-		/// When an applied effect expires.
-		/// Duration spells only.
-		/// </summary>
-		/// <param name="effect">The expired effect</param>
-		/// <param name="noMessages">true, when no messages should be sent to player and surrounding</param>
-		/// <returns>immunity duration in milliseconds</returns>
-		public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
-		{
-			if (!noMessages && Spell.Pulse == 0)
-			{
-				// "Your weapon returns to normal."
-				// "{0}'s weapon returns to normal."
-				bool upperCase = Spell.Message4.StartsWith("{0}");
-				MessageToLiving(effect.Owner, Spell.Message3, eChatType.CT_SpellExpires);
-				Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message4, 
-					effect.Owner.GetName(0, upperCase)), eChatType.CT_SpellExpires, effect.Owner);
-			}
-			GameEventMgr.RemoveHandler(effect.Owner, EventType, new DOLEventHandler(EventHandler));
-			return 0;
-		}
+            if (Spell.Damage > 0)
+            {
+                CalculateDamageVariance(target, out double minVariance, out double maxVariance);
+                double variance = minVariance + Util.RandomDoubleIncl() * (maxVariance - minVariance);
+                effectiveness *= 1 + Caster.GetModified(eProperty.BuffEffectiveness) * 0.01;
+                damage = Spell.Damage * variance * effectiveness * attackData.Interval * 0.001;
+            }
+            else
+                damage = attackData.Damage * Spell.Damage / -100.0;
 
-		public override void OnEffectRestored(GameSpellEffect effect, int[] vars)
-		{
-			GameEventMgr.AddHandler(effect.Owner, EventType, new DOLEventHandler(EventHandler));
-		}
+            AttackData ad = CreateAttackData(damage, attacker, target);
 
-		public override int OnRestoredEffectExpires(GameSpellEffect effect, int[] vars, bool noMessages)
-		{
-			return OnEffectExpires(effect, noMessages);
-		}
+            if (attacker is GamePlayer playerAttacker)
+                MessageToLiving(attacker, string.Format(LanguageMgr.GetTranslation(playerAttacker.Client, "DamageAddAndShield.EventHandlerDS.YouHitFor"), target.GetName(0, false), ad.Damage), eChatType.CT_Spell);
+            else if (attacker is GameNPC attackerNpc && attackerNpc.Brain is IControlledBrain brain)
+            {
+                GamePlayer owner = brain.GetPlayerOwner();
 
-		public override DbPlayerXEffect GetSavedEffect(GameSpellEffect e)
-		{
-			DbPlayerXEffect eff = new DbPlayerXEffect();
-			eff.Var1 = Spell.ID;
-			eff.Duration = e.RemainingTime;
-			eff.IsHandler = true;
-			eff.SpellLine = SpellLine.KeyName;
-			return eff;
-		}
+                if (owner != null)
+                    MessageToLiving(owner, string.Format(LanguageMgr.GetTranslation(owner.Client, "DamageAddAndShield.EventHandlerDS.YourHitFor"), ad.Attacker.Name, target.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
+            }
 
-		// constructor
-		public AbstractDamageAddSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
-	}
+            target.OnAttackedByEnemy(ad);
+            attacker.DealDamage(ad);
+
+            foreach (GamePlayer player in attacker.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
+                player.Out.SendCombatAnimation(null, target, 0, 0, 0, 0, 0x14, target.HealthPercent);
+        }
+
+        public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
+        {
+            // Incomplete implementation. See base method for details.
+            min = 0.85;
+            max = min * (5 / 3.0);
+        }
+    }
+
+    public abstract class AbstractDamageAddSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : SpellHandler(caster, spell, spellLine)
+    {
+        public abstract void Handle(AttackData attackData, double effectiveness);
+
+        public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
+        {
+            // According to live tests, a lower bound of 1.0 should be (or close to) the best variance possible.
+            // However, lower bound is supposed to be allowed to go below 1 for both damage adds and damage shields.
+            // Damage adds are supposed to scale with weaponskill / armor, but independently from the attack's damage.
+            // Damage shields are supposed to scale with spec to some extent.
+            // Upper bound is equal to lower*(5/3) most of the time, but doesn't seem to be the case for damage adds when weaponskill is very low for example.
+            // A similar effectiveness bonus as buffs may be used.
+            // In practice, a damage add seems to do less damage than a damage shield of the same value, probably due to the different way they scale.
+            // We may want to take level difference into account despite not being live like.
+            base.CalculateDamageVariance(target, out min, out max);
+        }
+
+        protected static bool AreArgumentsValid(AttackData attackData, out GameLiving attacker, out GameLiving target)
+        {
+            attacker = null;
+            target = null;
+
+            if (attackData.AttackResult is not eAttackResult.HitUnstyled and not eAttackResult.HitStyle)
+                return false;
+
+            target = attackData.Target;
+
+            if (target == null ||
+                target.ObjectState is not GameObject.eObjectState.Active ||
+                !target.IsAlive ||
+                target is GameKeepComponent or GameKeepDoor)
+            {
+                return false;
+            }
+
+            attacker = attackData.Attacker;
+
+            if (attacker == null ||
+                attacker.ObjectState is not GameObject.eObjectState.Active ||
+                !attacker.IsAlive)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        protected AttackData CreateAttackData(double damage, GameLiving attacker, GameLiving target)
+        {
+            // Damage adds and shields are unaffected by resistances.
+            return new()
+            {
+                Attacker = attacker,
+                Target = target,
+                Damage = (int) damage,
+                DamageType = Spell.DamageType,
+                SpellHandler = this,
+                AttackType = AttackData.eAttackType.Spell,
+                AttackResult = eAttackResult.HitUnstyled
+            };
+        }
+
+        public override void FinishSpellCast(GameLiving target)
+        {
+            m_caster.Mana -= PowerCost(target);
+            base.FinishSpellCast(target);
+        }
+
+        protected override int CalculateEffectDuration(GameLiving target)
+        {
+            double duration = Spell.Duration;
+            duration *= 1.0 + m_caster.GetModified(eProperty.SpellDuration) * 0.01;
+            return (int) duration;
+        }
+
+        public override void OnEffectStart(GameSpellEffect effect)
+        {
+            base.OnEffectStart(effect);
+
+            // "Your weapon is blessed by the gods!"
+            // "{0}'s weapon glows with the power of the gods!"
+            eChatType chatType = eChatType.CT_SpellPulse;
+
+            if (Spell.Pulse == 0)
+                chatType = eChatType.CT_Spell;
+
+            bool upperCase = Spell.Message2.StartsWith("{0}");
+            MessageToLiving(effect.Owner, Spell.Message1, chatType);
+            Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message2, effect.Owner.GetName(0, upperCase)), chatType, effect.Owner);
+        }
+
+        public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
+        {
+            if (!noMessages && Spell.Pulse == 0)
+            {
+                // "Your weapon returns to normal."
+                // "{0}'s weapon returns to normal."
+                bool upperCase = Spell.Message4.StartsWith("{0}");
+                MessageToLiving(effect.Owner, Spell.Message3, eChatType.CT_SpellExpires);
+                Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message4, effect.Owner.GetName(0, upperCase)), eChatType.CT_SpellExpires, effect.Owner);
+            }
+
+            return 0;
+        }
+
+        public override int OnRestoredEffectExpires(GameSpellEffect effect, int[] vars, bool noMessages)
+        {
+            return OnEffectExpires(effect, noMessages);
+        }
+
+        public override DbPlayerXEffect GetSavedEffect(GameSpellEffect e)
+        {
+            DbPlayerXEffect eff = new()
+            {
+                Var1 = Spell.ID,
+                Duration = e.RemainingTime,
+                IsHandler = true,
+                SpellLine = SpellLine.KeyName
+            };
+
+            return eff;
+        }
+    }
 }

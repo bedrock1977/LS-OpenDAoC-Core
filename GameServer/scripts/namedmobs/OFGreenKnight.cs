@@ -40,10 +40,7 @@ namespace DOL.GS
         {
             get { return 100000; }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100; //more str more dmg will he deal, modify ingame for easier adjust
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -56,13 +53,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60161621);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(236); // fellwoods
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
 
@@ -275,7 +265,7 @@ namespace DOL.AI.Brain
 {
     public class OFGreenKnightBrain : EpicBossBrain
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public OFGreenKnightBrain() : base()
         {
             AggroLevel = 100;
@@ -684,10 +674,7 @@ namespace DOL.GS
 {
     public class GKTrees : GameNPC
     {
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MaxHealth
         {
             //trees got low hp, because they spawn preaty often. Modify here to adjust hp
@@ -695,9 +682,7 @@ namespace DOL.GS
         }
         public override short Strength { get => base.Strength; set => base.Strength = 150; }
         public override short Quickness { get => base.Quickness; set => base.Quickness = 80; }
-        public override void DropLoot(GameObject killer) //no loot
-        {
-        }
+        public override bool CanDropLoot => false;
         public override long ExperienceValue => 0;
         public override bool AddToWorld()
         {

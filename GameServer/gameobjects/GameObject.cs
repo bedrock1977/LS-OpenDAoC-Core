@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using DOL.Database;
 using DOL.Events;
 using DOL.GS.Housing;
@@ -21,7 +22,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		#region State/Random/Type
 
@@ -62,12 +63,7 @@ namespace DOL.GS
 		public virtual eObjectState ObjectState
 		{
 			get { return m_ObjectState; }
-			set
-			{
-				if (log.IsDebugEnabled)
-					log.Debug("ObjectState: OID" + ObjectID + " " + Name + " " + m_ObjectState + " => " + value);
-				m_ObjectState = value;
-			}
+			set { m_ObjectState = value; }
 		}
 
 		public abstract eGameObjectType GameObjectType { get; }
@@ -76,7 +72,7 @@ namespace DOL.GS
 
 		#region Position
 
-		protected ushort _heading;
+		private ushort _rawHeading;
 
 		public virtual string OwnerID { get; set; }
 		public virtual eRealm Realm { get; set; }
@@ -87,12 +83,13 @@ namespace DOL.GS
 			set => CurrentRegion = WorldMgr.GetRegion(value);
 		}
 		public Zone CurrentZone => CurrentRegion?.GetZone(X, Y);
-		public SubZoneObject SubZoneObject { get; set; }
+		public SubZoneObject SubZoneObject { get; set; } // Used for subzone management.
 		public virtual ushort Heading
 		{
-			get => _heading;
-			set => _heading = (ushort) (value & 0xFFF);
+			get => (ushort) (_rawHeading & 0xFFF);
+			set => _rawHeading = value;
 		}
+		public ushort RawHeading => _rawHeading; // Includes extra bits that clients send.
 
 		/// <summary>
 		/// Returns the angle towards a target spot in degrees, clockwise
@@ -102,12 +99,12 @@ namespace DOL.GS
 		/// <returns>the angle towards the spot</returns>
 		public float GetAngle( IPoint2D point )
 		{
-			float headingDifference = ( GetHeading( point ) & 0xFFF ) - ( this.Heading & 0xFFF );
+			float headingDifference = GetHeading(point) - Heading;
 
 			if (headingDifference < 0)
 				headingDifference += 4096.0f;
 
-			return (headingDifference * 360.0f / 4096.0f);
+			return headingDifference * 360.0f / 4096.0f;
 		}
 
         /// <summary>
@@ -167,27 +164,19 @@ namespace DOL.GS
 			return base.IsWithinRadius(obj, radius);
 		}
 
-		/// <summary>
-		/// determines wether a target object is front
-		/// in front is defined as north +- viewangle/2
-		/// </summary>
-		/// <param name="target"></param>
-		/// <param name="viewangle"></param>
-		/// <param name="rangeCheck"></param>
-		/// <returns></returns>
-		public virtual bool IsObjectInFront(GameObject target, double viewangle, int alwaysTrueRange = 32)
+		public virtual bool IsObjectInFront(GameObject target, double heading, int alwaysTrueRange = 32)
 		{
 			if (target == null)
 				return false;
-			float angle = this.GetAngle(target);
-			if (angle >= 360 - viewangle / 2 || angle < viewangle / 2)
+
+			float angle = GetAngle(target);
+
+			if (angle >= 360 - heading / 2 || angle < heading / 2)
 				return true;
-			// if target is closer than 32 units it is considered always in view
-			// tested and works this way for normal evade, parry, block (in 1.69)
-			if (alwaysTrueRange > 0)
-                return this.IsWithinRadius(target, alwaysTrueRange);
-			else
-                return false;
+
+			// If the target is closer than 32 units, it is considered always in view.
+			// Tested and works this way for normal evade, parry, block (in 1.69).
+			return IsWithinRadius(target, alwaysTrueRange);
 		}
 
 		/// <summary>
@@ -383,63 +372,27 @@ namespace DOL.GS
         protected int m_health;
         public virtual int Health
         {
-            get { return m_health; }
+            get => m_health;
             set
             {
+                int maxHealth = MaxHealth;
 
-                int maxhealth = MaxHealth;
-                if (value >= maxhealth)
-                {
-                    m_health = maxhealth;
-                }
-                else if (value > 0)
-                {
-                    m_health = value;
-                }
+                if (value >= maxHealth)
+                    m_health = maxHealth;
                 else
-                {
-                    m_health = 0;
-                }
-
-                /*    if (IsAlive && m_health < maxhealth)
-                    {
-                        StartHealthRegeneration();
-                    }*/
+                    m_health = value > 0 ? value : 0;
             }
         }
 
-        /// <summary>
-        /// Gets/sets the maximum amount of health
-        /// </summary>
         protected int m_maxHealth;
         public virtual int MaxHealth
         {
-            get { return m_maxHealth; }
-            set
-            {
-                m_maxHealth = value;
-                //Health = Health; //cut extra hit points if there are any or start regeneration
-            }
+            get => m_maxHealth;
+            set => m_maxHealth = value;
         }
 
-        /// <summary>
-        /// Gets the Health in percent 0..100
-        /// </summary>
-        public virtual byte HealthPercent
-        {
-            get
-            {
-                return (byte)(MaxHealth <= 0 ? 0 : Health * 100 / MaxHealth);
-            }
-        }
-
-        /// <summary>
-        /// Health as it should display in the group window.
-        /// </summary>
-        public virtual byte HealthPercentGroupWindow
-        {
-            get { return HealthPercent; }
-        }
+        public virtual byte HealthPercent => (byte) (MaxHealth <= 0 ? 0 : Math.Clamp(Health * 100 / MaxHealth, 0, 100));
+        public virtual byte HealthPercentGroupWindow => HealthPercent;
 
         public virtual string GetName(int article, bool firstLetterUppercase, string lang, ITranslatableObject obj)
         {
@@ -481,7 +434,7 @@ namespace DOL.GS
 			 */
 
 			if (Name.Length < 1)
-				return "";
+				return string.Empty;
 
 			// actually this should be only for Named mobs (like dragon, legion) but there is no way to find that out
 			if (char.IsUpper(Name[0]) && this is GameLiving) // proper noun
@@ -520,7 +473,7 @@ namespace DOL.GS
         {
             if (!capitalize) return text;
 
-            string result = "";
+            string result = string.Empty;
             if (text == null || text.Length <= 0) return result;
             result = text[0].ToString().ToUpper();
             if (text.Length > 1) result += text.Substring(1, text.Length - 1);
@@ -569,6 +522,8 @@ namespace DOL.GS
 			return list;
 		}
 
+		public virtual bool IsStealthed => false;
+
 		#endregion
 
 		#region IDs/Database
@@ -579,12 +534,12 @@ namespace DOL.GS
 		protected bool m_saveInDB;
 
 		/// <summary>
-		/// The objectID. This is -1 as long as the object is not added to a region!
+		/// The objectID. This is 0 as long as the object is not added to a region
 		/// </summary>
-		protected int m_ObjectID = -1;
+		protected ushort m_ObjectID;
 
 		/// <summary>
-		/// The internalID. This is the unique ID of the object in the DB!
+		/// The internalID. This is the unique ID of the object in the DB
 		/// </summary>
 		protected string m_InternalID;
 
@@ -593,15 +548,10 @@ namespace DOL.GS
 		/// This is done automatically by the Region and should
 		/// not be done manually!!!
 		/// </summary>
-		public int ObjectID
+		public ushort ObjectID
 		{
 			get { return m_ObjectID; }
-			set
-			{
-				if (log.IsDebugEnabled)
-					log.Debug("ObjectID: " + Name + " " + m_ObjectID + " => " + value);
-				m_ObjectID = value;
-			}
+			set { m_ObjectID = value; }
 		}
 
 		/// <summary>
@@ -669,7 +619,7 @@ namespace DOL.GS
 			m_x = x;
 			m_y = y;
 			m_z = z;
-			_heading = heading;
+			Heading = heading;
 			return AddToWorld();
 		}
 
@@ -707,11 +657,8 @@ namespace DOL.GS
 			ObjectState = eObjectState.Active;
 			m_spawnTick = GameLoop.GameLoopTime;
 
-			if (m_isDataQuestsLoaded == false)
-			{
+			if (!_isDataQuestsLoaded)
 				LoadDataQuests();
-				m_isDataQuestsLoaded = true;
-			}
 
 			return true;
 		}
@@ -776,7 +723,7 @@ namespace DOL.GS
 			m_x = x;
 			m_y = y;
 			m_z = z;
-			_heading = heading;
+			Heading = heading;
 			CurrentRegionID = regionID;
 			return AddToWorld();
 		}
@@ -789,6 +736,7 @@ namespace DOL.GS
 			Notify(GameObjectEvent.Delete, this);
 			RemoveFromWorld();
 			ObjectState = eObjectState.Deleted;
+			ClearObjectsInRadiusCache();
 			GameEventMgr.RemoveAllHandlersForObject(this);
 		}
 
@@ -813,105 +761,91 @@ namespace DOL.GS
 		/// <summary>
 		/// A cache of every DBDataQuest object
 		/// </summary>
-		protected static ILookup<ushort, DbDataQuest> m_dataQuestCache = null;
+		protected static Dictionary<ushort, List<DbDataQuest>> _dataQuestCache = null;
 
 		/// <summary>
 		/// List of DataQuests available for this object
 		/// </summary>
-		protected List<DataQuest> m_dataQuests = new List<DataQuest>();
-
-		/// <summary>
-		/// Flag to prevent loading quests on every respawn
-		/// </summary>
-		protected bool m_isDataQuestsLoaded = false;
+		protected List<DataQuest> _dataQuests = new();
+		protected readonly Lock _dataQuestsLock = new();
+		private bool _isDataQuestsLoaded;
 
 		/// <summary>
 		/// Fill the data quest cache with all DBDataQuest objects
 		/// </summary>
 		public static void FillDataQuestCache()
 		{
-			if (m_dataQuestCache != null)
+			Dictionary<ushort, List<DbDataQuest>> newCache = new();
+			int count = 0;
+
+			foreach (DbDataQuest quest in GameServer.Database.SelectAllObjects<DbDataQuest>())
 			{
-				m_dataQuestCache = null;
+				if (!newCache.TryGetValue(quest.StartRegionID, out List<DbDataQuest> list))
+				{
+					list = new();
+					newCache[quest.StartRegionID] = list;
+				}
+
+				list.Add(quest);
+				count++;
 			}
 
-			m_dataQuestCache = GameServer.Database.SelectAllObjects<DbDataQuest>()
-				.ToLookup(k => k.StartRegionID);
+			_dataQuestCache = newCache;
+
+			if (log.IsInfoEnabled)
+				log.Info($"Data quest cache initialized with {count} quests for {newCache.Count} regions");
 		}
 
 		/// <summary>
 		/// Get a preloaded list of all data quests
 		/// </summary>
-		public static IList<DbDataQuest> DataQuestCache
-		{
-			get { return m_dataQuestCache.SelectMany(k => k).ToList(); }
-		}
+		public static List<DbDataQuest> DataQuestCache => _dataQuestCache.SelectMany(k => k.Value).ToList();
 
 		/// <summary>
 		/// Load any data driven quests for this object
 		/// </summary>
-		public void LoadDataQuests(GamePlayer player = null)
+		public void LoadDataQuests(GamePlayer loader = null)
 		{
-			if (m_dataQuestCache == null)
+			_dataQuests.Clear();
+			Dictionary<ushort, List<DbDataQuest>> cacheSnapshot = _dataQuestCache; // Thread-safe read.
+
+			if (cacheSnapshot.TryGetValue(CurrentRegionID, out var regionQuests))
 			{
-				FillDataQuestCache();
+				foreach (DbDataQuest quest in regionQuests)
+					LoadQuest(this, quest, loader);
 			}
 
-			m_dataQuests.Clear();
-			
-			try
+			if (cacheSnapshot.TryGetValue(0, out var globalQuests))
 			{
-				foreach (DbDataQuest quest in m_dataQuestCache[CurrentRegionID])
-				{
-					if (quest.StartName == Name)
-					{
-						DataQuest dq = new DataQuest(quest, this);
-						AddDataQuest(dq);
-	
-	                    // if a player forced the reload report any errors
-	                    if (player != null && dq.LastErrorText != "")
-	                    {
-	                        ChatUtil.SendErrorMessage(player, dq.LastErrorText);
-	                    }
-					}
-				}
-			}
-			catch
-			{
+				foreach (DbDataQuest quest in globalQuests)
+					LoadQuest(this, quest, loader);
 			}
 
-			try
+			_isDataQuestsLoaded = true;
+
+			static void LoadQuest(GameObject obj, DbDataQuest quest, GamePlayer loader)
 			{
-				foreach (DbDataQuest quest in m_dataQuestCache[0])
-				{
-					if (quest.StartName == Name)
-					{
-						DataQuest dq = new DataQuest(quest, this);
-						AddDataQuest(dq);
-	
-	                    // if a player forced the reload report any errors
-	                    if (player != null && dq.LastErrorText != "")
-	                    {
-	                        ChatUtil.SendErrorMessage(player, dq.LastErrorText);
-	                    }
-					}
-				}
-			}
-			catch
-			{
+				if (quest.StartName != obj.Name)
+					return;
+
+				DataQuest dq = new(quest, obj);
+				obj.AddDataQuest(dq);
+
+				if (loader != null && !string.IsNullOrEmpty(dq.LastErrorText))
+					ChatUtil.SendErrorMessage(loader, dq.LastErrorText);
 			}
 		}
 
 		public void AddDataQuest(DataQuest quest)
 		{
-			if (m_dataQuests.Contains(quest) == false)
-				m_dataQuests.Add(quest);
+			if (_dataQuests.Contains(quest) == false)
+				_dataQuests.Add(quest);
 		}
 
 		public void RemoveDataQuest(DataQuest quest)
 		{
-			if (m_dataQuests.Contains(quest))
-				m_dataQuests.Remove(quest);
+			if (_dataQuests.Contains(quest))
+				_dataQuests.Remove(quest);
 		}
 
 		/// <summary>
@@ -919,7 +853,7 @@ namespace DOL.GS
 		/// </summary>
 		public List<DataQuest> DataQuestList
 		{
-			get { return m_dataQuests; }
+			get { return _dataQuests; }
 		}
 
 		#endregion Quests
@@ -1028,62 +962,67 @@ namespace DOL.GS
 
 		#region ObjectsInRadius
 
-		private Dictionary<eGameObjectType, (object, ushort, long)> _objectsInRadiusCache;
+		private readonly Lock _objectInRadiusCachesLock = new();
+		private readonly Dictionary<eGameObjectType, ObjectsInRadiusCache> _objectsInRadiusCaches = new();
 
-		private void ClearObjectsInRadiusCache()
+		public void ClearObjectsInRadiusCache()
 		{
-			_objectsInRadiusCache = new()
+			lock (_objectInRadiusCachesLock)
 			{
-				{ eGameObjectType.PLAYER, (null, 0, 0) },
-				{ eGameObjectType.NPC, (null, 0, 0) },
-				{ eGameObjectType.ITEM, (null, 0, 0) },
-				{ eGameObjectType.DOOR, (null, 0, 0) }
-			};
+				_objectsInRadiusCaches.Clear();
+			}
 		}
 
-		public List<T> GetObjectsInRadius<T>(eGameObjectType objectType, ushort radiusToCheck)  where T : GameObject
+		public List<T> GetObjectsInRadius<T>(eGameObjectType objectType, ushort radiusToCheck) where T : GameObject, IPooledList<T>
 		{
-			List<T> result = new();
-
 			if (CurrentRegion == null)
-				return result;
+				return new(); // Should never happen.
 
-			// Avoids server freeze.
-			if (CurrentRegion.GetZone(X, Y) == null)
+			lock (_objectInRadiusCachesLock)
 			{
-				if (this is GamePlayer player && !player.TempProperties.GetProperty("isbeingbanned", false))
+				if (!_objectsInRadiusCaches.TryGetValue(objectType, out ObjectsInRadiusCache cache))
 				{
-					player.TempProperties.SetProperty("isbeingbanned", true);
-					player.MoveToBind();
+					cache = new(new List<T>(), 0, 0);
+					_objectsInRadiusCaches[objectType] = cache;
 				}
 
-				return result;
-			}
-
-			var cachedValues = _objectsInRadiusCache[objectType];
-
-			if (cachedValues.Item3 >= GameLoop.GameLoopTime)
-			{
-				if (cachedValues.Item2 <= radiusToCheck)
+				if (cache.ExpireTime >= GameLoop.GameLoopTime)
 				{
-					if (cachedValues.Item2 == radiusToCheck)
-						return cachedValues.Item1 as List<T>;
-				}
-				else
-				{
-					foreach (T @object in cachedValues.Item1 as List<T>)
+					// If the radius being checked is smaller than the cached radius, build a filtered list.
+					if (cache.Radius > radiusToCheck)
 					{
-						if (IsWithinRadius(@object, radiusToCheck))
-							result.Add(@object);
+						List<T> filtered = GameLoop.GetListForTick<T>();
+
+						// While this saves a call to `CurrentRegion.GetInRadius<T>`, it could still be a bit slow.
+						// The alternative would be to sort the cached list by distance and use binary search to find the first object within the radius.
+						// But whether that would be faster or not is debatable, and would depend on how often the cache is hit with a smaller radius.
+						for (int i = 0; i < cache.List.Count; i++)
+						{
+							T obj = (T) cache.List[i];
+
+							if (IsWithinRadius(obj, radiusToCheck))
+								filtered.Add(obj);
+						}
+
+						return filtered;
 					}
-
-					return result;
+					else if (cache.Radius == radiusToCheck)
+					{
+						List<T> copy = GameLoop.GetListForTick<T>();
+						copy.AddRange((List<T>) cache.List);
+						return copy;
+					}
 				}
-			}
 
-			result = CurrentRegion.GetInRadius<T>(this, objectType, radiusToCheck);
-			_objectsInRadiusCache[objectType] = (result, radiusToCheck, GameLoop.GameLoopTime + 500);
-			return result;
+				// If the cache is no longer valid or if the radius being checked is bigger than the cached radius, refresh the cache.
+				List<T> cachedList = (List<T>) cache.List;
+				cachedList.Clear();
+				CurrentRegion.GetInRadius(this, objectType, radiusToCheck, cachedList);
+				cache.Set(cachedList, radiusToCheck, GameLoop.GameLoopTime + 500);
+				List<T> result = GameLoop.GetListForTick<T>();
+				result.AddRange(cachedList);
+				return result;
+			}
 		}
 
 		public List<GamePlayer> GetPlayersInRadius(ushort radiusToCheck)
@@ -1104,6 +1043,25 @@ namespace DOL.GS
 		public List<GameDoorBase> GetDoorsInRadius(ushort radiusToCheck)
 		{
 			return GetObjectsInRadius<GameDoorBase>(eGameObjectType.DOOR, radiusToCheck);
+		}
+
+		private class ObjectsInRadiusCache
+		{
+			public IList List { get; set; }
+			public ushort Radius { get; set; }
+			public long ExpireTime { get; set; }
+
+			public ObjectsInRadiusCache(IList list, ushort radius, long expireTime)
+			{
+				Set(list, radius, expireTime);
+			}
+
+			public void Set(IList list, ushort radius, long expireTime)
+			{
+				List = list;
+				Radius = radius;
+				ExpireTime = expireTime;
+			}
 		}
 
 		#endregion
@@ -1228,20 +1186,23 @@ namespace DOL.GS
             set { }
         }
 
+		static GameObject()
+		{
+			FillDataQuestCache();
+		}
+
 		/// <summary>
 		/// Constructs a new empty GameObject
 		/// </summary>
 		public GameObject()
 		{
-			//Objects should NOT be saved back to the DB
-			//as standard! We want our mobs/items etc. at
-			//the same startingspots when we restart!
 			m_saveInDB = false;
-			m_name = "";
+			m_name = string.Empty;
 			m_ObjectState = eObjectState.Inactive;
-			m_boat_ownerid = "";
-			ClearObjectsInRadiusCache();
+			m_boat_ownerid = string.Empty;
+			SubZoneObject = new(this);
 		}
+
 		public static bool PlayerHasItem(GamePlayer player, string str)
 		{
 			DbInventoryItem item = player.Inventory.GetFirstItemByID(str, eInventorySlot.Min_Inv, eInventorySlot.Max_Inv);
@@ -1252,12 +1213,12 @@ namespace DOL.GS
 		private static string m_boat_ownerid;
 		public static string ObjectHasOwner()
 		{
-			if (m_boat_ownerid == "")
-				return "";
+			if (m_boat_ownerid == string.Empty)
+				return string.Empty;
 			else
 				return m_boat_ownerid;
 		}
 
-		public virtual void OnUpdateByPlayerService() { }
+		public virtual void OnUpdateOrCreateForPlayer() { }
 	}
 }

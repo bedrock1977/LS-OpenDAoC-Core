@@ -9,7 +9,6 @@ using DOL.GS.API;
 using DOL.GS.PacketHandler;
 using DOL.GS.PlayerTitles;
 using DOL.GS.Quests;
-using log4net;
 
 namespace DOL.GS.MonthlyQuest.Hibernia
 {
@@ -18,7 +17,7 @@ namespace DOL.GS.MonthlyQuest.Hibernia
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private const string questTitle = "[Monthly] Annihilation of Malevolence";
 		private const int minimumLevel = 45;
@@ -366,10 +365,8 @@ namespace DOL.GS.MonthlyQuest.Hibernia
 			if (m_questPlayer.Inventory.IsSlotsFree(3, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack))
 			{
 				m_questPlayer.ForceGainExperience((m_questPlayer.ExperienceForNextLevel - m_questPlayer.ExperienceForCurrentLevel));
-				m_questPlayer.AddMoney(Money.GetMoney(0, 0, m_questPlayer.Level * 8, 32, Util.Random(50)),
-					"You receive {0} as a reward.");
+				m_questPlayer.AddMoney(Money.GetMoney(0, 0, m_questPlayer.Level * 8, 32, Util.Random(50)), "You receive {0} as a reward.");
 				AtlasROGManager.GenerateReward(m_questPlayer, 3000);
-				AtlasROGManager.GenerateBeetleCarapace(m_questPlayer, 2);
 				AtlasROGManager.GenerateJewel(m_questPlayer, 51);
 				_balorKilled = 0;
 				_myrddraxisKilled = 0;

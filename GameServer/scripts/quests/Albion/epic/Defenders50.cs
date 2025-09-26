@@ -19,7 +19,6 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
-using log4net;
 
 namespace DOL.GS.Quests.Albion
 {
@@ -28,7 +27,7 @@ namespace DOL.GS.Quests.Albion
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		protected const string questTitle = "Feast of the Decadent";
 		protected const int minimumLevel = 50;
@@ -115,7 +114,7 @@ namespace DOL.GS.Quests.Albion
 				if (log.IsWarnEnabled)
 					log.Warn("Could not find " + Lidmann.Name + ", creating it ...");
 
-				Lidmann.GuildName = "";
+				Lidmann.GuildName = string.Empty;
 				Lidmann.Realm = eRealm.Albion;
 				Lidmann.CurrentRegionID = 1;
 				Lidmann.Size = 50;
@@ -150,7 +149,7 @@ namespace DOL.GS.Quests.Albion
 				Uragaig = new CailleachUragaig();
 				Uragaig.Model = 349;
 				Uragaig.Name = "Cailleach Uragaig";
-				Uragaig.GuildName = "";
+				Uragaig.GuildName = string.Empty;
 				Uragaig.Realm = eRealm.None;
 				Uragaig.CurrentRegionID = 1;
 				Uragaig.Size = 55;

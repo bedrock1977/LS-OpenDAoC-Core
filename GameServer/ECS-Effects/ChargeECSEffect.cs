@@ -1,21 +1,15 @@
 ﻿using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DOL.GS
 {
     public class ChargeECSGameEffect : ECSGameAbilityEffect
     {
-        public ChargeECSGameEffect(ECSGameEffectInitParams initParams)
+        public ChargeECSGameEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.Charge;
-            EffectService.RequestStartEffect(this);
         }
 
         protected ushort m_startModel = 0;
@@ -65,7 +59,7 @@ namespace DOL.GS
             ////sets player into combat mode
             //living.LastAttackTickPvP = m_startTick;
             //ArrayList speedSpells = new ArrayList();
-            //lock (living.EffectList)
+            //lock (living.EffectList.Lock)
             //{
             //    foreach (IGameEffect effect in living.EffectList)
             //    {

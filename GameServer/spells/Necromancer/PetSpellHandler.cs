@@ -1,23 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-using System;
 using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
 using DOL.Language;
@@ -28,24 +8,12 @@ namespace DOL.GS.Spells
     /// Handler for spells that are issued by the player, but cast
     /// by his pet.
     /// </summary>
-    [SpellHandler("PetSpell")]
+    [SpellHandler(eSpellType.PetSpell)]
     class PetSpellHandler : SpellHandler
     {
-        /// <summary>
-        /// Calculate casting time based on delve and dexterity stat bonus.
-        /// Necromancers do not benefit from TrialsOfAtlantis Casting Speed Bonuses.
-        /// </summary>
-        /// <returns></returns>
-        public override int CalculateCastingTime()
-        {
-            int ticks = m_spell.CastTime;
-            ticks = (int) (ticks * Math.Max(m_caster.CastingSpeedReductionCap, m_caster.DexterityCastTimeReduction));
+        public override string ShortDescription => "Servant spell:";
 
-            if (ticks < m_caster.MinimumCastingSpeed)
-                ticks = m_caster.MinimumCastingSpeed;
-
-            return ticks;
-        }
+        public PetSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
 
         /// <summary>
         /// Check if we have a pet to start with.
@@ -75,10 +43,6 @@ namespace DOL.GS.Spells
             if (Caster is not GamePlayer playerCaster || playerCaster.ControlledBrain == null)
                 return;
 
-            // No power cost, we'll drain power on the caster when
-            // the pet actually starts casting it.
-            // If there is an ID, create a sub spell for the pet.
-
             int powerCost = PowerCost(playerCaster);
 
             if (powerCost > 0)
@@ -104,7 +68,5 @@ namespace DOL.GS.Spells
                 }
             }
         }
-
-        public PetSpellHandler(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, spell, spellLine) { }
     }
 }

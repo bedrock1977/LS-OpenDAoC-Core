@@ -7,7 +7,6 @@ using DOL.Events;
 using DOL.GS.PacketHandler;
 using DOL.GS.Spells;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.Scripts
 {
@@ -163,12 +162,12 @@ namespace DOL.GS.Scripts
                     spell.Duration = BUFFS_SPELL_DURATION;
                     spell.Value = 20; //Effective buff 58
                     spell.Name = "Armor of the Realm";
-                    spell.Description = "Adds to the recipient's Armor Factor (AF) resulting in better protection againts some forms of attack. It acts in addition to any armor the target is wearing.";
+                    spell.Description = "Adds to the recipient's Armor Factor (AF) resulting in better protection against some forms of attack. It acts in addition to any armor the target is wearing.";
                     spell.Range = WorldMgr.VISIBILITY_DISTANCE;
                     spell.SpellID = 88001;
                     spell.Target = "Realm";
                     spell.Message1 = "Increases target's Base Armor Factor by 20.";
-                    spell.Type = eSpellType.ArmorFactorBuff.ToString();
+                    spell.Type = eSpellType.BaseArmorFactorBuff.ToString();
                     spell.EffectGroup = 1;
 
                     m_baseaf = new Spell(spell, 39);
@@ -194,12 +193,12 @@ namespace DOL.GS.Scripts
                     spell.Duration = BUFFS_SPELL_DURATION;
                     spell.Value = 20; //Effective buff 58
                     spell.Name = "Armor of the Realm";
-                    spell.Description = "Adds to the recipient's Armor Factor (AF) resulting in better protection againts some forms of attack. It acts in addition to any armor the target is wearing.";
+                    spell.Description = "Adds to the recipient's Armor Factor (AF) resulting in better protection against some forms of attack. It acts in addition to any armor the target is wearing.";
                     spell.Range = WorldMgr.VISIBILITY_DISTANCE;
                     spell.SpellID = 89001;
                     spell.Target = "Realm";
                     spell.Message1 = "Increases target's Base Armor Factor by 20.";
-                    spell.Type = eSpellType.ArmorFactorBuff.ToString();
+                    spell.Type = eSpellType.BaseArmorFactorBuff.ToString();
                     spell.EffectGroup = 1;
 
                     m_casterbaseaf = new Spell(spell, 39);
@@ -602,7 +601,7 @@ namespace DOL.GS.Scripts
                     spell.SpellID = 88014;
                     spell.Target = "Realm";
                     spell.Message1 = "Increases target's Armor Factor by 35.";
-                    spell.Type = eSpellType.ArmorFactorBuff.ToString();
+                    spell.Type = eSpellType.SpecArmorFactorBuff.ToString();
                     spell.EffectGroup = 2;
 
                     m_specaf = new Spell(spell, 39);
@@ -633,7 +632,7 @@ namespace DOL.GS.Scripts
                     spell.SpellID = 89014;
                     spell.Target = "Realm";
                     spell.Message1 = "Increases target's Armor Factor by 35.";
-                    spell.Type = eSpellType.ArmorFactorBuff.ToString();
+                    spell.Type = eSpellType.SpecArmorFactorBuff.ToString();
                     spell.EffectGroup = 2;
 
                     m_casterspecaf = new Spell(spell, 39);
@@ -874,7 +873,7 @@ namespace DOL.GS.Scripts
 
             long totalValue = number * template.Price;
 
-            lock (player.Inventory.LockObject)
+            lock (player.Inventory.Lock)
             {
 
                 if (player.GetCurrentMoney() < totalValue)
@@ -1181,7 +1180,7 @@ namespace DOL.GS.Items
 {
     public class BuffTokensEvent
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         [GameServerStartedEvent]
         public static void OnServerStartup(DOLEvent e, object sender, EventArgs args)

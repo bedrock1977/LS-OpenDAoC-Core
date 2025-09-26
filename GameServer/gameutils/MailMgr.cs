@@ -10,7 +10,6 @@ using System.Xml;
 
 using DOL.Config;
 using DOL.GS;
-using log4net;
 
 namespace DOL.Mail
 {
@@ -32,7 +31,7 @@ namespace DOL.Mail
 				//let's not try and compress already compressed files
 				if (file.EndsWith(".gz"))
 					continue;
-				Console.WriteLine(file);
+
 				if (!compressFile(file, file + ".gz"))
 					return false;
 			}
@@ -79,16 +78,17 @@ namespace DOL.Mail
 
 	public class MailMgr
 	{
-		private static string m_username = "";
-		private static string m_password = "";
-		private static string m_emailAddress = "";
-		private static string m_smtpServer = "";
+		private static string m_username = string.Empty;
+		private static string m_password = string.Empty;
+		private static string m_emailAddress = string.Empty;
+		private static string m_smtpServer = string.Empty;
 		private static bool m_enable = false;
 		private static bool m_ssl = false;
 
 		private static int m_mailFrequency = 5 * 60 * 1000;
 
 		private static Queue m_mailQueue = new Queue();
+		private readonly static Lock _lock = new();
 		private static volatile Timer m_timer = null;
 
 		private static SmtpClient SmtpClient = null;
@@ -96,7 +96,7 @@ namespace DOL.Mail
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		public static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		public static readonly Logging.Logger Logger = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public static bool Init()
 		{
@@ -147,7 +147,7 @@ namespace DOL.Mail
 			SmtpClient.EnableSsl = m_ssl;
 			SmtpClient.Credentials = new NetworkCredential(m_username, m_password);
 
-			if (DOL.GS.ServerProperties.Properties.LOG_EMAIL_ADDRESSES != "")
+			if (DOL.GS.ServerProperties.Properties.LOG_EMAIL_ADDRESSES != string.Empty)
 				SendLogs(DOL.GS.ServerProperties.Properties.LOG_EMAIL_ADDRESSES);
 
 			if (m_enable)
@@ -182,7 +182,7 @@ namespace DOL.Mail
 				mail.BodyEncoding = System.Text.Encoding.ASCII;
 				mail.SubjectEncoding = System.Text.Encoding.ASCII;
 
-				lock (m_mailQueue.SyncRoot)
+				lock (_lock)
 				{
 					m_mailQueue.Enqueue(mail);
 				}
@@ -287,7 +287,7 @@ namespace DOL.Mail
 					mail.Subject = "[ Logs ] " + DateTime.Now.ToString();
 					mail.From = new MailAddress(m_emailAddress, GameServer.Instance.Configuration.ServerName);
 					mail.IsBodyHtml = true;
-					mail.Body = ""; // Add the mail core here if needed
+					mail.Body = string.Empty; // Add the mail core here if needed
 					mail.BodyEncoding = System.Text.Encoding.ASCII;
 					mail.SubjectEncoding = System.Text.Encoding.ASCII;
 
@@ -332,7 +332,7 @@ namespace DOL.Mail
 		{
 			MailMessage mailMessage = null;
 			Logger.Info("Starting mail queue");
-			lock (m_mailQueue.SyncRoot)
+			lock (_lock)
 			{
 				while (m_mailQueue.Count > 0)
 				{

@@ -26,14 +26,13 @@ using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 using DOL.GS.SkillHandler;
-using log4net;
 
 namespace DOL.GS.Spells
 {
 	/// <summary>
 	/// 
 	/// </summary>
-	[SpellHandlerAttribute("Powerless")]
+	[SpellHandler(eSpellType.Powerless)]
 	public class PowerlessSpellHandler : PrimerSpellHandler
 	{
 		public override bool CheckBeginCast(GameLiving selectedTarget)

@@ -1,22 +1,3 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
 using System.Threading;
 using DOL.Database;
@@ -34,7 +15,7 @@ namespace DOL.Tests.Integration.Server
 	{
 		public Region m_reg;
 		public int id;
-		public object sync;
+		public Lock sync;
 		public volatile bool finished;
 		public int started;
 
@@ -62,7 +43,7 @@ namespace DOL.Tests.Integration.Server
 			for (int i = 0; i < count; i++)
 			{
 				GameNPC mob = mobs[i] = new GameNPC();
-				ClassicAssert.IsTrue(mob.ObjectID == -1, "mob {0} oid={1}, should be -1", i, mob.ObjectID);
+				ClassicAssert.IsTrue(mob.ObjectID == 0, "mob {0} oid={1}, should be 0", i, mob.ObjectID);
 				ClassicAssert.IsFalse(mob.ObjectState == GameObject.eObjectState.Active, "mob {0} state={1}, should be not Active", i, mob.ObjectState);
 				mob.Name = "test mob " + i;
 				mob.CurrentRegion = m_reg;
@@ -97,7 +78,7 @@ namespace DOL.Tests.Integration.Server
 					GameNPC mob = mobs[i];
 					int oid = mob.ObjectID;
 					ClassicAssert.IsTrue(mob.RemoveFromWorld(), "failed to remove {0}", mob.Name);
-					ClassicAssert.IsTrue(mob.ObjectID == -1, "{0}: oid is not -1 (oid={1})", mob.Name, mob.ObjectID);
+					ClassicAssert.IsTrue(mob.ObjectID == 0, "{0}: oid is not 0 (oid={1})", mob.Name, mob.ObjectID);
 					ClassicAssert.IsFalse(mob.ObjectState == GameObject.eObjectState.Active, "{0} is still active after remove", mob.Name);
 					GameNPC regMob = (GameNPC)m_reg.GetObject((ushort)oid);
 					ClassicAssert.IsNull(regMob, "{0} was removed from the region but oid {1} is still used by {2}", mob.Name, oid, regMob==null?"null":regMob.Name);
@@ -110,14 +91,14 @@ namespace DOL.Tests.Integration.Server
 		{
 			const int count = 10;
 			RegionOidAllocationTest[] roas = new RegionOidAllocationTest[count];
-			object obj = new object();
-			Monitor.Enter(obj);
+			Lock @lock = new();
+			@lock.Enter();
 
 			for (int i = 0; i < count; i++)
 			{
 				RegionOidAllocationTest roaInstance = new RegionOidAllocationTest();
 				roaInstance.id = i;
-				roaInstance.sync = obj;
+				roaInstance.sync = @lock;
 				roaInstance.m_reg = m_reg;
 				roas[i] = roaInstance;
 				Thread.MemoryBarrier();

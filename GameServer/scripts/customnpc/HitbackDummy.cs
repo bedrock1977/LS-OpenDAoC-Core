@@ -1,6 +1,7 @@
 ﻿namespace DOL.GS
 {
-    public class HitbackDummy : GameTrainingDummy {
+    public class HitbackDummy : GameTrainingDummy
+    {
         public override short MaxSpeedBase => 0;
 
         public override ushort Heading
@@ -20,8 +21,8 @@
 
         public override void OnAttackedByEnemy(AttackData ad)
         {
-            if (!attackComponent.AttackState)
-                attackComponent.RequestStartAttack(ad.Attacker);
+            base.OnAttackedByEnemy(ad);
+            attackComponent.RequestStartAttack(ad.Attacker);
         }
 
         public override bool AddToWorld()
@@ -29,7 +30,7 @@
             Name = "Hitback Dummy - Right Click to Reset";
             Model = 34;
             Strength = 10;
-            ScalingFactor = 4;
+            DamageFactor = 0.01;
             FixedSpeed = true;
             return base.AddToWorld();
         }

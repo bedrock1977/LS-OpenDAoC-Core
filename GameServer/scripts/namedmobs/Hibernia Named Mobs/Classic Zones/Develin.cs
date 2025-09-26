@@ -17,13 +17,6 @@ namespace DOL.GS
 			}
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60159930);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			KillsRequireToSpawn = Util.Random(20, 40);
 			//log.Warn("KillsRequireToSpawn = " + KillsRequireToSpawn);
 
@@ -41,7 +34,7 @@ namespace DOL.AI.Brain
 {
 	public class DevelinBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public DevelinBrain() : base()
 		{
 			AggroLevel = 100;
@@ -105,13 +98,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60164991);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			DevelinAddBrain sbrain = new DevelinAddBrain();
 			SetOwnBrain(sbrain);
@@ -133,7 +119,7 @@ namespace DOL.AI.Brain
 {
 	public class DevelinAddBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public DevelinAddBrain() : base()
 		{
 			AggroLevel = 80;

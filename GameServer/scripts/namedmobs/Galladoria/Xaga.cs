@@ -9,8 +9,7 @@ namespace DOL.GS
 {
     public class Xaga : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Xaga()
             : base()
@@ -53,10 +52,7 @@ namespace DOL.GS
                 }
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MaxHealth
         {
             get { return 100000; }
@@ -120,14 +116,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60168075);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
 
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             Faction = FactionMgr.GetFactionByID(96);
@@ -205,8 +193,7 @@ namespace DOL.AI.Brain
 {
     public class XagaBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public XagaBrain()
             : base()
@@ -267,8 +254,7 @@ namespace DOL.GS
 {
     public class Beatha : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Beatha()
             : base()
@@ -326,29 +312,22 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158330);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
+
             Flags = eFlags.FLYING;
             BeathaBrain.path4 = false;
             BeathaBrain.path1 = false;
             BeathaBrain.path2 = false;
             BeathaBrain.path3 = false;
 
-            AbilityBonus[(int)eProperty.Resist_Body] = 60;
-            AbilityBonus[(int)eProperty.Resist_Heat] = -20;//weak to heat
-            AbilityBonus[(int)eProperty.Resist_Cold] = 99;//resi to cold
-            AbilityBonus[(int)eProperty.Resist_Matter] = 60;
-            AbilityBonus[(int)eProperty.Resist_Energy] = 60;
-            AbilityBonus[(int)eProperty.Resist_Spirit] = 60;
-            AbilityBonus[(int)eProperty.Resist_Slash] = 40;
-            AbilityBonus[(int)eProperty.Resist_Crush] = 40;
-            AbilityBonus[(int)eProperty.Resist_Thrust] = 40;
+            AbilityBonus[eProperty.Resist_Body] = 60;
+            AbilityBonus[eProperty.Resist_Heat] = -20;//weak to heat
+            AbilityBonus[eProperty.Resist_Cold] = 99;//resi to cold
+            AbilityBonus[eProperty.Resist_Matter] = 60;
+            AbilityBonus[eProperty.Resist_Energy] = 60;
+            AbilityBonus[eProperty.Resist_Spirit] = 60;
+            AbilityBonus[eProperty.Resist_Slash] = 40;
+            AbilityBonus[eProperty.Resist_Crush] = 40;
+            AbilityBonus[eProperty.Resist_Thrust] = 40;
 
             ++BeathaCount;
             Faction = FactionMgr.GetFactionByID(96);
@@ -363,8 +342,7 @@ namespace DOL.AI.Brain
 {
     public class BeathaBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public BeathaBrain()
             : base()
@@ -380,9 +358,9 @@ namespace DOL.AI.Brain
                 {
                     if (mob_c != null)
                     {
-                        if (mob_c?.Brain is XagaBrain brain1 && mob_c.IsAlive && mob_c.CanJoinFight)
+                        if (mob_c?.Brain is XagaBrain brain1 && mob_c.IsAlive && mob_c.IsAvailableToJoinFight)
                             AddAggroListTo(brain1);
-                        if (mob_c?.Brain is TineBrain brain2 && mob_c.IsAlive && mob_c.CanJoinFight)
+                        if (mob_c?.Brain is TineBrain brain2 && mob_c.IsAlive && mob_c.IsAvailableToJoinFight)
                             AddAggroListTo(brain2);
                     }
                 }
@@ -492,8 +470,7 @@ namespace DOL.GS
 {
     public class Tine : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Tine()
             : base()
@@ -536,14 +513,7 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60167084);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Charisma = npcTemplate.Charisma;
-            Empathy = npcTemplate.Empathy;
+
             Faction = FactionMgr.GetFactionByID(96);
             Flags = eFlags.FLYING;
             TineBrain.path4_2 = false;
@@ -551,15 +521,15 @@ namespace DOL.GS
             TineBrain.path2_2 = false;
             TineBrain.path3_2 = false;
 
-            AbilityBonus[(int)eProperty.Resist_Body] = 60;
-            AbilityBonus[(int)eProperty.Resist_Heat] = 99;//resi to heat
-            AbilityBonus[(int)eProperty.Resist_Cold] = -20;//weak to cold
-            AbilityBonus[(int)eProperty.Resist_Matter] = 60;
-            AbilityBonus[(int)eProperty.Resist_Energy] = 60;
-            AbilityBonus[(int)eProperty.Resist_Spirit] = 60;
-            AbilityBonus[(int)eProperty.Resist_Slash] = 40;
-            AbilityBonus[(int)eProperty.Resist_Crush] = 40;
-            AbilityBonus[(int)eProperty.Resist_Thrust] = 40;
+            AbilityBonus[eProperty.Resist_Body] = 60;
+            AbilityBonus[eProperty.Resist_Heat] = 99;//resi to heat
+            AbilityBonus[eProperty.Resist_Cold] = -20;//weak to cold
+            AbilityBonus[eProperty.Resist_Matter] = 60;
+            AbilityBonus[eProperty.Resist_Energy] = 60;
+            AbilityBonus[eProperty.Resist_Spirit] = 60;
+            AbilityBonus[eProperty.Resist_Slash] = 40;
+            AbilityBonus[eProperty.Resist_Crush] = 40;
+            AbilityBonus[eProperty.Resist_Thrust] = 40;
 
             ++TineCount;
             TineBrain sBrain = new TineBrain();
@@ -573,8 +543,7 @@ namespace DOL.AI.Brain
 {
     public class TineBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public TineBrain()
             : base()
@@ -591,9 +560,9 @@ namespace DOL.AI.Brain
                 {
                     if (mob_c != null)
                     {
-                        if (mob_c?.Brain is XagaBrain brain1 && mob_c.IsAlive && mob_c.CanJoinFight)
+                        if (mob_c?.Brain is XagaBrain brain1 && mob_c.IsAlive && mob_c.IsAvailableToJoinFight)
                             AddAggroListTo(brain1);
-                        if (mob_c?.Brain is BeathaBrain brain2 && mob_c.IsAlive && mob_c.CanJoinFight)
+                        if (mob_c?.Brain is BeathaBrain brain2 && mob_c.IsAlive && mob_c.IsAvailableToJoinFight)
                             AddAggroListTo(brain2);
                     }
                 }

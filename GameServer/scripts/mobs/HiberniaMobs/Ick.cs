@@ -19,13 +19,6 @@ namespace DOL.GS
             }
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60162371);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			IckBrain sbrain = new IckBrain();
 			SetOwnBrain(sbrain);
@@ -64,7 +57,7 @@ namespace DOL.AI.Brain
 {
 	public class IckBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public IckBrain() : base()
 		{
 			AggroLevel = 100;
@@ -75,7 +68,7 @@ namespace DOL.AI.Brain
 		private bool lifeLeechForm = false;
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -174,7 +167,7 @@ namespace DOL.AI.Brain
 {
 	public class IckAddBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public IckAddBrain() : base()
 		{
 			AggroLevel = 100;

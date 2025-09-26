@@ -12,13 +12,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(50014);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			GiantLemerBrain sbrain = new GiantLemerBrain();
 			SetOwnBrain(sbrain);
@@ -43,7 +36,7 @@ namespace DOL.AI.Brain
 {
 	public class GiantLemerBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GiantLemerBrain() : base()
 		{
 			AggroLevel = 100;
@@ -59,7 +52,7 @@ namespace DOL.AI.Brain
 
 		public void BroadcastMessage(string message)
 		{
-			foreach (GamePlayer player in ClientService.GetPlayersOfZone(Body.CurrentZone))
+			foreach (GamePlayer player in ClientService.Instance.GetPlayersOfZone(Body.CurrentZone))
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 		}
 
@@ -171,7 +164,7 @@ namespace DOL.AI.Brain
 {
 	public class GiantLemerAddBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GiantLemerAddBrain() : base()
 		{
 			AggroLevel = 100;

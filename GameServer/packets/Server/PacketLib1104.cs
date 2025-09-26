@@ -1,35 +1,15 @@
-﻿/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using DOL.Database;
-using log4net;
 
 namespace DOL.GS.PacketHandler
 {
 	[PacketLib(1104, GameClient.eClientVersion.Version1104)]
 	public class PacketLib1104 : PacketLib1103
 	{
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Constructs a new PacketLib for Client Version 1.104
@@ -49,7 +29,7 @@ namespace DOL.GS.PacketHandler
 
 			int firstSlot = (byte)realm * 100;
 
-			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.CharacterOverview)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.CharacterOverview)))
 			{
 				pak.FillString(m_gameClient.Account.Name, 24);
 
@@ -147,7 +127,7 @@ namespace DOL.GS.PacketHandler
 							}
 							pak.FillString(locationDescription, 24);
 
-							string classname = "";
+							string classname = string.Empty;
 							if (c.Class != 0)
 								classname = ((eCharacterClass)c.Class).ToString();
 							pak.FillString(classname, 24);
@@ -326,7 +306,7 @@ namespace DOL.GS.PacketHandler
 
 			// This presents the user with Name Not Allowed which may not be correct but at least it prevents duplicate char creation
 			// - tolakram
-			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.DupNameCheckReply)))
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.DupNameCheckReply)))
 			{
 				pak.FillString(name, 30);
 				pak.FillString(m_gameClient.Account.Name, 24);

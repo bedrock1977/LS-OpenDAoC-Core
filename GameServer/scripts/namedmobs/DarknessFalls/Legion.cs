@@ -8,14 +8,12 @@ using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
-using log4net;
 
 namespace DOL.GS.Scripts
 {
     public class Legion : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private static IArea legionArea = null;
 
@@ -100,10 +98,7 @@ namespace DOL.GS.Scripts
             return true;
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
@@ -285,8 +280,6 @@ namespace DOL.GS.Scripts
             foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.KillsLegion++;
-                player.Achieve(AchievementUtils.AchievementNames.Legion_Kills);
-                player.RaiseRealmLoyaltyFloor(1);
                 count++;
             }
             return count;
@@ -304,7 +297,7 @@ namespace DOL.AI.Brain
 {
     public class LegionBrain : EpicBossBrain
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
         
         public LegionBrain()
             : base()
@@ -559,18 +552,21 @@ namespace DOL.AI.Brain
             if (Body.TargetObject != null && HasAggro)
             {
                 GameLiving target = Body.TargetObject as GameLiving;
+
                 if (Util.Chance(100))
                 {
                     if (target.effectListComponent.ContainsEffectForEffectType(eEffect.Bladeturn) && target != null && target.IsAlive)
                     {
-                        var effect = EffectListService.GetEffectOnTarget(target, eEffect.Bladeturn);
+                        ECSGameEffect effect = EffectListService.GetEffectOnTarget(target, eEffect.Bladeturn);
+
                         if (effect != null)
                         {
-                            EffectService.RequestImmediateCancelEffect(effect);//remove bladeturn effect here
+                            effect.Stop();//remove bladeturn effect here
                             bladeturnConsumed++;
-                            if(target is GamePlayer player)
+
+                            if (target is GamePlayer player)
                             {
-                                if (player != null && player.IsAlive)
+                                if (player.IsAlive)
                                     player.Out.SendMessage("Legion consume your bladeturn effect!", eChatType.CT_Say, eChatLoc.CL_ChatWindow);
                             }
                         }
@@ -625,7 +621,6 @@ namespace DOL.AI.Brain
                     add.Y = Body.Y + Util.Random(-150, 150);
                     add.Z = Body.Z;
                     add.CurrentRegionID = 249;
-                    add.IsWorthReward = false;
                     add.Level = (byte)level;
                     add.AddToWorld();
                 }
@@ -636,12 +631,12 @@ namespace DOL.AI.Brain
         List<GamePlayer> randomlyPickedPlayers = new List<GamePlayer>();
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
             }
         }
-        public static List<t> GetRandomElements<t>(IEnumerable<t> list, int elementsCount)//pick X elements from list
+        public static List<T> GetRandomElements<T>(IEnumerable<T> list, int elementsCount)//pick X elements from list
         {
             return list.OrderBy(x => Guid.NewGuid()).Take(elementsCount).ToList();
         }
@@ -725,8 +720,7 @@ namespace DOL.GS
 {
     public class LegionAdd : GameNPC
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public LegionAdd()
             : base()
@@ -738,9 +732,7 @@ namespace DOL.GS
         }
 
         public override int MeleeAttackRange => 450;
-        public override void DropLoot(GameObject killer)
-        {
-        }
+        public override bool CanDropLoot => false;
         public override long ExperienceValue => 0;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -786,8 +778,7 @@ namespace DOL.AI.Brain
 {
     public class LegionAddBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public LegionAddBrain()
             : base()
@@ -813,8 +804,7 @@ namespace DOL.GS
 {
     public class Behemoth : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public Behemoth()
             : base()
@@ -837,10 +827,7 @@ namespace DOL.GS
 
             return base.HasAbility(keyName);
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MaxHealth
         {
             get { return 600000; }
@@ -868,14 +855,6 @@ namespace DOL.GS
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158340);
             LoadTemplate(npcTemplate);
 
-            Strength = npcTemplate.Strength;
-            Constitution = npcTemplate.Constitution;
-            Dexterity = npcTemplate.Dexterity;
-            Quickness = npcTemplate.Quickness;
-            Empathy = npcTemplate.Empathy;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-
             BehemothBrain sBrain = new BehemothBrain();
             RespawnInterval = Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
             SetOwnBrain(sBrain);
@@ -891,8 +870,7 @@ namespace DOL.AI.Brain
 {
     public class BehemothBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public BehemothBrain()
             : base()

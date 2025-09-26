@@ -1,14 +1,12 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using DOL.GS;
 using DOL.GS.ServerProperties;
-using log4net;
 
 namespace DOL.AI.Brain
 {
     public class StandardMobState : FSMState
     {
-        protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected StandardMobBrain _brain = null;
 
@@ -31,10 +29,16 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is entering WAKING_UP");
+            GameNPC body = _brain.Body;
 
-            _brain.Body?.StopMoving();
+            if (body != null)
+            {
+                body.StopMoving();
+                body.StopAttack();
+                body.StopCurrentSpellcast();
+                body.TargetObject = null;
+            }
+
             base.Enter();
         }
 
@@ -54,9 +58,8 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is entering IDLE");
-
+            _brain.Body.StopMoving();
+            _brain.NextThinkTick -= _brain.ThinkInterval; // Don't stay in IDLE for a full think cycle.
             base.Enter();
         }
 
@@ -66,30 +69,18 @@ namespace DOL.AI.Brain
                 return;
 
             if (_brain.HasPatrolPath())
-            {
                 _brain.FSM.SetCurrentState(eFSMStateType.PATROLLING);
-                return;
-            }
-
-            if (!_brain.Body.IsNearSpawn)
-            {
+            else if (!_brain.Body.IsNearSpawn)
                 _brain.FSM.SetCurrentState(eFSMStateType.RETURN_TO_SPAWN);
-                return;
-            }
-
-            if (_brain.CheckProximityAggro())
-            {
+            else if (_brain.CheckProximityAggro())
                 _brain.FSM.SetCurrentState(eFSMStateType.AGGRO);
-                return;
-            }
-
-            if (_brain.Body.CanRoam)
-            {
+            else if (_brain.Body.CanRoam)
                 _brain.FSM.SetCurrentState(eFSMStateType.ROAMING);
-                return;
-            }
 
-            base.Think();
+            if (_brain.FSM.GetCurrentState() != this)
+                _brain.NextThinkTick -= _brain.ThinkInterval; // Don't stay in IDLE for a full think cycle.
+            else
+                base.Think();
         }
     }
 
@@ -105,9 +96,7 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is entering AGGRO");
-
+            _brain.Body.Flags &= ~GameNPC.eFlags.STEALTH;
             _aggroEndTime = GameLoop.GameLoopTime + LEAVE_WHEN_OUT_OF_COMBAT_FOR;
             base.Enter();
         }
@@ -117,24 +106,32 @@ namespace DOL.AI.Brain
             if (_brain.Body.attackComponent.AttackState)
                 _brain.Body.StopAttack();
 
+            // Don't stealth NPCs on death to prevent their corpse from immediately disappearing.
+            if (_brain.Body.WasStealthed && _brain.Body.IsAlive)
+                _brain.Body.Flags |= GameNPC.eFlags.STEALTH;
+
             _brain.Body.TargetObject = null;
             base.Exit();
         }
 
         public override void Think()
         {
-            if (!_brain.HasAggro || (!_brain.Body.InCombatInLast(LEAVE_WHEN_OUT_OF_COMBAT_FOR) && ServiceUtils.ShouldTick(_aggroEndTime)))
+            if (_brain.Body.IsCrowdControlled || EffectListService.GetEffectOnTarget(_brain.Body, eEffect.MovementSpeedDebuff)?.SpellHandler.Spell.Value == 99)
+                _aggroEndTime = GameLoop.GameLoopTime + LEAVE_WHEN_OUT_OF_COMBAT_FOR;
+            else if (!_brain.Body.InCombatInLast(LEAVE_WHEN_OUT_OF_COMBAT_FOR) && GameServiceUtils.ShouldTick(_aggroEndTime))
             {
-                if (!_brain.Body.IsIncapacitated)
-                    _brain.FSM.SetCurrentState(eFSMStateType.IDLE);
-
+                _brain.FSM.SetCurrentState(eFSMStateType.IDLE);
                 return;
             }
 
-            if (_brain.Body.Flags.HasFlag(GameNPC.eFlags.STEALTH))
-                _brain.Body.Flags ^= GameNPC.eFlags.STEALTH;
-
             _brain.AttackMostWanted();
+
+            if (!_brain.HasAggro)
+            {
+                _brain.FSM.SetCurrentState(eFSMStateType.IDLE);
+                return;
+            }
+
             base.Think();
         }
     }
@@ -152,14 +149,6 @@ namespace DOL.AI.Brain
             StateType = eFSMStateType.ROAMING;
         }
 
-        public override void Enter()
-        {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is entering ROAM");
-
-            base.Enter();
-        }
-
         public override void Think()
         {
             if (_brain.CheckProximityAggro())
@@ -173,10 +162,10 @@ namespace DOL.AI.Brain
                 if (!_nextRoamingTickSet)
                 {
                     _nextRoamingTickSet = true;
-                    _nextRoamingTick += Util.Random(MinCooldown, MaxCooldown) * 1000;
+                    _nextRoamingTick = GameLoop.GameLoopTime + Util.Random(MinCooldown, MaxCooldown) * 1000;
                 }
 
-                if (ServiceUtils.ShouldTickAdjust(ref _nextRoamingTick))
+                if (GameServiceUtils.ShouldTick(_nextRoamingTick))
                 {
                     // We're not updating `_nextRoamingTick` here because we want it to be set after the NPC stopped moving.
                     _nextRoamingTickSet = false;
@@ -201,12 +190,6 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is entering RETURN_TO_SPAWN");
-
-            if (_brain.Body.WasStealthed)
-                _brain.Body.Flags |= GameNPC.eFlags.STEALTH;
-
             _brain.ClearAggroList();
             base.Enter();
         }
@@ -236,9 +219,6 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} is PATROLLING");
-
             _brain.Body.MoveOnPath(_brain.Body.MaxSpeed);
             _brain.ClearAggroList();
             base.Enter();
@@ -253,29 +233,6 @@ namespace DOL.AI.Brain
             }
 
             // TODO: NPCs can get stuck here. Find a way to resume patrols.
-            base.Think();
-        }
-    }
-
-    public class StandardMobState_DEAD : StandardMobState
-    {
-        public StandardMobState_DEAD(StandardMobBrain brain) : base(brain)
-        {
-            StateType = eFSMStateType.DEAD;
-        }
-
-        public override void Enter()
-        {
-            if (ECS.Debug.Diagnostics.StateMachineDebugEnabled)
-                Console.WriteLine($"{_brain.Body} has entered DEAD state");
-
-            _brain.ClearAggroList();
-            base.Enter();
-        }
-
-        public override void Think()
-        {
-            _brain.FSM.SetCurrentState(eFSMStateType.IDLE);
             base.Think();
         }
     }

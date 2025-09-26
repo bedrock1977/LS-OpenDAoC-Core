@@ -8,12 +8,12 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Base Handler for the focus shell
 	/// </summary>
-	[SpellHandlerAttribute("FocusShell")]
+	[SpellHandler(eSpellType.FocusShell)]
 	public class FocusShellHandler : SpellHandler
 	{
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new FocusECSEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new FocusECSEffect(i));
 		}
 		
 		private GamePlayer FSTarget = null;
@@ -38,9 +38,7 @@ namespace DOL.GS.Spells
 					Caster.ActivePulseSpells.TryGetValue(m_spell.SpellType, out Spell currentSpell);
 
 					if (currentSpell != null && currentSpell == Spell)
-					{
-						Caster.CancelFocusSpell();
-					}
+						CancelFocusSpells();
 
 					FSTarget = selectedTarget as GamePlayer;
 				}
@@ -97,9 +95,9 @@ namespace DOL.GS.Spells
 		private void CancelSpell(DOLEvent e, object sender, EventArgs args)
 		{
 			//Send the cancel signal, we need to use the faster as the sender!
-			FocusSpellAction(/*null, Caster, null*/);
+			CancelFocusSpells();
 		}
-			
+
 		private void OnAttacked(DOLEvent e, object sender, EventArgs args)
 		{
 			AttackedByEnemyEventArgs attackArgs = args as AttackedByEnemyEventArgs;

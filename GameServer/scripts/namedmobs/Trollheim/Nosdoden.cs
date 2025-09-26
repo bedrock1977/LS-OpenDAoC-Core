@@ -22,7 +22,7 @@ namespace DOL.GS
 		#region Custom methods
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -132,22 +132,12 @@ namespace DOL.GS
 		{
 			get { return 100000; }
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool AddToWorld()
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60164545);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			Faction = FactionMgr.GetFactionByID(150);
 			RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
@@ -369,7 +359,7 @@ namespace DOL.AI.Brain
 {
 	public class NosdodenBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public NosdodenBrain()
 			: base()
 		{
@@ -388,7 +378,7 @@ namespace DOL.AI.Brain
 		private bool SpawnAdds9 = false;
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
 			}
@@ -766,7 +756,7 @@ namespace DOL.AI.Brain
 {
 	public class NosdodenGhostAddBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public NosdodenGhostAddBrain()
 			: base()
 		{
@@ -1182,23 +1172,10 @@ namespace DOL.AI.Brain
                 }
 				if(!CheckProximityAggro())
                 {
-					lock (Body.effectListComponent.EffectsLock)
-					{
-						var effects = Body.effectListComponent.GetAllPulseEffects();
-						for (int i = 0; i < effects.Count; i++)
-						{
-							ECSPulseEffect effect = effects[i];
-							if (effect == null)
-								continue;
+					var effects = Body.effectListComponent.GetPulseEffects();
 
-							if (effect == null)
-								continue;
-							if (effect.SpellHandler.Spell.Pulse == 1)
-							{
-								EffectService.RequestCancelConcEffect(effect);//cancel here all pulse effect
-							}
-						}
-					}
+					for (int i = 0; i < effects.Count; i++)
+						effects[i].Stop();//cancel here all pulse effect
 				}
 				if (HasAggro)
 				{
@@ -2508,10 +2485,7 @@ namespace DOL.GS
 				default: return 20; // dmg reduction for rest resists
 			}
 		}
-        public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
         public override void DealDamage(AttackData ad)
         {
 			if(ad != null)
@@ -2775,9 +2749,7 @@ namespace DOL.GS
 			base.AddToWorld();
 			return true;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 		private Spell m_SpiritChampion_stun;
 		private Spell SpiritChampion_stun
@@ -2812,7 +2784,7 @@ namespace DOL.AI.Brain
 {
 	public class GhostSpiritChampionBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public GhostSpiritChampionBrain()
 		{
@@ -2914,9 +2886,7 @@ namespace DOL.GS
 			}
 			base.Die(killer);
         }
-        public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+        public override bool CanDropLoot => false;
         public override long ExperienceValue => 0;
 	}
 }
@@ -2925,7 +2895,7 @@ namespace DOL.AI.Brain
 {
 	public class GhostSkeletalCommanderBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public GhostSkeletalCommanderBrain()
 		{
@@ -3043,9 +3013,7 @@ namespace DOL.GS
 			base.AddToWorld();
 			return true;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 	}
 }
@@ -3054,7 +3022,7 @@ namespace DOL.AI.Brain
 {
 	public class SkeletalCommanderHealerBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public SkeletalCommanderHealerBrain()
 		{
@@ -3198,9 +3166,7 @@ namespace DOL.GS
 			base.AddToWorld();
 			return true;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 	}
 }
@@ -3209,7 +3175,7 @@ namespace DOL.AI.Brain
 {
 	public class NosdodenSummonedAddsBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public NosdodenSummonedAddsBrain()
 		{

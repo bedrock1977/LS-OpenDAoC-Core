@@ -26,10 +26,7 @@ namespace DOL.GS
 				default: return 30;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -87,7 +84,7 @@ namespace DOL.AI.Brain
 {
 	public class DebenSeGecyndeBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public DebenSeGecyndeBrain() : base()
 		{
 			AggroLevel = 100;
@@ -194,10 +191,7 @@ namespace DOL.GS
 				default: return 30;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 120;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
@@ -244,7 +238,7 @@ namespace DOL.AI.Brain
 {
 	public class DebenFighterBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public DebenFighterBrain() : base()
 		{
 			AggroLevel = 100;
@@ -276,10 +270,7 @@ namespace DOL.GS
 				default: return 30;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 160;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
@@ -330,7 +321,7 @@ namespace DOL.AI.Brain
 {
 	public class DebenMageBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public DebenMageBrain() : base()
 		{
 			AggroLevel = 100;

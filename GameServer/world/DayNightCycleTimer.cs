@@ -1,6 +1,6 @@
 ﻿using System;
-using log4net;
 using System.Reflection;
+using System.Threading;
 
 namespace DOL.GS
 {
@@ -8,7 +8,7 @@ namespace DOL.GS
     // This timer updates `CurrentTime` every `UPDATE_INTERVAL` and resyncs clients every `CLIENT_RESYNC_INTERVAL`.
     public class DayNightCycleTimer(GameObject owner) : ECSGameTimerWrapperBase(owner)
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         private const uint DAY = 24 * 60 * 60 * 1000; // This shouldn't be changed.
         private const uint HALF_OF_A_DAY = DAY / 2;
@@ -19,7 +19,7 @@ namespace DOL.GS
         private uint _nightIncrement;
         private long _dayStartTime;
         private long _nextClientResync;
-        private object _lock = new();
+        private readonly Lock _lock = new();
         public uint CurrentGameTime { get; private set; }
         public uint DayIncrement { get; private set; }
 
@@ -35,9 +35,9 @@ namespace DOL.GS
                 DayIncrement = Math.Max(1, dayIncrement); // Clients do odd things if we try to stop time.
                 _updateInterval = (int) (30000.0 / DayIncrement); // Aim for two updates per in-game minute to avoid breaking scripts expecting minute-accurate timings.
 
-                if (_updateInterval < GameLoop.TickRate && log.IsWarnEnabled)
+                if (_updateInterval < GameLoop.TickDuration && log.IsWarnEnabled)
                 {
-                    log.Warn($"The update interval ({_updateInterval}) had to be set to a value lower than the server tick rate ({GameLoop.TickRate}) when trying to ensure two updates happen per in-game minute. " +
+                    log.Warn($"The update interval ({_updateInterval}) had to be set to a value lower than the server tick duration ({GameLoop.TickDuration}) when trying to ensure two updates happen per in-game minute. " +
                              $"This may break scripts expecting minute-accurate timings. Consider using a lower day increment ({dayIncrement})\".");
                 }
 
@@ -54,10 +54,10 @@ namespace DOL.GS
             {
                 UpdateGameTime();
 
-                if (ServiceUtils.ShouldTickAdjust(ref _nextClientResync))
+                if (GameServiceUtils.ShouldTick(_nextClientResync))
                 {
                     ResyncClients();
-                    _nextClientResync += CLIENT_RESYNC_INTERVAL;
+                    _nextClientResync = GameLoop.GameLoopTime + CLIENT_RESYNC_INTERVAL;
                 }
             }
 
@@ -102,7 +102,7 @@ namespace DOL.GS
 
             void ResyncClients()
             {
-                foreach (GamePlayer player in ClientService.GetPlayers<object>(Predicate))
+                foreach (GamePlayer player in ClientService.Instance.GetPlayers<object>(Predicate))
                     player.Out.SendTime();
 
                 static bool Predicate(GamePlayer player, object unused)

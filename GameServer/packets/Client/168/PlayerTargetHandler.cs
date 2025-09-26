@@ -22,7 +22,7 @@ namespace DOL.GS.PacketHandler.Client.v168
         {
             GameObject target = actionSource.CurrentRegion.GetObject(newTargetId);
 
-            if (newTargetId > 0 && !actionSource.IsWithinRadius(target, WorldMgr.OBJ_UPDATE_DISTANCE))
+            if (newTargetId > 0 && !actionSource.IsWithinRadius(target, WorldMgr.VISIBILITY_DISTANCE))
             {
                 actionSource.Out.SendObjectDelete(newTargetId);
                 target = null;
@@ -47,9 +47,8 @@ namespace DOL.GS.PacketHandler.Client.v168
                 if (target is not GamePlayer)
                     ClientService.UpdateObjectForPlayer(actionSource, target);
 
-                // Unstealth if anything is targeted while we're in combat mode.
-                // A timer is used to allow any potential opener to be executed during this tick.
-                if (actionSource.IsAttacking && actionSource.IsStealthed)
+                // Unstealth if anything is targeted while we're in combat mode. Exclude archers as they should be allowed to change target without losing stealth.
+                if (actionSource.ActiveWeaponSlot is not eActiveWeaponSlot.Distance && actionSource.IsAttacking && actionSource.IsStealthed)
                     actionSource.Stealth(false);
             }
 

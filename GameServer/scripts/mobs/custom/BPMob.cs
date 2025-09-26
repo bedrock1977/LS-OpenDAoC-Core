@@ -46,7 +46,7 @@ public class BPMob : GameNPC
             rewardbp = (basebp + bonus);
         }
 
-        int playersonline = ClientService.GetNonGmPlayers().Count;
+        int playersonline = ClientService.Instance.GetNonGmPlayers().Count;
 
         if (player != null && IsWorthReward)
         {
@@ -128,7 +128,7 @@ public class BPMob : GameNPC
 
             GamePlayer player3 = killer as GamePlayer;
 
-            Faction.KillMember(player3);
+            Faction.OnMemberKilled(player3);
 
         }
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using DOL.Database;
 using DOL.Events;
-using log4net;
 
 namespace DOL.GS.GameEvents
 {
@@ -16,7 +15,7 @@ namespace DOL.GS.GameEvents
 		/// <summary>
 		/// Declare a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Cached DB Startup Location
@@ -89,11 +88,11 @@ namespace DOL.GS.GameEvents
                     dbStartupLocation = location;
 					break;
 				}
-				
+
 				if (dbStartupLocation == null)
 				{
 					log.WarnFormat("startup location not found: account={0}; char name={1}; region={2}; realm={3}; class={4} ({5}); race={6} ({7}); version={8}",
-					             ch.AccountName, ch.Name, ch.Region, ch.Realm, ch.Class, (eCharacterClass) ch.Class, ch.Race, (eRace)ch.Race, chArgs.GameClient.Version);
+						ch.AccountName, ch.Name, ch.Region, ch.Realm, ch.Class, (eCharacterClass) ch.Class, ch.Race, (eRace)ch.Race, chArgs.GameClient.Version);
 				}
 				else
 				{
@@ -103,15 +102,13 @@ namespace DOL.GS.GameEvents
 					ch.Region = dbStartupLocation.Region;
 					ch.Direction = dbStartupLocation.Heading;
 					BindCharacter(ch);
-					Console.WriteLine("startup location: account={0}; char name={1}; region={2}; realm={3}; class={4} ({5}); race={6} ({7}); version={8}",
-						ch.AccountName, ch.Name, ch.Region, ch.Realm, ch.Class, (eCharacterClass) ch.Class, ch.Race, (eRace)ch.Race, chArgs.GameClient.Version); 
-				}				
+				}
 			}
 			catch (Exception e)
 			{
 				if (log.IsErrorEnabled)
 					log.ErrorFormat("StartupLocations script: error changing location. account={0}; char name={1}; region={2}; realm={3}; class={4} ({5}); race={6} ({7}); version={8}; {9}",
-					                ch.AccountName, ch.Name, ch.Region, ch.Realm, ch.Class, (eCharacterClass) ch.Class, ch.Race, (eRace)ch.Race, chArgs.GameClient.Version, e);
+						ch.AccountName, ch.Name, ch.Region, ch.Realm, ch.Class, (eCharacterClass) ch.Class, ch.Race, (eRace)ch.Race, chArgs.GameClient.Version, e);
 			}
 		}
 

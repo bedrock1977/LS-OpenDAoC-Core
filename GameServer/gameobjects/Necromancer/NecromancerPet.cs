@@ -5,10 +5,7 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
-using DOL.GS.PropertyCalc;
-using DOL.GS.RealmAbilities;
 using DOL.GS.ServerProperties;
-using DOL.Language;
 
 namespace DOL.GS
 {
@@ -36,12 +33,6 @@ namespace DOL.GS
 						Taunt();
 				}
 			}
-		}
-
-		public override long DamageRvRMemory
-		{
-			get => m_damageRvRMemory;
-			set => m_damageRvRMemory = value;
 		}
 
 		/// <summary>
@@ -98,61 +89,14 @@ namespace DOL.GS
 
 		#region Stats
 
-		/// <summary>
-		/// Get modified bonuses for the pet; some bonuses come from the shade, some come from the pet.
-		/// </summary>
-		public override int GetModified(eProperty property)
-		{
-			if (Brain == null || (Brain as IControlledBrain) == null)
-				return base.GetModified(property);
-
-			switch (property)
-			{
-				case eProperty.MaxHealth:
-				{
-					int hitsCap = MaxHealthCalculator.GetItemBonusCap(Owner) + MaxHealthCalculator.GetItemBonusCapIncrease(Owner);
-					int conFromRa = 0;
-					int conFromItems = 0;
-					int maxHealthFromItems = 0;
-					double toughnessMod = 1.0;
-					
-					if ((Brain as IControlledBrain).GetLivingOwner() is GamePlayer playerOwner)
-					{
-						conFromRa = AtlasRAHelpers.GetStatEnhancerAmountForLevel(AtlasRAHelpers.GetAugConLevel(playerOwner));
-						conFromItems = playerOwner.GetModifiedFromItems(eProperty.Constitution);
-						maxHealthFromItems = playerOwner.ItemBonus[(int) eProperty.MaxHealth];
-						AtlasOF_ToughnessAbility toughness = playerOwner.GetAbility<AtlasOF_ToughnessAbility>();
-
-						if (toughness != null)
-							toughnessMod = 1 + toughness.GetAmountForLevel(toughness.Level) * 0.01;
-					}
-
-					int conBonus = (int) ((conFromItems + conFromRa) * 3.1);
-					int hitsBonus = 30 * Level + Math.Min(maxHealthFromItems, hitsCap);
-					int totalBonus = conBonus + hitsBonus;
-					return (int) (totalBonus * toughnessMod);
-				}
-				default:
-					return base.GetModified(property);
-			}
-		}
-
 		public override int Health
 		{
 			get => base.Health;
 			set
 			{
-				value = Math.Min(value, MaxHealth);
-				value = Math.Max(value, 0);
-
-				if (Health == value)
-				{
-					base.Health = value; // Needed to start regeneration.
-					return;
-				}
-
 				int oldPercent = HealthPercent;
 				base.Health = value;
+
 				if (oldPercent != HealthPercent)
 				{
 					// Update pet health in group window.
@@ -165,11 +109,14 @@ namespace DOL.GS
 		/// <summary>
 		/// Set stats according to necro pet server properties.
 		/// </summary>
-		public override void AutoSetStats(DbMob dbMob = null)
+		public override void SetStats(DbMob dbMob = null)
 		{
+			// Summoned pets use their template differently from standard NPCs.
+			// Stats are always automatically set based on the server properties and their level, then scaled using their template.
+
 			int levelMinusOne = Level - 1;
 
-			if (Name.ToUpper() == "GREATER NECROSERVANT")
+			if (Name.Equals("GREATER NECROSERVANT", StringComparison.OrdinalIgnoreCase))
 			{
 				Strength = Properties.NECRO_GREATER_PET_STR_BASE;
 				Constitution = Properties.NECRO_GREATER_PET_CON_BASE;
@@ -179,11 +126,11 @@ namespace DOL.GS
 
 				if (Level > 1)
 				{
-					Strength += (short) Math.Round(levelMinusOne * Properties.NECRO_GREATER_PET_STR_MULTIPLIER);
-					Constitution += (short) Math.Round(levelMinusOne * Properties.NECRO_GREATER_PET_CON_MULTIPLIER);
-					Dexterity += (short) Math.Round(levelMinusOne * Properties.NECRO_GREATER_PET_DEX_MULTIPLIER);
-					Quickness += (short) Math.Round(levelMinusOne * Properties.NECRO_GREATER_PET_QUI_MULTIPLIER);
-					Intelligence += (short) Math.Round(levelMinusOne * Properties.NECRO_GREATER_PET_INT_MULTIPLIER);
+					Strength += (short) Math.Max(1, levelMinusOne * Properties.NECRO_GREATER_PET_STR_MULTIPLIER);
+					Constitution += (short) Math.Max(1, levelMinusOne * Properties.NECRO_GREATER_PET_CON_MULTIPLIER);
+					Dexterity += (short) Math.Max(1, levelMinusOne * Properties.NECRO_GREATER_PET_DEX_MULTIPLIER);
+					Quickness += (short) Math.Max(1, levelMinusOne * Properties.NECRO_GREATER_PET_QUI_MULTIPLIER);
+					Intelligence += (short) Math.Max(1, levelMinusOne * Properties.NECRO_GREATER_PET_INT_MULTIPLIER);
 				}
 			}
 			else
@@ -196,11 +143,11 @@ namespace DOL.GS
 
 				if (Level > 1)
 				{
-					Strength += (short) Math.Round(levelMinusOne * Properties.NECRO_PET_STR_MULTIPLIER);
-					Constitution += (short) Math.Round(levelMinusOne * Properties.NECRO_PET_CON_MULTIPLIER);
-					Dexterity += (short) Math.Round(levelMinusOne * Properties.NECRO_PET_DEX_MULTIPLIER);
-					Quickness += (short) Math.Round(levelMinusOne * Properties.NECRO_PET_QUI_MULTIPLIER);
-					Intelligence += (short) Math.Round(levelMinusOne * Properties.NECRO_PET_INT_MULTIPLIER);
+					Strength += (short) Math.Max(1, levelMinusOne * Properties.NECRO_PET_STR_MULTIPLIER);
+					Constitution += (short) Math.Max(1, levelMinusOne * Properties.NECRO_PET_CON_MULTIPLIER);
+					Dexterity += (short) Math.Max(1, levelMinusOne * Properties.NECRO_PET_DEX_MULTIPLIER);
+					Quickness += (short) Math.Max(1, levelMinusOne * Properties.NECRO_PET_QUI_MULTIPLIER);
+					Intelligence += (short) Math.Max(1, levelMinusOne * Properties.NECRO_PET_INT_MULTIPLIER);
 				}
 			}
 
@@ -208,23 +155,29 @@ namespace DOL.GS
 			Piety = 30;
 			Charisma = 30;
 
-			// Stats are scaled using the current template.
 			if (NPCTemplate != null)
 			{
 				if (NPCTemplate.Strength > 0)
-					Strength = (short) Math.Round(Strength * (NPCTemplate.Strength / 100.0));
+					Strength = (short) Math.Max(1, Strength * (NPCTemplate.Strength / 100.0));
+
 				if (NPCTemplate.Constitution > 0)
-					Constitution = (short) Math.Round(Constitution * (NPCTemplate.Constitution / 100.0));
-				if (NPCTemplate.Quickness > 0)
-					Quickness = (short) Math.Round(Quickness * (NPCTemplate.Quickness / 100.0));
+					Constitution = (short) Math.Max(1, Constitution * (NPCTemplate.Constitution / 100.0));
+
 				if (NPCTemplate.Dexterity > 0)
-					Dexterity = (short) Math.Round(Dexterity * (NPCTemplate.Dexterity / 100.0));
+					Dexterity = (short) Math.Max(1, Dexterity * (NPCTemplate.Dexterity / 100.0));
+
+				if (NPCTemplate.Quickness > 0)
+					Quickness = (short) Math.Max(1, Quickness * (NPCTemplate.Quickness / 100.0));
+
 				if (NPCTemplate.Intelligence > 0)
-					Intelligence = (short) Math.Round(Intelligence * (NPCTemplate.Intelligence / 100.0));
+					Intelligence = (short) Math.Max(1, Intelligence * (NPCTemplate.Intelligence / 100.0));
+
 				if (NPCTemplate.Empathy > 0)
 					Empathy = NPCTemplate.Empathy;
+
 				if (NPCTemplate.Piety > 0)
 					Piety = NPCTemplate.Piety;
+
 				if (NPCTemplate.Charisma > 0)
 					Charisma = NPCTemplate.Charisma;
 			}
@@ -233,6 +186,9 @@ namespace DOL.GS
 		#endregion
 
 		#region Melee
+
+		// Necromancer pets queue spells and cast them when their current action ends instead of using the self-interrupt logic.
+		public override int SelfInterruptDurationOnMeleeAttack => 0;
 
 		private void ToggleTauntMode()
 		{
@@ -259,42 +215,6 @@ namespace DOL.GS
 		/// Pet-only insta spells.
 		/// </summary>
 		public static string PetInstaSpellLine => "Necro Pet Insta Spells";
-
-		/// <summary>
-		/// Called when necro pet is hit to see if spellcasting is interrupted.
-		/// </summary>
-		/// <param name="ad">information about the attack</param>
-		public override void OnAttackedByEnemy(AttackData ad)
-		{
-			if (ad.AttackType == AttackData.eAttackType.Spell && ad.Damage > 0)
-			{
-				GamePlayer player = Owner as GamePlayer;
-				string modmessage = "";
-
-				if (ad.Modifier > 0)
-					modmessage = " (+" + ad.Modifier + ")";
-				else if (ad.Modifier < 0)
-					modmessage = " (" + ad.Modifier + ")";
-
-				player.Out.SendMessage(string.Format(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameLiving.AttackData.HitsForDamage"), ad.Attacker.GetName(0, true), ad.Target.Name, ad.Damage, modmessage), eChatType.CT_Damaged, eChatLoc.CL_SystemWindow);
-
-				if (ad.CriticalDamage > 0)
-					player.Out.SendMessage(string.Format(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameLiving.AttackData.CriticallyHitsForDamage"), ad.Attacker.GetName(0, true), ad.Target.Name, ad.CriticalDamage), eChatType.CT_Damaged, eChatLoc.CL_SystemWindow);
-			}
-
-			base.OnAttackedByEnemy(ad);
-		}
-
-		public override void ModifyAttack(AttackData attackData)
-		{
-			base.ModifyAttack(attackData);
-
-			if ((Owner as GamePlayer).Client.Account.PrivLevel > (int)ePrivLevel.Player)
-			{
-				attackData.Damage = 0;
-				attackData.CriticalDamage = 0;
-			}
-		}
 
 		private void Empower()
 		{
@@ -378,6 +298,14 @@ namespace DOL.GS
 		{
 			base.OnCastSpellLosCheckFail(target);
 			Notify(GameLivingEvent.CastFailed, this, new CastFailedEventArgs(null, CastFailedEventArgs.Reasons.TargetNotInView));
+		}
+
+		// Necromancer pets shouldn't delay their instant spells.
+		public override bool IsInstantHarmfulSpellCastingLocked => false;
+
+		public override void ApplyInstantHarmfulSpellDelay()
+		{
+			return;
 		}
 
 		#endregion
@@ -546,16 +474,16 @@ namespace DOL.GS
 				}
 				else
 				{
-					if ((item = Inventory.GetItem(eInventorySlot.RightHandWeapon)) != null)
+					if (ActiveWeapon != null)
 					{
-						item.DPS_AF = (int)(Level * 3.3);
-						item.SPD_ABS = 37;
+						ActiveWeapon.DPS_AF = (int)(Level * 3.3);
+						ActiveWeapon.SPD_ABS = 37;
 					}
 
-					if ((item = Inventory.GetItem(eInventorySlot.LeftHandWeapon)) != null)
+					if (ActiveLeftWeapon != null)
 					{
-						item.DPS_AF = (int)(Level * 3.3);
-						item.SPD_ABS = 37;
+						ActiveLeftWeapon.DPS_AF = (int)(Level * 3.3);
+						ActiveLeftWeapon.SPD_ABS = 37;
 					}
 
 					SwitchWeapon(eActiveWeaponSlot.Standard);

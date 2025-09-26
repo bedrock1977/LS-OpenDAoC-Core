@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using DOL.AI.Brain;
 using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
+using DOL.Logging;
 
 namespace DOL.GS.Spells
 {
@@ -22,7 +22,9 @@ namespace DOL.GS.Spells
 	/// </summary>
 	public abstract class SummonSpellHandler : SpellHandler
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+
+		public override string ShortDescription => $"Summon a pet to serve the caster, with a maximum level of {Math.Abs(Spell.Damage)}% of the caster's level (up to {Math.Min((int) (50 * Math.Abs(Spell.Damage) / 100), Spell.Value)}).";
 
 		protected GameSummonedPet m_pet = null;
 
@@ -39,9 +41,9 @@ namespace DOL.GS.Spells
 
 		public SummonSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new PetECSGameEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new PetECSGameEffect(i));
 		}
 
 		/// <summary>
@@ -89,13 +91,10 @@ namespace DOL.GS.Spells
 
 		protected virtual void SetBrainToOwner(IControlledBrain brain)
 		{
-			Caster.SetControlledBrain(brain);
+			Caster.AddControlledBrain(brain);
 		}
 
-		protected virtual void AddHandlers()
-		{
-			GameEventMgr.AddHandler(m_pet, GameLivingEvent.PetReleased, new DOLEventHandler(OnNpcReleaseCommand));
-		}
+		protected virtual void AddHandlers() { }
 
 		#endregion
 
@@ -143,28 +142,31 @@ namespace DOL.GS.Spells
 			m_pet.Heading = heading;
 			m_pet.CurrentRegion = region;
 			m_pet.Realm = Caster.Realm;
+			m_pet.SetPetLevel();
 
 			if (m_isSilent)
 				m_pet.IsSilent = true;
 
 			m_pet.AddToWorld();
-			
-			// Check for buffs
-			if (brain is ControlledMobBrain)
-				(brain as ControlledMobBrain).CheckSpells(StandardMobBrain.eCheckSpellType.Defensive);
-
 			AddHandlers();
-			SetBrainToOwner(brain);
 
-			m_pet.SetPetLevel();
 			m_pet.Health = m_pet.MaxHealth;
 			m_pet.Spells = template.Spells; // Have to sort spells again now that the pet level has been assigned.
 
-			CreateECSEffect(new ECSGameEffectInitParams(m_pet, CalculateEffectDuration(target, Effectiveness), Effectiveness, this));
-			Caster.OnPetSummoned(m_pet);
+			SetBrainToOwner(brain);
+			CreateECSEffect(new(m_pet, CalculateEffectDuration(target), CasterEffectiveness, this));
 		}
 
-		public override int CalculateSpellResistChance(GameLiving target)
+		public virtual void OnPetReleased()
+		{
+			if (Pet.Brain is not IControlledBrain petBrain)
+				return;
+
+			GameLiving petOwner = petBrain.Owner;
+			petOwner.RemoveControlledBrain(petBrain);
+		}
+
+		public override double CalculateSpellResistChance(GameLiving target)
 		{
 			return 0;
 		}
@@ -193,34 +195,6 @@ namespace DOL.GS.Spells
 		}
 
 		/// <summary>
-		/// Called when owner release NPC
-		/// </summary>
-		/// <param name="e"></param>
-		/// <param name="sender"></param>
-		/// <param name="arguments"></param>
-		protected virtual void OnNpcReleaseCommand(DOLEvent e, object sender, EventArgs arguments)
-		{
-			if (sender is not GameNPC pet || pet.Brain is not IControlledBrain petBrain)
-				return;
-
-			GameLiving petOwner = petBrain.Owner;
-
-			if (petOwner.ControlledBrain == petBrain)
-				petOwner.SetControlledBrain(null);
-
-			foreach (var ability in pet.effectListComponent.GetAbilityEffects())
-			{
-				if (ability is InterceptECSGameEffect interceptEffect && interceptEffect.Source == pet && interceptEffect.Target == petOwner)
-					EffectService.RequestCancelEffect(interceptEffect);
-			}
-
-			GameEventMgr.RemoveHandler(pet, GameLivingEvent.PetReleased, new DOLEventHandler(OnNpcReleaseCommand));
-			
-			if (pet.effectListComponent.Effects.TryGetValue(EffectService.GetEffectFromSpell(Spell), out var petEffect))
-				EffectService.RequestImmediateCancelEffect(petEffect.FirstOrDefault());
-		}
-
-		/// <summary>
 		/// Delve Info
 		/// </summary>
 		public override IList<string> DelveInfo
@@ -230,9 +204,9 @@ namespace DOL.GS.Spells
 				var list = new List<string>();
 
 				// TODO: Fix no spellType
-				//list.Add("Function: " + (Spell.SpellType == "" ? "(not implemented)" : Spell.SpellType));
+				//list.Add("Function: " + (Spell.SpellType == string.Empty ? "(not implemented)" : Spell.SpellType));
 				list.Add(" "); //empty line
-				list.Add(Spell.Description);
+				list.Add(ShortDescription);
 				list.Add(" "); //empty line
 				if (Spell.InstrumentRequirement != 0)
 					list.Add("Instrument require: " + GlobalConstants.InstrumentTypeToName(Spell.InstrumentRequirement));

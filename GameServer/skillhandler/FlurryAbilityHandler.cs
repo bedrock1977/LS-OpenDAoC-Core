@@ -19,7 +19,6 @@
 using System.Reflection;
 using DOL.GS.PacketHandler;
 using DOL.GS.Effects;
-using log4net;
 using DOL.GS.Keeps;
 using DOL.GS.Spells;
 using DOL.Language;
@@ -35,7 +34,7 @@ namespace DOL.GS.SkillHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// The reuse time in milliseconds for flurry ability
@@ -137,7 +136,7 @@ namespace DOL.GS.SkillHandler
 			int primaryResistModifier = target.GetResist(eDamageType.Slash);
 
 			//Using the resist BuffBonusCategory2 - its unused in ResistCalculator
-			int secondaryResistModifier = target.SpecBuffBonusCategory[(int)eProperty.Resist_Slash];
+			int secondaryResistModifier = target.SpecBuffBonusCategory[eProperty.Resist_Slash];
 
 			int resistModifier = 0;
 			//primary resists

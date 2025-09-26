@@ -3,7 +3,7 @@ using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("HereticDamageOverTime")]
+	[SpellHandler(eSpellType.HereticDamageOverTime)]
 	public class HereticDoTSpellHandler : HereticPiercingMagic
 	{
 
@@ -13,61 +13,33 @@ namespace DOL.GS.Spells
 			base.FinishSpellCast(target);
 		}
 
-		
-		public override double GetLevelModFactor()
+		public override double CalculateDamageVarianceOffsetFromLevelDifference(GameLiving caster, GameLiving target)
 		{
 			return 0;
 		}
 
-
-		public override bool IsOverwritable(ECSGameSpellEffect compare)
+		public override bool HasConflictingEffectWith(ISpellHandler compare)
 		{
-			if (Spell.EffectGroup != 0 || compare.SpellHandler.Spell.EffectGroup != 0)
-				return Spell.EffectGroup == compare.SpellHandler.Spell.EffectGroup;
-			if (base.IsOverwritable(compare) == false) return false;
-			if (compare.SpellHandler.Spell.Duration != Spell.Duration) return false;
+			if (Spell.EffectGroup != 0 || compare.Spell.EffectGroup != 0)
+				return Spell.EffectGroup == compare.Spell.EffectGroup;
+			if (base.HasConflictingEffectWith(compare) == false) return false;
+			if (compare.Spell.Duration != Spell.Duration) return false;
 			return true;
 		}
-
 
 		public override AttackData CalculateDamageToTarget(GameLiving target)
 		{
 			AttackData ad = base.CalculateDamageToTarget(target);
 			ad.CriticalDamage = 0;
+			ad.CriticalChance = 0;
 			return ad;
 		}
 
-
-		public override void CalculateDamageVariance(GameLiving target, out double min, out double max)
-		{
-			int speclevel = 1;
-			if (m_caster is GamePlayer) 
-			{
-				speclevel = ((GamePlayer)m_caster).GetModifiedSpecLevel(m_spellLine.Spec);
-			}
-			min = 1;
-			max = 1;
-
-			if (target.Level>0) {
-				min = 0.5 + (speclevel-1) / (double)target.Level * 0.5;
-			}
-
-			if (speclevel-1 > target.Level) {
-				double overspecBonus = (speclevel-1 - target.Level) * 0.005;
-				min += overspecBonus;
-				max += overspecBonus;
-			}
-
-			if (min > max) min = max;
-			if (min < 0) min = 0;
-		}
-		
 		public override void ApplyEffectOnTarget(GameLiving target)
 		{
 			base.ApplyEffectOnTarget(target);
 			target.StartInterruptTimer(target.SpellInterruptDuration, AttackData.eAttackType.Spell, Caster);
 		}
-
 
 		protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
 		{
@@ -76,20 +48,26 @@ namespace DOL.GS.Spells
 			return new GameSpellEffect(this, m_spell.Duration, m_spellLine.IsBaseLine ? 3000 : 2000, 1);
 		}
 
-		
 		public override void OnEffectStart(GameSpellEffect effect)
-		{			
+		{
 			SendEffectAnimation(effect.Owner, 0, false, 1);
 		}
 
-		
 		public override void OnEffectPulse(GameSpellEffect effect)
 		{
-            if ( !m_caster.IsAlive || !effect.Owner.IsAlive || m_caster.Mana < Spell.PulsePower || !m_caster.IsWithinRadius( effect.Owner, (int)( Spell.Range * m_caster.GetModified( eProperty.SpellRange ) * 0.01 ) ) || m_caster.IsMezzed || m_caster.IsStunned || ( m_caster.TargetObject is GameLiving ? effect.Owner != m_caster.TargetObject as GameLiving : true ) )
+			if ( !m_caster.IsAlive ||
+				!effect.Owner.IsAlive ||
+				m_caster.Mana < Spell.PulsePower ||
+				!m_caster.IsWithinRadius(effect.Owner, Spell.CalculateEffectiveRange(m_caster)) ||
+				m_caster.IsMezzed ||
+				m_caster.IsStunned ||
+				m_caster.TargetObject is not GameLiving ||
+				effect.Owner != (m_caster.TargetObject as GameLiving))
 			{
 				effect.Cancel(false);
 				return;
 			}
+
 			base.OnEffectPulse(effect);
 			SendEffectAnimation(effect.Owner, 0, false, 1);
 			// An acidic cloud surrounds you!
@@ -98,7 +76,6 @@ namespace DOL.GS.Spells
 			Message.SystemToArea(effect.Owner, Util.MakeSentence(Spell.Message2, effect.Owner.GetName(0, false)), eChatType.CT_YouHit, effect.Owner);
 			OnDirectEffect(effect.Owner);
 		}
-
 
 		public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
 		{
@@ -112,7 +89,6 @@ namespace DOL.GS.Spells
 			return 0;
 		}
 
-		
 		public override void OnDirectEffect(GameLiving target)
 		{
 			if (target == null) return;
@@ -125,7 +101,6 @@ namespace DOL.GS.Spells
 			DamageTarget(ad);
 		}
 
-	
 		public virtual void DamageTarget(AttackData ad)
 		{
 			ad.AttackResult = eAttackResult.HitUnstyled;
@@ -136,7 +111,6 @@ namespace DOL.GS.Spells
 			}
 		}
 
-	
 		public HereticDoTSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
 	}
 }

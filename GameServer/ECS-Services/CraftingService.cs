@@ -1,41 +1,60 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
+using System.Threading;
+using DOL.Logging;
 using ECS.Debug;
-using log4net;
 
 namespace DOL.GS
 {
-    public static class CraftingService
+    public sealed class CraftingService : GameServiceBase
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private const string SERVICE_NAME = nameof(CraftingService);
-        private static List<CraftComponent> _list;
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        public static void Tick()
+        private List<CraftComponent> _list;
+
+        public static CraftingService Instance { get; }
+
+        static CraftingService()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-            _list = EntityManager.UpdateAndGetAll<CraftComponent>(EntityManager.EntityType.CraftComponent, out int lastValidIndex);
-            Parallel.For(0, lastValidIndex + 1, TickInternal);
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
+            Instance = new();
         }
 
-        private static void TickInternal(int index)
+        public override void Tick()
         {
-            CraftComponent craftComponent = _list[index];
+            ProcessPostedActionsParallel();
+            int lastValidIndex;
 
             try
             {
-                if (craftComponent?.EntityManagerId.IsSet != true)
-                    return;
+                _list = ServiceObjectStore.UpdateAndGetAll<CraftComponent>(ServiceObjectType.CraftComponent, out lastValidIndex);
+            }
+            catch (Exception e)
+            {
+                if (log.IsErrorEnabled)
+                    log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
+
+                return;
+            }
+
+            GameLoop.ExecuteForEach(_list, lastValidIndex + 1, TickInternal);
+
+            if (Diagnostics.CheckServiceObjectCount)
+                Diagnostics.PrintServiceObjectCount(ServiceName, ref EntityCount, _list.Count);
+        }
+
+        private static void TickInternal(CraftComponent craftComponent)
+        {
+            try
+            {
+                if (Diagnostics.CheckServiceObjectCount)
+                    Interlocked.Increment(ref Instance.EntityCount);
 
                 craftComponent.Tick();
             }
             catch (Exception e)
             {
-                ServiceUtils.HandleServiceException(e, SERVICE_NAME, craftComponent, craftComponent.Owner);
+                GameServiceUtils.HandleServiceException(e, Instance.ServiceName, craftComponent, craftComponent.Owner);
             }
         }
     }

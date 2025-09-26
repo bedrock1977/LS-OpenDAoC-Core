@@ -1,25 +1,5 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System.Reflection;
 using DOL.GS.PacketHandler;
-using DOL.GS.Effects;
-using log4net;
 using DOL.Language;
 
 namespace DOL.GS.SkillHandler
@@ -33,7 +13,7 @@ namespace DOL.GS.SkillHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// The reuse time in milliseconds for berserk ability
@@ -80,21 +60,10 @@ namespace DOL.GS.SkillHandler
 				return;
 			}
 
-			//Cancel old berserk effects on player
-			//BerserkEffect berserk = player.EffectList.GetOfType<BerserkEffect>();
-			//if (berserk!=null)
-			//{
-			//	berserk.Cancel(false);
-			//	return;
-			//}
 			ECSGameEffect berserk = EffectListService.GetEffectOnTarget(player, eEffect.Berserk);
-			if (berserk != null)
-				EffectService.RequestImmediateCancelEffect(berserk);
-
+			berserk?.Stop();
 			player.DisableSkill(ab, REUSE_TIMER);
-
-			//new BerserkEffect().Start(player);
-			new BerserkECSGameEffect(new ECSGameEffectInitParams(player, DURATION, 1, null));
-		}                       
+			ECSGameEffectFactory.Create(new(player, DURATION, 1, null), static (in ECSGameEffectInitParams i) => new BerserkECSGameEffect(i));
+        }
     }
 }

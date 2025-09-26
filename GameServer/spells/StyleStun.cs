@@ -1,3 +1,4 @@
+using System;
 using DOL.GS.Effects;
 
 namespace DOL.GS.Spells
@@ -5,35 +6,30 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Style stun effect spell handler
 	/// </summary>
-	[SpellHandler("StyleStun")]
+	[SpellHandler(eSpellType.StyleStun)]
 	public class StyleStun : StunSpellHandler
 	{
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public StyleStun(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
+
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new StunECSGameEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new StunECSGameEffect(i));
 		}
 		
-		public override int CalculateSpellResistChance(GameLiving target)
+		public override double CalculateSpellResistChance(GameLiving target)
 		{
 			return 0;
 		}
 
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+		protected override int CalculateEffectDuration(GameLiving target)
 		{
-			NPCECSStunImmunityEffect npcImmune = (NPCECSStunImmunityEffect)EffectListService.GetEffectOnTarget(target, eEffect.NPCStunImmunity);
-			if (npcImmune != null)
-			{
-				int duration = (int)npcImmune.CalculateStunDuration(Spell.Duration);
-				return  duration > 1 ? duration : 1;
-			}
-			else
-				return Spell.Duration;
+			// Override to ignore eProperty.StunDurationReduction.
+			double duration = Spell.Duration;
+
+			if (EffectListService.GetEffectOnTarget(target, eEffect.NPCStunImmunity) is NpcStunImmunityEffect immunityEffect)
+				duration = immunityEffect.CalculateNewEffectDuration((long) duration);
+
+			return (int) Math.Max(duration, 1);
 		}
 
 		/// <summary>
@@ -51,22 +47,12 @@ namespace DOL.GS.Spells
 			return Spell.Duration * 5;
 		}
 
-		/// <summary>
-		/// Determines wether this spell is compatible with given spell
-		/// and therefore overwritable by better versions
-		/// spells that are overwritable cannot stack
-		/// </summary>
-		/// <param name="compare"></param>
-		/// <returns></returns>
-		public override bool IsOverwritable(ECSGameSpellEffect compare)
+		public override bool HasConflictingEffectWith(ISpellHandler compare)
 		{
-			if (Spell.EffectGroup != 0 || compare.SpellHandler.Spell.EffectGroup != 0)
-				return Spell.EffectGroup == compare.SpellHandler.Spell.EffectGroup;
-			if (compare.SpellHandler.Spell.SpellType == eSpellType.Stun) return true;
-			return base.IsOverwritable(compare);
+			if (Spell.EffectGroup != 0 || compare.Spell.EffectGroup != 0)
+				return Spell.EffectGroup == compare.Spell.EffectGroup;
+			if (compare.Spell.SpellType == eSpellType.Stun) return true;
+			return base.HasConflictingEffectWith(compare);
 		}
-
-		// constructor
-		public StyleStun(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) {}
 	}
 }

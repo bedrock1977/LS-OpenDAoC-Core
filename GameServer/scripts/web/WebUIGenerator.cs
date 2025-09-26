@@ -4,7 +4,6 @@ using System.IO;
 using System.Reflection;
 using DOL.Database;
 using DOL.Events;
-using log4net;
 
 namespace DOL.GS.Scripts
 {
@@ -16,7 +15,7 @@ namespace DOL.GS.Scripts
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		[ScriptLoadedEvent]
 		public static void OnScriptLoaded(DOLEvent e, object sender, EventArgs args)
@@ -105,7 +104,7 @@ namespace DOL.GS.Scripts
 		private static void GenerateJS(string fname)
 		{
 			string path = fname.Replace(Path.DirectorySeparatorChar+"webui"+Path.DirectorySeparatorChar+"template", Path.DirectorySeparatorChar+"webui"+Path.DirectorySeparatorChar+"generated");
-			string buf = "";
+			string buf = string.Empty;
 
 			using (StreamReader rdr = File.OpenText(fname))
 			{
@@ -157,7 +156,7 @@ namespace DOL.GS.Scripts
 			int gm = 0;
 			int admin = 0;
 
-			foreach (GamePlayer player in ClientService.GetPlayers())
+			foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 			{
 				if (player.Client.Account.PrivLevel == (int) ePrivLevel.GM)
 					gm++;
@@ -166,7 +165,7 @@ namespace DOL.GS.Scripts
 					admin++;
 			}
 
-			m_js.AppendFormat("var numClientsConnected = {0}", ClientService.ClientCount);
+			m_js.AppendFormat("var numClientsConnected = {0}", ClientService.Instance.ClientCount);
 			m_js.Append(nl.NewLine);
 
 			m_js.AppendFormat("var numGMsConnected = {0}", gm);
@@ -324,7 +323,7 @@ namespace DOL.GS.Scripts
 			m_js.Append(nl.NewLine);
 			m_js.Append(nl.NewLine);
 
-			foreach (GamePlayer player in ClientService.GetPlayers())
+			foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 			{
 				m_js.Append("document.write(\"<tr>\")");
 				m_js.Append(nl.NewLine);

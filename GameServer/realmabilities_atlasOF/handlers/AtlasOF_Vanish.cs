@@ -1,11 +1,10 @@
-using DOL.Database;
 using System.Collections.Generic;
+using DOL.Database;
 using DOL.GS.Effects;
 using DOL.GS.Spells;
 
 namespace DOL.GS.RealmAbilities
 {
-
     public class AtlasOF_Vanish : TimedRealmAbility
     {
         public AtlasOF_Vanish(DbAbility dba, int level) : base(dba, level) { }
@@ -23,7 +22,7 @@ namespace DOL.GS.RealmAbilities
 
             DisableSkill(living);
 
-            new AtlasOF_VanishECSEffect(new ECSGameEffectInitParams(player, m_duration, 1, CreateSpell(living)));
+            ECSGameEffectFactory.Create(new(player, m_duration, 1, CreateSpell(living)), static (in ECSGameEffectInitParams i) => new AtlasOF_VanishECSEffect(i));
         }
         
         private SpellHandler CreateSpell(GameLiving owner)
@@ -46,11 +45,10 @@ namespace DOL.GS.RealmAbilities
             tmpSpell.EffectGroup = 0; // stacks with other damage adds
             tmpSpell.Range = 0;
             tmpSpell.Description = "You will immediately hide, regardless of action state or in-combat timer.";
-            SpellLine spellLine = new SpellLine("RAs", "RealmAbilities", "RealmAbilities", true);
-            SpellHandler tmpHandler = new SpellHandler(owner, new Spell(tmpSpell, 0) , spellLine); // make spell level 0 so it bypasses the spec level adjustment code
-            return tmpHandler;
+            SpellLine spellLine = GlobalSpellsLines.RealmSpellsSpellLine;
+            return ScriptMgr.CreateSpellHandler(owner, new Spell(tmpSpell, 0) , spellLine) as SpellHandler;
         }
-        
+
         public override IList<string> DelveInfo
         {
             get

@@ -1,120 +1,160 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
-using System.Collections;
-using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.Threading;
+using DOL.GS;
+using DOL.GS.Effects;
+using DOL.GS.PropertyCalc;
 
-namespace DOL.GS.PropertyCalc
+public sealed class MultiplicativePropertiesHybrid : IMultiplicativeProperties
 {
-	/// <summary>
-	/// Implements multiplicative properties using HybridDictionary
-	/// </summary>
-	public sealed class MultiplicativePropertiesHybrid : IMultiplicativeProperties
-	{
-		private readonly object m_LockObject = new object();
+    private readonly Lock _lock = new();
+    private readonly Dictionary<int, PropertyEntry> _properties = new();
 
-		private sealed class PropertyEntry
-		{
-			public double cachedValue = 1.0;
-			public HybridDictionary values;
-			public void CalculateCachedValue()
-			{
-				if (values == null)
-				{
-					cachedValue = 1.0;
-					return;
-				}
+    public void Set(int index, ECSGameEffect effect, double value)
+    {
+        EffectKey key = GetKey(effect);
 
-				IDictionaryEnumerator de = values.GetEnumerator();
-				double res = 1.0;
-				while(de.MoveNext())
-				{
-					res *= (double)de.Value;
-				}
-				cachedValue = res;
-			}
-		}
+        lock (_lock)
+        {
+            if (!_properties.TryGetValue(index, out PropertyEntry entry))
+                _properties[index] = entry = new();
 
-		private HybridDictionary m_properties = new HybridDictionary();
+            entry.Values[key] = value;
+            entry.CalculateCachedValue();
+        }
+    }
 
-		/// <summary>
-		/// Adds new value, if key exists value will be overwriten
-		/// </summary>
-		/// <param name="index">The property index</param>
-		/// <param name="key">The key used to remove value later</param>
-		/// <param name="value">The value added</param>
-		public void Set(int index, object key, double value)
-		{
-			lock (m_LockObject)
-			{
-				PropertyEntry entry = (PropertyEntry)m_properties[index];
-				if (entry == null)
-				{
-					entry = new PropertyEntry();
-					m_properties[index] = entry;
-				}
+    public void Set(int index, IGameEffect effect, double value)
+    {
+        EffectKey key = GetKey(effect);
 
-				if (entry.values == null)
-					entry.values = new HybridDictionary();
+        lock (_lock)
+        {
+            if (!_properties.TryGetValue(index, out PropertyEntry entry))
+                _properties[index] = entry = new();
 
-				entry.values[key] = value;
-				entry.CalculateCachedValue();
-			}
-		}
+            entry.Values[key] = value;
+            entry.CalculateCachedValue();
+        }
+    }
 
-		/// <summary>
-		/// Removes stored value
-		/// </summary>
-		/// <param name="index">The property index</param>
-		/// <param name="key">The key use to add the value</param>
-		public void Remove(int index, object key)
-		{
-			lock (m_LockObject)
-			{
-				PropertyEntry entry = (PropertyEntry)m_properties[index];
-				if (entry == null) return;
-				if (entry.values == null) return;
+    public void Remove(int index, ECSGameEffect effect)
+    {
+        EffectKey key = GetKey(effect);
 
-				entry.values.Remove(key);
+        lock (_lock)
+        {
+            if (!_properties.TryGetValue(index, out PropertyEntry entry))
+                return;
 
-				// remove entry if it's empty
-				if (entry.values.Count < 1)
-				{
-					m_properties.Remove(index);
-					return;
-				}
+            if (!entry.Values.Remove(key))
+                return;
 
-				entry.CalculateCachedValue();
-			}
-		}
+            if (entry.Values.Count == 0)
+                _properties.Remove(index);
+            else
+                entry.CalculateCachedValue();
+        }
+    }
 
-		/// <summary>
-		/// Gets the property value
-		/// </summary>
-		/// <param name="index">The property index</param>
-		/// <returns>The property value (1.0 = 100%)</returns>
-		public double Get(int index)
-		{
-			PropertyEntry entry = (PropertyEntry)m_properties[index];
-			if (entry == null) return 1.0;
-			return entry.cachedValue;
-		}
-	}
-}
+    public void Remove(int index, IGameEffect effect)
+    {
+        EffectKey key = GetKey(effect);
+
+        lock (_lock)
+        {
+            if (!_properties.TryGetValue(index, out PropertyEntry entry))
+                return;
+
+            if (!entry.Values.Remove(key))
+                return;
+
+            if (entry.Values.Count == 0)
+                _properties.Remove(index);
+            else
+                entry.CalculateCachedValue();
+        }
+    }
+
+    public double Get(int index)
+    {
+        lock (_lock)
+        {
+            return _properties.TryGetValue(index, out PropertyEntry entry) ? entry.CachedValue : 1.0;
+        }
+    }
+
+    private static EffectKey GetKey(ECSGameEffect effect)
+    {
+        if (effect.SpellHandler != null)
+            return new(EffectKeyType.Spell, effect.SpellHandler.Spell.ID);
+        else
+            return new(EffectKeyType.Ability, effect.Icon);
+    }
+
+    private static EffectKey GetKey(IGameEffect effect)
+    {
+        return new EffectKey(EffectKeyType.Legacy, effect.Icon);
+    }
+
+    private sealed class PropertyEntry
+    {
+        public double CachedValue { get; private set; } = 1.0;
+        public Dictionary<EffectKey, double> Values { get; private set; } = new();
+
+        public void CalculateCachedValue()
+        {
+            if (Values.Count == 0)
+            {
+                CachedValue = 1.0;
+                return;
+            }
+
+            double result = 1.0;
+
+            foreach (double value in Values.Values)
+                result *= value;
+
+            CachedValue = result;
+        }
+    }
+
+    private readonly struct EffectKey : IEquatable<EffectKey>
+    {
+        private readonly EffectKeyType Tag;
+        private readonly int Id;
+
+        public EffectKey(EffectKeyType tag, int id)
+        {
+            Tag = tag;
+            Id = id;
+        }
+
+        public bool Equals(EffectKey other)
+        {
+            return Tag == other.Tag && Id == other.Id;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is EffectKey other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Tag, Id);
+        }
+
+        public override string ToString()
+        {
+            return $"{Tag}:{Id}";
+        }
+    }
+
+    private enum EffectKeyType
+    {
+        Spell,
+        Ability,
+        Legacy
+    }
+} 

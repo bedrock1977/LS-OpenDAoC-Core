@@ -1,24 +1,5 @@
-﻿/* 
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
+﻿using DOL.Database;
 using DOL.GS.Appeal;
-using DOL.GS.PacketHandler;
 using DOL.Language;
 
 namespace DOL.GS.Commands
@@ -28,14 +9,12 @@ namespace DOL.GS.Commands
     [CmdAttribute(
         "&appeal",
         ePrivLevel.Player,
-        "/appeal")]
-    
-        // "Usage: '/appeal <appeal type> <appeal text>",
-        // "Where <appeal type> is one of the following:",
-        // "  Harassment, Naming, Conduct, Stuck, Emergency or Other",
-        // "and <appeal text> is a description of your issue.",
-        // "If you have submitted an appeal, you can check its",
-        // "status by typing '/checkappeal'."
+        "Usage: '/appeal <appeal type> <appeal text>",
+        "Where <appeal type> is one of the following:",
+        "  Harassment, Naming, Conduct, Stuck, Emergency or Other",
+        "and <appeal text> is a description of your issue.",
+        "If you have submitted an appeal, you can check its",
+        "status by typing '/checkappeal'.")]
     public class AppealCommandHandler : AbstractCommandHandler, ICommandHandler
     {
         public void OnCommand(GameClient client, string[] args)
@@ -45,8 +24,7 @@ namespace DOL.GS.Commands
 
 			if (ServerProperties.Properties.DISABLE_APPEALSYSTEM)
             {
-                //AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
-                client.Out.SendMessage("The /appeal system has moved to Discord. Use the #appeal channel on our Discord to be assisted on urgent matters.",eChatType.CT_Staff,eChatLoc.CL_SystemWindow);
+                AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
 
@@ -54,7 +32,7 @@ namespace DOL.GS.Commands
 			{
 				return;
 			}
-            
+
             //Help display
             if (args.Length == 1)
             {
@@ -64,20 +42,20 @@ namespace DOL.GS.Commands
                     AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.UseGMappeal"));
                 }
             }
-            
+
             //Support for EU Clients
-            
+
             if (args.Length == 2 && args[1].ToLower() == "cancel")
             {
                 CheckAppealCommandHandler cch = new CheckAppealCommandHandler();
                 cch.OnCommand(client, args);
                 return;
             }
-            
+
             if (args.Length > 1)
             {
-                bool HasPendingAppeal = client.Player.TempProperties.GetProperty<bool>("HasPendingAppeal");
-                if (HasPendingAppeal)
+                DbAppeal appeal = AppealMgr.GetAppeal(client.Player);
+                if (appeal != null)
                 {
                     AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.AlreadyActiveAppeal", client.Player.Name));
                     return;
@@ -92,36 +70,36 @@ namespace DOL.GS.Commands
                 {
                     case "harassment":
                         {
-                            severity = (int)AppealMgr.eSeverity.High;
-                            args[1] = "";
+                            severity = (int)AppealMgr.Severity.High;
+                            args[1] = string.Empty;
                             break;
                         }
                     case "naming":
                         {
-                            severity = (int)AppealMgr.eSeverity.Low;
-                            args[1] = "";
+                            severity = (int)AppealMgr.Severity.Low;
+                            args[1] = string.Empty;
                             break;
                         }
                     case "other":
                     case "conduct":
                         {
-                            severity = (int)AppealMgr.eSeverity.Medium;
-                            args[1] = "";
+                            severity = (int)AppealMgr.Severity.Medium;
+                            args[1] = string.Empty;
                             break;
                         }
                     case "stuck":
                     case "emergency":
                         {
-                            severity = (int)AppealMgr.eSeverity.Critical;
-                            args[1] = "";
+                            severity = (int)AppealMgr.Severity.Critical;
+                            args[1] = string.Empty;
                             break;
                         }
                     default:
                         {
-                            severity = (int)AppealMgr.eSeverity.Medium;
+                            severity = (int)AppealMgr.Severity.Medium;
                             break;
                         }
-            
+
                 }
                 string message = string.Join(" ", args, 1, args.Length - 1);
                 GamePlayer p = client.Player as GamePlayer;
@@ -131,7 +109,7 @@ namespace DOL.GS.Commands
             return;
         }
     }
-    
+
     #region reportbug
     //handles /reportbug command that is issued from the client /appeal function.
     [CmdAttribute(
@@ -146,15 +124,15 @@ namespace DOL.GS.Commands
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
-    
+
             if (args.Length < 5)
             {
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.NeedMoreDetail"));
                 return;
             }
-    
+
             //send over the info to the /report command
-            args[1] = "";
+            args[1] = string.Empty;
             //strip these words if they are the first word in the bugreport text
             switch (args[2].ToLower())
             {
@@ -165,7 +143,7 @@ namespace DOL.GS.Commands
                 case "stuck":
                 case "emergency":
                     {
-                        args[2] = "";
+                        args[2] = string.Empty;
                         break;
                     }
             }
@@ -190,8 +168,8 @@ namespace DOL.GS.Commands
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
-            bool HasPendingAppeal = client.Player.TempProperties.GetProperty<bool>("HasPendingAppeal");
-            if (HasPendingAppeal)
+            DbAppeal appeal = AppealMgr.GetAppeal(client.Player);
+            if (appeal != null)
             {
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.AlreadyActiveAppeal", client.Player.Name));
                 return;
@@ -211,13 +189,13 @@ namespace DOL.GS.Commands
                 case "stuck":
                 case "emergency":
                     {
-                        args[1] = "";
+                        args[1] = string.Empty;
                         break;
                     }
             }
             string message = string.Join(" ", args, 1, args.Length - 1);
             GamePlayer p = client.Player as GamePlayer;
-            AppealMgr.CreateAppeal(p, (int)AppealMgr.eSeverity.High, "Open", message);
+            AppealMgr.CreateAppeal(p, (int)AppealMgr.Severity.High, "Open", message);
             return;
         }
     }
@@ -236,8 +214,8 @@ namespace DOL.GS.Commands
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
-            bool HasPendingAppeal = client.Player.TempProperties.GetProperty<bool>("HasPendingAppeal");
-            if (HasPendingAppeal)
+            DbAppeal appeal = AppealMgr.GetAppeal(client.Player);
+            if (appeal != null)
             {
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.AlreadyActiveAppeal", client.Player.Name));
                 return;
@@ -261,13 +239,13 @@ namespace DOL.GS.Commands
                             case "stuck":
                             case "emergency":
                                 {
-                                    args[2] = "";
+                                    args[2] = string.Empty;
                                     break;
                                 }
                         }
                         string message = string.Join(" ", args, 2, args.Length - 2);
                         GamePlayer p = client.Player as GamePlayer;
-                        AppealMgr.CreateAppeal(p, (int)AppealMgr.eSeverity.Low, "Open", message);
+                        AppealMgr.CreateAppeal(p, (int)AppealMgr.Severity.Low, "Open", message);
                         break;
                     }
                 case "TOS":
@@ -282,13 +260,13 @@ namespace DOL.GS.Commands
                             case "stuck":
                             case "emergency":
                                 {
-                                    args[2] = "";
+                                    args[2] = string.Empty;
                                     break;
                                 }
                         }
                         string message = string.Join(" ", args, 2, args.Length - 2);
                         GamePlayer p = client.Player as GamePlayer;
-                        AppealMgr.CreateAppeal(p, (int)AppealMgr.eSeverity.Medium, "Open", message);
+                        AppealMgr.CreateAppeal(p, (int)AppealMgr.Severity.Medium, "Open", message);
                         break;
                     }
             }
@@ -310,8 +288,8 @@ namespace DOL.GS.Commands
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
-            bool HasPendingAppeal = client.Player.TempProperties.GetProperty<bool>("HasPendingAppeal");
-            if (HasPendingAppeal)
+            DbAppeal appeal = AppealMgr.GetAppeal(client.Player);
+            if (appeal != null)
             {
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.AlreadyActiveAppeal", client.Player.Name));
                 return;
@@ -331,13 +309,13 @@ namespace DOL.GS.Commands
                 case "stuck":
                 case "emergency":
                     {
-                        args[1] = "";
+                        args[1] = string.Empty;
                         break;
                     }
             }
             string message = string.Join(" ", args, 1, args.Length - 1);
             GamePlayer p = client.Player as GamePlayer;
-            AppealMgr.CreateAppeal(p, (int)AppealMgr.eSeverity.Critical, "Open", message);
+            AppealMgr.CreateAppeal(p, (int)AppealMgr.Severity.Critical, "Open", message);
             return;
         }
     }
@@ -356,8 +334,8 @@ namespace DOL.GS.Commands
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.SystemDisabled"));
                 return;
             }
-            bool HasPendingAppeal = client.Player.TempProperties.GetProperty<bool>("HasPendingAppeal");
-            if (HasPendingAppeal)
+            DbAppeal appeal = AppealMgr.GetAppeal(client.Player);
+            if (appeal != null)
             {
                 AppealMgr.MessageToClient(client, LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Players.Appeal.AlreadyActiveAppeal", client.Player.Name));
                 return;
@@ -377,13 +355,13 @@ namespace DOL.GS.Commands
                 case "stuck":
                 case "emergency":
                     {
-                        args[1] = "";
+                        args[1] = string.Empty;
                         break;
                     }
             }
             string message = string.Join(" ", args, 1, args.Length - 1);
             GamePlayer p = client.Player as GamePlayer;
-            AppealMgr.CreateAppeal(p, (int)AppealMgr.eSeverity.Critical, "Open", message);
+            AppealMgr.CreateAppeal(p, (int)AppealMgr.Severity.Critical, "Open", message);
             return;
         }
     }

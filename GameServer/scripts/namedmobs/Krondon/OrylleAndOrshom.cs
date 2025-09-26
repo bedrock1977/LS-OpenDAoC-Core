@@ -28,10 +28,7 @@ namespace DOL.GS
 				default: return 40;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -90,13 +87,13 @@ namespace DOL.AI.Brain
 {
     public class OrylleBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public OrylleBrain() : base()
 		{
 			AggroLevel = 100;
 			AggroRange = 600;
 			ThinkInterval = 1500;
-			CanBAF = false;
+			CanBaf = false;
 		}
 		public static bool IsPulled = false;
         #region Throw Player
@@ -202,10 +199,7 @@ namespace DOL.GS
 				default: return 30;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -263,13 +257,13 @@ namespace DOL.AI.Brain
 {
     public class OrshomBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public OrshomBrain() : base()
 		{
 			AggroLevel = 100;
 			AggroRange = 600;
 			ThinkInterval = 1500;
-			CanBAF = false;
+			CanBaf = false;
 		}
 		private bool Spawn_Fire = false;
 		private bool RemoveAdds = false;
@@ -499,7 +493,7 @@ namespace DOL.AI.Brain
 {
     public class OrshomFireBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public OrshomFireBrain() : base()
 		{
 			AggroLevel = 100;

@@ -3,7 +3,7 @@ using DOL.GS.Keeps;
 
 namespace DOL.GS.Spells
 {
-    [SpellHandler("SummonSiegeBallista")]
+    [SpellHandler(eSpellType.SummonSiegeBallista)]
     public class SummonSiegeBallista : SpellHandler
     {
 	    public SummonSiegeBallista(GameLiving caster, Spell spell, SpellLine line)
@@ -72,7 +72,7 @@ namespace DOL.GS.Spells
 			get
 			{
 				var list = new List<string>();
-				list.Add(string.Format("  {0}", Spell.Description));
+				list.Add(string.Format("  {0}", ShortDescription));
 
 				return list;
 			}

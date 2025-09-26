@@ -7,10 +7,10 @@ namespace DOL.GS.Spells
     /// <summary>
     /// NOTE: PLEASE CHECK YOUR SPELL ID FOR JAVELIN OR CREATE YOUR OWN ITEM
     /// </summary>
-    [SpellHandler("GoldenSpearJavelin")]
+    [SpellHandler(eSpellType.GoldenSpearJavelin)]
     public class GoldenSpearJavelin : SummonItemSpellHandler
     {
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private DbItemTemplate _artefJavelin;
 
@@ -63,7 +63,7 @@ namespace DOL.GS.Spells
         {
             if(!(sender is GamePlayer)) return;
             GamePlayer player = sender as GamePlayer;
-            lock (player.Inventory.LockObject)
+            lock (player.Inventory.Lock)
             {
                 var items = player.Inventory.GetItemRange(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack);
                 foreach(DbInventoryItem invItem in items)

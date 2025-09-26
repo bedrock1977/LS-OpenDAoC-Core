@@ -13,13 +13,13 @@ namespace DOL.GS.PropertyCalc
     /// </summary>
 
     //Debuff Effectivness
-    [PropertyCalculator(eProperty.DebuffEffectivness)]
+    [PropertyCalculator(eProperty.DebuffEffectiveness)]
     public class DebuffEffectivnessPercentCalculator : PropertyCalculator
     {
         public override int CalcValue(GameLiving living, eProperty property)
         {
             // Hardcap at 25%
-            return Math.Min(25, living.ItemBonus[(int)property] - living.DebuffCategory[(int)property]);
+            return Math.Min(25, living.ItemBonus[property] - living.DebuffCategory[property]);
         }
     }
 
@@ -31,13 +31,14 @@ namespace DOL.GS.PropertyCalc
         {
             GameLiving livingToCheck;
 
+            // Use the player's ability and item bonuses if the caster is a necromancer pet.
             if (living is NecromancerPet necroPet && necroPet.Owner is GamePlayer playerOwner)
                 livingToCheck = playerOwner;
             else
                 livingToCheck = living;
 
             // Hardcap at 25%
-            return Math.Min(25, livingToCheck.ItemBonus[(int) property] + livingToCheck.AbilityBonus[(int) property] - living.DebuffCategory[(int) property]);
+            return Math.Min(25, livingToCheck.ItemBonus[property] + livingToCheck.AbilityBonus[property] - living.DebuffCategory[property]);
         }
     }
 
@@ -48,16 +49,11 @@ namespace DOL.GS.PropertyCalc
         public override int CalcValue(GameLiving living, eProperty property)
         {
             // Hardcap at 25%
-            int percent = Math.Min(25, living.BaseBuffBonusCategory[(int)property]
-                - living.DebuffCategory[(int)property]
-                + living.ItemBonus[(int)property]);
+            int percent = Math.Min(25, living.BaseBuffBonusCategory[property]
+                - living.DebuffCategory[property]
+                + living.ItemBonus[property]);
             // Add RA bonus
-            percent += living.AbilityBonus[(int)property];
-
-            // Relic bonus calculated before RA bonuses
-            if (living is GamePlayer or GameSummonedPet)
-                percent += (int)(100 * RelicMgr.GetRelicBonusModifier(living.Realm, eRelicType.Magic));
-
+            percent += living.AbilityBonus[property];
             return percent;
         }
     }
@@ -74,7 +70,7 @@ namespace DOL.GS.PropertyCalc
 
         public override int CalcValue(GameLiving living, eProperty property)
         {
-            int percent = living.AbilityBonus[(int)property];
+            int percent = living.AbilityBonus[property];
 
             // Hardcap at 50%
             return Math.Min(50, percent);
@@ -89,18 +85,19 @@ namespace DOL.GS.PropertyCalc
         {
             GameLiving livingToCheck;
 
+            // Use the player's ability and item bonuses if the caster is a necromancer pet.
             if (living is NecromancerPet necroPet && necroPet.Owner is GamePlayer playerOwner)
                 livingToCheck = playerOwner;
             else
                 livingToCheck = living;
 
             // Only custom server settings should have both ability and item bonuses. But this allows both despite the different cap values.
-            int abilityBonus = livingToCheck.AbilityBonus[(int) property]; // Mastery of the Art (OF), capped at 15%.
+            int abilityBonus = livingToCheck.AbilityBonus[property]; // Mastery of the Art (OF), capped at 15%.
             int abilityBonusOverCap = Math.Max(0, abilityBonus - 15);
-            int itemBonus = livingToCheck.ItemBonus[(int) property]; // ToA item bonus, capped at 10%.
+            int itemBonus = livingToCheck.ItemBonus[property]; // ToA item bonus, capped at 10%.
             int itemBonusOverCap = Math.Max(0, itemBonus - 10);
             int cappedBonus = (abilityBonus - abilityBonusOverCap) + (itemBonus - itemBonusOverCap);
-            int remainingDebuff = Math.Max(0, living.DebuffCategory[(int) property] - (abilityBonusOverCap + itemBonusOverCap));
+            int remainingDebuff = Math.Max(0, living.DebuffCategory[property] - (abilityBonusOverCap + itemBonusOverCap));
             return cappedBonus - remainingDebuff;
         }
     }
@@ -112,7 +109,7 @@ namespace DOL.GS.PropertyCalc
         public override int CalcValue(GameLiving living, eProperty property)
         {
             //hardcap at 25%
-            return Math.Min(25, living.ItemBonus[(int)property] - living.DebuffCategory[(int)property]);
+            return Math.Min(25, living.ItemBonus[property] - living.DebuffCategory[property]);
         }
     }
 
@@ -122,15 +119,19 @@ namespace DOL.GS.PropertyCalc
     {
         public override int CalcValue(GameLiving living, eProperty property)
         {
-            // Hardcap at 10%
-            int percent = Math.Min(10, living.BaseBuffBonusCategory[(int)property]
-                + living.ItemBonus[(int)property]
-                - living.DebuffCategory[(int)property]);
+            GameLiving livingToCheck;
 
-            // Add RA bonus
-            percent += living.AbilityBonus[(int)property];
+            // Use the player's ability and item bonuses if the caster is a necromancer pet.
+            if (living is NecromancerPet necroPet && necroPet.Owner is GamePlayer playerOwner)
+                livingToCheck = playerOwner;
+            else
+                livingToCheck = living;
 
-            return percent;
+            int abilityBonus = livingToCheck.AbilityBonus[property];
+            int itemBonus = Math.Min(10, livingToCheck.ItemBonus[property]);
+            int buffBonus = living.BaseBuffBonusCategory[property] + living.SpecBuffBonusCategory[property];
+            int debuffMalus = Math.Abs(livingToCheck.DebuffCategory[property]);
+            return abilityBonus + buffBonus + itemBonus - debuffMalus;
         }
     }
 }

@@ -67,10 +67,7 @@ namespace DOL.GS
 				}
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -83,13 +80,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60165085);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
 			Faction = FactionMgr.GetFactionByID(93);
@@ -135,7 +125,7 @@ namespace DOL.AI.Brain
 {
 	public class QueenQunilariaBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public QueenQunilariaBrain() : base()
 		{
 			AggroLevel = 100;
@@ -246,9 +236,7 @@ namespace DOL.GS
 		}
 
 		public static int MinionCount = 0;
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 		public override void Die(GameObject killer)
 		{
@@ -305,9 +293,7 @@ namespace DOL.GS
 		{
 			get { return 1200; }
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		public override long ExperienceValue => 0;
 		public override bool AddToWorld()
 		{

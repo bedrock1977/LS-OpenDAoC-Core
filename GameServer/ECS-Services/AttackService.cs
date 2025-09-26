@@ -1,46 +1,65 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
+using System.Threading;
+using DOL.Logging;
 using ECS.Debug;
-using log4net;
 
 namespace DOL.GS
 {
-    public static class AttackService
+    public class AttackService : GameServiceBase
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private const string SERVICE_NAME = nameof(AttackService);
-        private static List<AttackComponent> _list;
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        public static void Tick()
+        private List<AttackComponent> _list;
+
+        public static AttackService Instance { get; }
+
+        static AttackService()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-            _list = EntityManager.UpdateAndGetAll<AttackComponent>(EntityManager.EntityType.AttackComponent, out int lastValidIndex);
-            Parallel.For(0, lastValidIndex + 1, TickInternal);
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
+            Instance = new();
         }
 
-        private static void TickInternal(int index)
+        public override void Tick()
         {
-            AttackComponent attackComponent = _list[index];
+            ProcessPostedActionsParallel();
+            int lastValidIndex;
 
             try
             {
-                if (attackComponent?.EntityManagerId.IsSet != true)
-                    return;
-
-                long startTick = GameLoop.GetCurrentTime();
-                attackComponent.Tick();
-                long stopTick = GameLoop.GetCurrentTime();
-
-                if (stopTick - startTick > 25)
-                    log.Warn($"Long {SERVICE_NAME}.{nameof(Tick)} for {attackComponent.owner.Name}({attackComponent.owner.ObjectID}) Time: {stopTick - startTick}ms");
+                _list = ServiceObjectStore.UpdateAndGetAll<AttackComponent>(ServiceObjectType.AttackComponent, out lastValidIndex);
             }
             catch (Exception e)
             {
-                ServiceUtils.HandleServiceException(e, SERVICE_NAME, attackComponent, attackComponent.owner);
+                if (log.IsErrorEnabled)
+                    log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
+
+                return;
+            }
+
+            GameLoop.ExecuteForEach(_list, lastValidIndex + 1, TickInternal);
+
+            if (Diagnostics.CheckServiceObjectCount)
+                Diagnostics.PrintServiceObjectCount(ServiceName, ref EntityCount, _list.Count);
+        }
+
+        private static void TickInternal(AttackComponent attackComponent)
+        {
+            try
+            {
+                if (Diagnostics.CheckServiceObjectCount)
+                    Interlocked.Increment(ref Instance.EntityCount);
+
+                long startTick = GameLoop.GetRealTime();
+                attackComponent.Tick();
+                long stopTick = GameLoop.GetRealTime();
+
+                if (stopTick - startTick > Diagnostics.LongTickThreshold)
+                    log.Warn($"Long {Instance.ServiceName}.{nameof(Tick)} for {attackComponent.owner.Name}({attackComponent.owner.ObjectID}) Time: {stopTick - startTick}ms");
+            }
+            catch (Exception e)
+            {
+                GameServiceUtils.HandleServiceException(e, Instance.ServiceName, attackComponent, attackComponent.owner);
             }
         }
     }

@@ -1,6 +1,3 @@
-using System;
-using DOL.Database;
-using DOL.GS.PacketHandler;
 using DOL.GS.Spells;
 
 namespace DOL.GS.Effects
@@ -8,11 +5,10 @@ namespace DOL.GS.Effects
     public class AtlasOF_MajesticWillECSEffect : ECSGameAbilityEffect
     {
         public new SpellHandler SpellHandler;
-        public AtlasOF_MajesticWillECSEffect(ECSGameEffectInitParams initParams)
+        public AtlasOF_MajesticWillECSEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.MajesticWill;
-            EffectService.RequestStartEffect(this);
         }
 
         public override ushort Icon { get { return 4239; } }

@@ -23,7 +23,6 @@ using System.Reflection;
 using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
-using log4net;
 using DOL.Language;
 
 namespace DOL.GS.SkillHandler
@@ -37,7 +36,7 @@ namespace DOL.GS.SkillHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 		/// <summary>
 		/// The ability reuse time in seconds
 		/// </summary>
@@ -85,7 +84,7 @@ namespace DOL.GS.SkillHandler
 			}
 
 			player.DisableSkill(ab, REUSE_TIMER);
-			new DirtyTricksECSGameEffect(new ECSGameEffectInitParams(player, DURATION * 1000, 1));
+			ECSGameEffectFactory.Create(new(player, DURATION * 1000, 1), static (in ECSGameEffectInitParams i) => new DirtyTricksECSGameEffect(i));
 		}
 	}
 }
@@ -100,7 +99,7 @@ namespace DOL.GS.Effects
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public DirtyTricksEffect(int duration)
 			: base(duration)
@@ -176,7 +175,7 @@ namespace DOL.GS.Effects
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// The ability description
@@ -209,7 +208,7 @@ namespace DOL.GS.Effects
 			//    Log.Debug("Effect Started from DT detrimental effect on " + m_player.Name);
 			StartTimers(); // start the timers before adding to the list!
 			m_player.EffectList.Add(this);
-			m_player.DebuffCategory[(int)eProperty.FumbleChance] += 50;
+			m_player.DebuffCategory[eProperty.FumbleChance] += 50;
 			//  foreach (GamePlayer visiblePlayer in m_player.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			//  {
 			//  }
@@ -228,7 +227,7 @@ namespace DOL.GS.Effects
 			//  Log.Debug("Effect Canceled from DT Detrimental effect on "+ m_player.Name);
 			StopTimers();
 			m_player.EffectList.Remove(this);
-			m_player.DebuffCategory[(int)eProperty.FumbleChance] -= 50;
+			m_player.DebuffCategory[eProperty.FumbleChance] -= 50;
 			GamePlayer player = m_player as GamePlayer;
 			if (player != null)
                 player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "Skill.Ability.DirtyTricks.EffectCancel"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
@@ -250,7 +249,6 @@ namespace DOL.GS.Effects
 		{
 			if (m_expireTimer != null)
 			{
-				//DOLConsole.WriteLine("effect stop expire on "+Owner.Name+" "+this.InternalID);
 				m_expireTimer.Stop();
 				m_expireTimer = null;
 			}

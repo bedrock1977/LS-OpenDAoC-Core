@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
 using DOL.AI.Brain;
 using DOL.Database;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 using DOL.GS.PropertyCalc;
+using DOL.Logging;
 
 namespace DOL.GS.Spells
 {
@@ -13,11 +16,36 @@ namespace DOL.GS.Spells
 	/// </summary>
 	public abstract class PropertyChangingSpell : SpellHandler
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logger log = LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		private static FrozenDictionary<eProperty, string> _propertyToStringMap =
+			new Dictionary<eProperty, string>()
+			{
+				{eProperty.Strength, "strength" },
+				{eProperty.Constitution, "constitution" },
+				{eProperty.Dexterity, "dexterity" },
+				{eProperty.Quickness, "quickness" },
+				{eProperty.Acuity, "acuity" },
+				{eProperty.ArmorFactor, "armor factor" },
+				{eProperty.ArmorAbsorption, "absorption" },
+				{eProperty.WeaponSkill, "weaponskill" },
+				{eProperty.Resist_Slash, "slash" },
+				{eProperty.Resist_Crush, "crush" },
+				{eProperty.Resist_Thrust, "thrust" },
+				{eProperty.Resist_Heat, "heat" },
+				{eProperty.Resist_Cold, "cold" },
+				{eProperty.Resist_Matter, "matter" },
+				{eProperty.Resist_Body, "body" },
+				{eProperty.Resist_Spirit, "spirit" },
+				{eProperty.Resist_Energy, "energy" },
+				{eProperty.Resist_Natural, "essence" },
+			}.ToFrozenDictionary();
+
+		public PropertyChangingSpell(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
+
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			return new StatBuffECSEffect(initParams);
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new StatBuffECSEffect(i));
 		}
 
 		/// <summary>
@@ -30,18 +58,13 @@ namespace DOL.GS.Spells
 			base.FinishSpellCast(target);
 		}
 
-		/// <summary>
-		/// Calculates the effect duration in milliseconds
-		/// </summary>
-		/// <param name="target">The effect target</param>
-		/// <param name="effectiveness">The effect effectiveness</param>
-		/// <returns>The effect duration in milliseconds</returns>
-		protected override int CalculateEffectDuration(GameLiving target, double effectiveness)
+		protected override int CalculateEffectDuration(GameLiving target)
 		{
-			double duration = Spell.Duration;
 			if (HasPositiveEffect)
-			{	
-				duration *= (1.0 + m_caster.GetModified(eProperty.SpellDuration) * 0.01);
+			{
+				double duration = Spell.Duration;
+				duration *= 1.0 + m_caster.GetModified(eProperty.SpellDuration) * 0.01;
+
 				if (Spell.InstrumentRequirement != 0)
 				{
 					DbInventoryItem instrument = Caster.ActiveWeapon;
@@ -51,14 +74,16 @@ namespace DOL.GS.Spells
 						duration *= instrument.Condition / (double)instrument.MaxCondition * instrument.Quality / 100;
 					}
 				}
+
 				if (duration < 1)
 					duration = 1;
 				else if (duration > (Spell.Duration * 4))
-					duration = (Spell.Duration * 4);
-				return (int)duration; 
+					duration = Spell.Duration * 4;
+
+				return (int) duration;
 			}
-			duration = base.CalculateEffectDuration(target, effectiveness);
-			return (int)duration;
+
+			return base.CalculateEffectDuration(target);
 		}
 
 		public override void ApplyEffectOnTarget(GameLiving target)
@@ -99,19 +124,6 @@ namespace DOL.GS.Spells
 // 						}
 // 					}
 // 				}
-				if (target is GamePlayer && (target as GamePlayer).NoHelp && Caster is GamePlayer && target != Caster && target.Realm == Caster.Realm)
-				{
-					//player not grouped, anyone else
-					//player grouped, different group
-					if ((target as GamePlayer).Group == null ||
-					    (Caster as GamePlayer).Group == null ||
-					    (Caster as GamePlayer).Group != (target as GamePlayer).Group)
-					{
-						MessageToCaster("That player does not want assistance", eChatType.CT_SpellResisted);
-						return;
-					}
-				}
-
 
 				if (this is HeatColdMatterBuff || this is AllMagicResistsBuff)
 				{
@@ -210,8 +222,6 @@ namespace DOL.GS.Spells
 
 		}
 
-		BuffCheckAction m_buffCheckAction = null;
-
 		/// <summary>
 		/// When an applied effect expires.
 		/// Duration spells only.
@@ -241,12 +251,6 @@ namespace DOL.GS.Spells
 
 			SendUpdates(effect.Owner);
 
-			if (m_buffCheckAction != null)
-			{
-				m_buffCheckAction.Stop();
-				m_buffCheckAction = null;
-			}
-
 			return base.OnEffectExpires(effect, noMessages);
 		}
 
@@ -268,8 +272,8 @@ namespace DOL.GS.Spells
 				case eBuffBonusCategory.Debuff:
 					bonuscat = target.DebuffCategory;
 					break;
-				case eBuffBonusCategory.Other:
-					bonuscat = target.BuffBonusCategory4;
+				case eBuffBonusCategory.OtherBuff:
+					bonuscat = target.OtherBonus;
 					break;
 				case eBuffBonusCategory.SpecDebuff:
 					bonuscat = target.SpecDebuffCategory;
@@ -489,58 +493,23 @@ namespace DOL.GS.Spells
 		/// <param name="BonusCat"></param>
 		/// <param name="Property"></param>
 		/// <param name="Value"></param>
-		/// <param name="IsSubstracted"></param>
-		protected void ApplyBonus(GameLiving owner,  eBuffBonusCategory BonusCat, eProperty Property, int Value, bool IsSubstracted)
+		/// <param name="IsSubtracted"></param>
+		protected void ApplyBonus(GameLiving owner,  eBuffBonusCategory BonusCat, eProperty Property, int Value, bool IsSubtracted)
 		{
 			IPropertyIndexer tblBonusCat;
 			if (Property != eProperty.Undefined)
 			{
 				tblBonusCat = GetBonusCategory(owner, BonusCat);
-				if (IsSubstracted)
-					tblBonusCat[(int)Property] -= Value;
+				if (IsSubtracted)
+					tblBonusCat[Property] -= Value;
 				else
-					tblBonusCat[(int)Property] += Value;
+					tblBonusCat[Property] += Value;
 			}
 		}
 
-		// constructor
-		public PropertyChangingSpell(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line)
+		protected static string PropertyToString(eProperty property)
 		{
-		}
-	}
-
-	public class BuffCheckAction : ECSGameTimerWrapperBase
-	{
-		public const int BUFFCHECKINTERVAL = 60000;//60 seconds
-
-		private GameLiving m_caster = null;
-		private GameLiving m_owner = null;
-		private GameSpellEffect m_effect = null;
-
-		public BuffCheckAction(GameLiving caster, GameLiving owner, GameSpellEffect effect)
-			: base(caster)
-		{
-			m_caster = caster;
-			m_owner = owner;
-			m_effect = effect;
-		}
-
-		/// <summary>
-		/// Called on every timer tick
-		/// </summary>
-		protected override int OnTick(ECSGameTimer timer)
-		{
-			if (m_caster == null ||
-			    m_owner == null ||
-			    m_effect == null)
-				return 0;
-
-			if ( !m_caster.IsWithinRadius( m_owner, ServerProperties.Properties.BUFF_RANGE ) )
-				m_effect.Cancel(false);
-			else
-				return BUFFCHECKINTERVAL;
-
-			return 0;
+			return _propertyToStringMap.TryGetValue(property, out string result) ? result : $"<{property}>";
 		}
 	}
 }

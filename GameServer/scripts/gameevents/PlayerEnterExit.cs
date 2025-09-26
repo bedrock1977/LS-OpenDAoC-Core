@@ -41,7 +41,7 @@ namespace DOL.GS.GameEvents
 			if (!ServerProperties.Properties.SHOW_LOGINS || sender is not GamePlayer player || player.IsAnonymous)
 				return;
 
-			foreach (GamePlayer otherPlayer in ClientService.GetPlayers())
+			foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayers())
 			{
 				if (player == otherPlayer)
 					continue;
@@ -54,7 +54,7 @@ namespace DOL.GS.GameEvents
 				}
 				else
 				{
-					string realm = "";
+					string realm = string.Empty;
 					if (GameServer.Instance.Configuration.ServerType == EGameServerType.GST_Normal)
 					{
 						realm = "[" + GlobalConstants.RealmToName(player.Realm) + "] ";
@@ -86,7 +86,7 @@ namespace DOL.GS.GameEvents
 			if (player == null) return;
 			if (player.IsAnonymous) return;
 
-			foreach (GamePlayer otherPlayer in ClientService.GetPlayers())
+			foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayers())
 			{
 				if (player == otherPlayer)
 					continue;
@@ -99,7 +99,7 @@ namespace DOL.GS.GameEvents
 				}
 				else
 				{
-					string realm = "";
+					string realm = string.Empty;
 					if (GameServer.Instance.Configuration.ServerType == EGameServerType.GST_Normal)
 					{
 						realm = "[" + GlobalConstants.RealmToName(player.Realm) + "] ";

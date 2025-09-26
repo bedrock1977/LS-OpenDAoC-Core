@@ -1,21 +1,15 @@
 ﻿using DOL.GS.PacketHandler;
 using DOL.Language;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DOL.GS
 {
     public class StagECSGameEffect : ECSGameAbilityEffect
     {
-        public StagECSGameEffect(ECSGameEffectInitParams initParams, int level)
+        public StagECSGameEffect(in ECSGameEffectInitParams initParams, int level)
             : base(initParams)
         {
             m_level = level;
             EffectType = eEffect.Stag;
-			EffectService.RequestStartEffect(this);
 		}
 
         /// <summary>
@@ -49,7 +43,7 @@ namespace DOL.GS
 				m_amount = (int)(OwnerPlayer.CalculateMaxHealth(OwnerPlayer.Level, OwnerPlayer.GetModified(eProperty.Constitution)) * m_amountPercent);
 			else m_amount = (int)(Owner.MaxHealth * m_amountPercent);
 
-			Owner.BaseBuffBonusCategory[(int)eProperty.MaxHealth] += m_amount;
+			Owner.BaseBuffBonusCategory[eProperty.MaxHealth] += m_amount;
 			Owner.Health += (int)(Owner.GetModified(eProperty.MaxHealth) * m_amountPercent);
 			if (Owner.Health > Owner.MaxHealth) Owner.Health = Owner.MaxHealth;
 
@@ -65,7 +59,7 @@ namespace DOL.GS
         {
 			Owner.Model = m_originalModel;
 			
-			Owner.BaseBuffBonusCategory[(int)eProperty.MaxHealth] -= m_amount;
+			Owner.BaseBuffBonusCategory[eProperty.MaxHealth] -= m_amount;
 			if (Owner.IsAlive && Owner.Health > Owner.MaxHealth)
 				Owner.Health = Owner.MaxHealth;
 

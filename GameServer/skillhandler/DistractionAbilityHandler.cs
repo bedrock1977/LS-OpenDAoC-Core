@@ -23,7 +23,6 @@ using System.Reflection;
 using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
-using log4net;
 using DOL.Language;
 
 namespace DOL.GS.SkillHandler
@@ -37,7 +36,7 @@ namespace DOL.GS.SkillHandler
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 		/// <summary>
 		/// The ability reuse time in milliseconds
 		/// </summary>
@@ -124,7 +123,6 @@ namespace DOL.GS.SkillHandler
 			DistractTimer.Start();
 
 			player.DisableSkill(ab, REUSE_TIMER);
-			//new DirtyTricksECSGameEffect(new ECSGameEffectInitParams(player, DURATION * 1000, 1));
 		}
 		
 		protected virtual int TurnBackToNormal(ECSGameTimer timer)

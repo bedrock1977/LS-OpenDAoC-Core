@@ -27,7 +27,7 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Summon a theurgist pet.
 	/// </summary>
-	[SpellHandler("SummonTheurgistPet")]
+	[SpellHandler(eSpellType.SummonTheurgistPet)]
 	public class SummonTheurgistPet : SummonSpellHandler
 	{
 		private enum PetType
@@ -81,9 +81,9 @@ namespace DOL.GS.Spells
 			base.ApplyEffectOnTarget(target);
 
 			m_pet.TargetObject = target;
-			(m_pet.Brain as IOldAggressiveBrain).AddToAggroList(target, 1);
+			(m_pet.Brain as IOldAggressiveBrain).AddToAggroList(target);
 			m_pet.Brain.Think();
-			Caster.UpdatePetCount(true);
+			Caster.UpdatePetCount(m_pet, true);
 		}
 
 		/// <summary>
@@ -92,7 +92,7 @@ namespace DOL.GS.Spells
 		/// <returns>Immunity timer (in milliseconds).</returns>
 		public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
 		{
-			Caster.UpdatePetCount(false);
+			Caster.UpdatePetCount(m_pet, false);
 			return base.OnEffectExpires(effect, noMessages);
 		}
 

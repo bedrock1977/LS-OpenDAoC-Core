@@ -65,10 +65,7 @@ namespace DOL.GS
                 }
             }
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override bool HasAbility(string keyName)
         {
@@ -81,13 +78,6 @@ namespace DOL.GS
         {
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(7721);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
             Faction = FactionMgr.GetFactionByID(187);
             RespawnInterval =
                 ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
@@ -157,8 +147,7 @@ namespace DOL.AI.Brain
 {
     public class AidonTheArchwizardBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public AidonTheArchwizardBrain()
             : base()
@@ -169,7 +158,7 @@ namespace DOL.AI.Brain
         }
         public void BroadcastMessage(String message)
         {
-            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+            foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
             {
                 player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_SystemWindow);
             }
@@ -439,10 +428,7 @@ namespace DOL.GS
         public AidonCopyFire() : base()
         {
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -510,8 +496,7 @@ namespace DOL.AI.Brain
 {
     public class AidonCopyFireBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public AidonCopyFireBrain()
             : base()
         {
@@ -566,10 +551,6 @@ namespace DOL.GS
     {
         public AidonCopyIce() : base()
         {
-        }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
         }
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
@@ -638,8 +619,7 @@ namespace DOL.AI.Brain
 {
     public class AidonCopyIceBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public AidonCopyIceBrain()
             : base()
         {
@@ -695,10 +675,7 @@ namespace DOL.GS
         public AidonCopyAir() : base()
         {
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -766,8 +743,7 @@ namespace DOL.AI.Brain
 {
     public class AidonCopyAirBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public AidonCopyAirBrain()
             : base()
         {
@@ -821,10 +797,7 @@ namespace DOL.GS
         public AidonCopyEarth() : base()
         {
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100;
-        }
+
         public override int MeleeAttackRange => 350;
         public override double GetArmorAF(eArmorSlot slot)
         {
@@ -892,8 +865,7 @@ namespace DOL.AI.Brain
 {
     public class AidonCopyEarthBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public AidonCopyEarthBrain()
             : base()
         {

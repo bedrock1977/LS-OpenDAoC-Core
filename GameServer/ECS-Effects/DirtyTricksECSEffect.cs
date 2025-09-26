@@ -1,22 +1,14 @@
 ﻿using DOL.GS.PacketHandler;
-using DOL.GS.SkillHandler;
 using DOL.Language;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DOL.Database;
 
 namespace DOL.GS
 {
     public class DirtyTricksECSGameEffect : ECSGameAbilityEffect
     {
-        public DirtyTricksECSGameEffect(ECSGameEffectInitParams initParams)
+        public DirtyTricksECSGameEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.DirtyTricks;
-            EffectService.RequestStartEffect(this);
         }
 
         public override ushort Icon { get { return 478; } }
@@ -56,7 +48,7 @@ namespace DOL.GS
             DirtyTricksDetrimentalECSGameEffect dt = (DirtyTricksDetrimentalECSGameEffect)EffectListService.GetAbilityEffectOnTarget(target, eEffect.DirtyTricksDetrimental);
 			if (dt == null)
 			{
-                new DirtyTricksDetrimentalECSGameEffect(new ECSGameEffectInitParams(target, 10000, 1));
+                ECSGameEffectFactory.Create(new(target, 10000, 1), static (in ECSGameEffectInitParams i) => new DirtyTricksDetrimentalECSGameEffect(i));
 			}
 		}
 	}
@@ -66,11 +58,10 @@ namespace DOL.GS
 {
     public class DirtyTricksDetrimentalECSGameEffect : ECSGameAbilityEffect
     {
-        public DirtyTricksDetrimentalECSGameEffect(ECSGameEffectInitParams initParams)
+        public DirtyTricksDetrimentalECSGameEffect(in ECSGameEffectInitParams initParams)
             : base(initParams)
         {
             EffectType = eEffect.DirtyTricksDetrimental;
-            EffectService.RequestStartEffect(this);
         }
 
         public override ushort Icon { get { return 478; } }
@@ -91,7 +82,7 @@ namespace DOL.GS
 
         public override void OnStartEffect()
         {
-            Owner.DebuffCategory[(int)eProperty.FumbleChance] += 35;
+            Owner.DebuffCategory[eProperty.FumbleChance] += 35;
 
             if (OwnerPlayer != null)
             {
@@ -106,7 +97,7 @@ namespace DOL.GS
         }
         public override void OnStopEffect()
         {
-            Owner.DebuffCategory[(int)eProperty.FumbleChance] -= 35;
+            Owner.DebuffCategory[eProperty.FumbleChance] -= 35;
 
             if (OwnerPlayer != null)
             {

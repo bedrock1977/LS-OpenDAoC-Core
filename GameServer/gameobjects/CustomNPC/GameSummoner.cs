@@ -9,7 +9,7 @@ namespace DOL.GS
     /// </summary>
     public abstract class GameSummoner : GameNPC
     {
-        private static new readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// Percent health remaining to summon pet
@@ -93,7 +93,7 @@ namespace DOL.GS
 
             if (m_pet != null && m_pet.IsAlive && !m_pet.InCombat && m_pet.Brain is StandardMobBrain petBrain)
             {
-                petBrain.AddToAggroList(ad.Attacker, 1);
+                petBrain.AddToAggroList(ad.Attacker);
                 petBrain.Think();
              }
         }
@@ -138,7 +138,6 @@ namespace DOL.GS
                     m_pet.LoadedFromScript = true;
                     m_pet.TetherRange = PetTetherRange;
                     m_pet.RespawnInterval = -1;
-                    m_pet.IsWorthReward = false;
 
                     if (PetSize > 0)
                         m_pet.Size = PetSize;
@@ -148,11 +147,11 @@ namespace DOL.GS
                     else
                         m_pet.Level = (byte)(Level * PetLevel / -100);
 
-                    m_pet.AutoSetStats();
+                    m_pet.SetStats();
 
                     if (m_pet.Brain is StandardMobBrain petBrain && Brain is StandardMobBrain brain && TargetObject is GameLiving living)
                     {
-                        petBrain.CanBAF = false;
+                        petBrain.CanBaf = false;
                         brain.AddAggroListTo(petBrain);
                     }
 

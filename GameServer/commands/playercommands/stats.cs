@@ -29,7 +29,6 @@ using DOL.Events;
 using DOL;
 using System.Collections;
 using DOL.Database;
-using log4net;
 
 namespace DOL.GS.Commands
 {
@@ -49,7 +48,7 @@ namespace DOL.GS.Commands
 
             if (args.Length > 1)
             {
-                string playerName = "";
+                string playerName = string.Empty;
 
                 if (args[1].ToLower() == "player")
                 {

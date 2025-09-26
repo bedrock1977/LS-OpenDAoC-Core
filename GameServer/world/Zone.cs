@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Threading;
 using DOL.Database;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS
 {
@@ -15,8 +14,8 @@ namespace DOL.GS
     {
         #region Fields and Properties
 
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private const ushort SUBZONE_NBR_ON_ZONE_SIDE = 32; // MUST BE A POWER OF 2 (current implementation limit is 128 inclusive).
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+        private const ushort SUBZONE_NBR_ON_ZONE_SIDE = 16; // MUST BE A POWER OF 2 (current implementation limit is 128 inclusive).
         private const ushort SUBZONE_NBR = SUBZONE_NBR_ON_ZONE_SIDE * SUBZONE_NBR_ON_ZONE_SIDE;
         private const ushort SUBZONE_SIZE = 65536 / SUBZONE_NBR_ON_ZONE_SIDE;
         private static readonly ushort SUBZONE_SHIFT = (ushort)Math.Round(Math.Log(SUBZONE_SIZE) / Math.Log(2)); // To get log in base 2.
@@ -211,7 +210,6 @@ namespace DOL.GS
 
         private SubZone[] _subZones = new SubZone[SUBZONE_NBR];
         private int _objectCount;
-        private bool _initialized = false;
 
         #endregion
 
@@ -246,6 +244,9 @@ namespace DOL.GS
             BonusBountypoints = bpBonus;
             BonusCoin = coinBonus;
             Realm = (eRealm)realm;
+
+            for (int i = 0; i < SUBZONE_NBR; i++)
+                _subZones[i] = new SubZone(this);
         }
 
         public void Delete()
@@ -253,17 +254,6 @@ namespace DOL.GS
             _subZones = null;
             ZoneRegion = null;
             Events.GameEventMgr.RemoveAllHandlersForObject(this);
-        }
-
-        private void InitializeZone()
-        {
-            if (_initialized)
-                return;
-
-            for (int i = 0; i < SUBZONE_NBR; i++)
-                _subZones[i] = new SubZone(this);
-
-            _initialized = true;
         }
 
         #endregion
@@ -305,9 +295,6 @@ namespace DOL.GS
 
         public bool AddObject(GameObject gameObject)
         {
-            if (!_initialized)
-                InitializeZone();
-
             SubZone subZone = GetSubZone(GetSubZoneIndex(gameObject.X, gameObject.Y));
 
             if (subZone == null)
@@ -320,20 +307,10 @@ namespace DOL.GS
 
             SubZoneObject subZoneObject = gameObject.SubZoneObject;
 
-            // It's possible for the object to already have a `subZoneObject` at this point (a NPC respawning for example).
             if (subZoneObject != null)
             {
                 if (subZoneObject.CurrentSubZone != subZone && subZoneObject.StartSubZoneChange)
-                    ObjectChangingSubZone.Create(subZoneObject, this, subZone);
-            }
-            else
-            {
-                LinkedListNode<GameObject> node = new(gameObject);
-                subZoneObject = new(node, null);
-                gameObject.SubZoneObject = subZoneObject;
-
-                if (subZoneObject.StartSubZoneChange)
-                    ObjectChangingSubZone.Create(subZoneObject, this, subZone);
+                    CreateSubZoneRelocation(subZoneObject, this, subZone);
             }
 
             return true;
@@ -341,26 +318,22 @@ namespace DOL.GS
 
         /// <summary>
         /// Gets the lists of objects, located in the current Zone and of the given type, that are at most at a 'radius' distance from an observer.
-        /// The found objects are appended to the given 'partialList'.
+        /// The found objects are appended to the given list.
         /// </summary>
-        /// <param name="partialList">a non-null list</param>
-        public void GetObjectsInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> partialList) where T : GameObject
+        /// <param name="listToAppendTo">a non-null list</param>
+        public void GetObjectsInRadius<T>(Point3D point, eGameObjectType objectType, ushort radius, List<T> listToAppendTo) where T : GameObject
         {
-            GetObjectsInRadius(point.X, point.Y, point.Z, objectType, radius, partialList);
+            GetObjectsInRadius(point.X, point.Y, point.Z, objectType, radius, listToAppendTo);
         }
 
         /// <summary>
         /// Gets the lists of objects, located in the current Zone and of the given type, that are at most at a 'radius' distance from an observer.
-        /// The found objects are appended to the given 'partialList'.
+        /// The found objects are appended to the given list.
         /// </summary>
-        /// <param name="partialList">a non-null list</param>
-        public void GetObjectsInRadius<T>(int x, int y, int z, eGameObjectType objectType, ushort radius, List<T> partialList) where T : GameObject
+        /// <param name="listToAppendTo">a non-null list</param>
+        public void GetObjectsInRadius<T>(int x, int y, int z, eGameObjectType objectType, ushort radius, List<T> listToAppendTo) where T : GameObject
         {
-            if (!_initialized)
-                InitializeZone();
-
             uint sqRadius = (uint) radius * radius;
-            int referenceSubZoneIndex = GetSubZoneIndex(x, y);
 
             int xInZone = x - XOffset; // x in zone coordinates.
             int yInZone = y - YOffset; // y in zone coordinates.
@@ -385,6 +358,8 @@ namespace DOL.GS
             if (maxLine > (SUBZONE_NBR_ON_ZONE_SIDE - 1))
                 maxLine = SUBZONE_NBR_ON_ZONE_SIDE - 1;
 
+            int referenceSubZoneIndex = GetSubZoneIndex(x, y);
+
             int subZoneIndex;
             SubZone subZone;
             bool ignoreDistance;
@@ -396,43 +371,38 @@ namespace DOL.GS
                     subZoneIndex = GetSubZoneOffset(line, column);
                     subZone = _subZones[subZoneIndex];
 
-                    if (!subZone[objectType].Any)
+                    if (subZone[objectType].Count == 0)
                         continue;
 
-                    if (subZoneIndex != referenceSubZoneIndex)
-                    {
-                        int xLeft = column << SUBZONE_SHIFT;
-                        int xRight = xLeft + SUBZONE_SIZE;
-                        int yTop = line << SUBZONE_SHIFT;
-                        int yBottom = yTop + SUBZONE_SIZE;
+                    int xLeft = column << SUBZONE_SHIFT;
+                    int xRight = xLeft + SUBZONE_SIZE;
+                    int yTop = line << SUBZONE_SHIFT;
+                    int yBottom = yTop + SUBZONE_SIZE;
 
-                        // Filter out subzones that are too far away.
-                        if (!CheckSubZoneMinDistance(xInZone, yInZone, xLeft, xRight, yTop, yBottom, sqRadius))
-                            continue;
+                    // Filter out subzones that are too far away.
+                    if (referenceSubZoneIndex != subZoneIndex && !CheckSubZoneMinDistance(xInZone, yInZone, xLeft, xRight, yTop, yBottom, sqRadius))
+                        continue;
 
-                        // If the subzone being checked is fully enclosed within the radius and we don't care about Z, add all objects without checking the distance.
-                        ignoreDistance = CheckSubZoneMaxDistance(xInZone, yInZone, xLeft, xRight, yTop, yBottom, sqRadius);
-                    }
-                    else
-                        ignoreDistance = false;
+                    // If the subzone being checked is fully enclosed within the radius and we don't care about Z, add all objects without checking the distance.
+                    ignoreDistance = CheckSubZoneMaxDistance(xInZone, yInZone, xLeft, xRight, yTop, yBottom, sqRadius);
 
                     foreach (LinkedListNode<GameObject> node in subZone[objectType])
                     {
                         GameObject gameObject = node.Value;
 
                         // Inactive or deleted objects can't remove themselves.
-                        if (gameObject.ObjectState != GameObject.eObjectState.Active || gameObject.CurrentRegion != ZoneRegion)
+                        if (gameObject.ObjectState is not GameObject.eObjectState.Active || gameObject.CurrentRegion != ZoneRegion)
                         {
                             SubZoneObject subZoneObject = gameObject.SubZoneObject;
 
                             if (subZoneObject.StartSubZoneChange)
-                                ObjectChangingSubZone.Create(subZoneObject, null, null);
+                                CreateSubZoneRelocation(subZoneObject, null, null);
 
                             continue;
                         }
 
                         if (ignoreDistance || IsWithinSquaredRadius(x, y, z, gameObject.X, gameObject.Y, gameObject.Z, sqRadius))
-                            partialList.Add(gameObject as T);
+                            listToAppendTo.Add(gameObject as T);
                     }
                 }
             }
@@ -495,13 +465,13 @@ namespace DOL.GS
                     SubZone newSubZone = newZone.GetSubZone(newSubZoneIndex);
 
                     if (subZoneObject.StartSubZoneChange)
-                        ObjectChangingSubZone.Create(subZoneObject, newZone, newSubZone);
+                        CreateSubZoneRelocation(subZoneObject, newZone, newSubZone);
                 }
                 else if (subZoneObject.StartSubZoneChange)
-                    ObjectChangingSubZone.Create(subZoneObject, this, _subZones[newSubZoneIndex]);
+                    CreateSubZoneRelocation(subZoneObject, this, _subZones[newSubZoneIndex]);
             }
             else if (subZoneObject.StartSubZoneChange)
-                ObjectChangingSubZone.Create(subZoneObject, null, null);
+                CreateSubZoneRelocation(subZoneObject, null, null);
 
             void AbortRelocation()
             {
@@ -602,6 +572,20 @@ namespace DOL.GS
             return distance <= squareRadius;
         }
 
+        private static void CreateSubZoneRelocation(SubZoneObject subZoneObject, Zone destinationZone, SubZone destinationSubZone)
+        {
+            ArgumentNullException.ThrowIfNull(subZoneObject);
+
+            // Work around the fact that AddObject is called during server startup, when the game loop thread pool isn't initialized yet.
+            var subZoneTransition = GameLoop.GameLoopTime == 0 ? new() : PooledObjectFactory.GetForTick<SubZoneTransition>();
+
+            if (!ServiceObjectStore.Add(subZoneTransition.Init(subZoneObject, destinationZone, destinationSubZone)))
+            {
+                if (log.IsErrorEnabled)
+                    log.Error($"SubZoneTransition couldn't be added to ServiceObjectStore. {subZoneObject.Node.Value}");
+            }
+        }
+
         #endregion
 
         #region Area
@@ -609,17 +593,17 @@ namespace DOL.GS
         /// <summary>
         /// Convenient method for Region.GetAreasOfZone(), since zone.Region.getAreasOfZone(zone,x,y,z) is a bit confusing.
         /// </summary>
-        public IList<IArea> GetAreasOfSpot(IPoint3D spot)
+        public List<IArea> GetAreasOfSpot(IPoint3D spot)
         {
             return GetAreasOfSpot(spot, true);
         }
 
-        public IList<IArea> GetAreasOfSpot(int x, int y, int z)
+        public List<IArea> GetAreasOfSpot(int x, int y, int z)
         {
             return ZoneRegion.GetAreasOfZone(this, x, y, z);
         }
 
-        public IList<IArea> GetAreasOfSpot(IPoint3D spot, bool checkZ)
+        public List<IArea> GetAreasOfSpot(IPoint3D spot, bool checkZ)
         {
             return ZoneRegion.GetAreasOfZone(this, spot, checkZ);
         }
@@ -633,7 +617,7 @@ namespace DOL.GS
         /// </summary>
         public GameNPC GetRandomNPC(eRealm realm)
         {
-            return GetRandomNPC(new eRealm[] { realm }, 0, 0);
+            return GetRandomNPC([realm], 0, 0);
         }
 
         /// <summary>
@@ -641,7 +625,7 @@ namespace DOL.GS
         /// </summary>
         public GameNPC GetRandomNPC(eRealm realm, int minLevel, int maxLevel)
         {
-            return GetRandomNPC(new eRealm[] { realm }, minLevel, maxLevel);
+            return GetRandomNPC([realm], minLevel, maxLevel);
         }
 
         /// <summary>
@@ -667,7 +651,7 @@ namespace DOL.GS
         /// </summary>
         public List<GameNPC> GetNPCsOfZone(eRealm realm)
         {
-            return GetNPCsOfZone(new eRealm[] { realm }, 0, 0, 0, 0, false);
+            return GetNPCsOfZone([realm], 0, 0, 0, 0, false);
         }
 
         /// <summary>
@@ -675,9 +659,6 @@ namespace DOL.GS
         /// </summary>
         public List<GameNPC> GetNPCsOfZone(eRealm[] realms, int minLevel, int maxLevel, int compareLevel, int conLevel, bool firstOnly)
         {
-            if (!_initialized)
-                InitializeZone();
-
             List<GameNPC> list = new();
             GameNPC currentNPC;
             bool addToList;

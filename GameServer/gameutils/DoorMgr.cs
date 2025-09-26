@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using DOL.Database;
 using DOL.GS.Keeps;
-using log4net;
 
 namespace DOL.GS
 {
@@ -12,9 +12,9 @@ namespace DOL.GS
 	/// </summary>
 	public sealed class DoorMgr
 	{
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static readonly object Lock = new object();
+		private static readonly Lock Lock = new();
 
 		private static Dictionary<int, List<GameDoorBase>> m_doors = new Dictionary<int, List<GameDoorBase>>();
 
@@ -49,7 +49,9 @@ namespace DOL.GS
 					{
 						foreach (GameDoorBase door in doorList)
 						{
-							if (door is GameKeepDoor keepDoor && keepDoor.IsAttackableDoor)
+							if (door.DbDoor != null &&
+								door is GameKeepDoor keepDoor &&
+								keepDoor.IsAttackableDoor)
 							{
 								keepDoor.SaveIntoDatabase();
 								count++;
@@ -102,43 +104,32 @@ namespace DOL.GS
 			return true;
 		}
 
-	    public static void RegisterDoor(GameDoorBase door)
-	    {
-	        lock (Lock)
-	        {
-	            if (!m_doors.ContainsKey(door.DoorID))
-	            {
-	                List<GameDoorBase> createDoorList = new List<GameDoorBase>();
-	                m_doors.Add(door.DoorID, createDoorList);
-	            }
+		public static void RegisterDoor(GameDoorBase door)
+		{
+			lock (Lock)
+			{
+				if (!m_doors.TryGetValue(door.DoorId, out List<GameDoorBase> doorsOfId))
+				{
+					doorsOfId = [];
+					m_doors.Add(door.DoorId, doorsOfId);
+				}
 
-	            List<GameDoorBase> addDoorList = m_doors[door.DoorID];
-	            addDoorList.Add(door);
-	        }
-	    }
+				doorsOfId.Add(door);
+			}
+		}
 
 		public static void UnRegisterDoor(int doorID)
 		{
-			if (m_doors.ContainsKey(doorID))
-			{
-				m_doors.Remove(doorID);
-			}
+			m_doors.Remove(doorID);
 		}
 
 		/// <summary>
 		/// This function get the door object by door index
 		/// </summary>
 		/// <returns>return the door with the index</returns>
-		public static List<GameDoorBase> getDoorByID(int id)
+		public static List<GameDoorBase> GetDoorByID(int id)
 		{
-			if (m_doors.ContainsKey(id))
-			{
-				return m_doors[id];
-			}
-			else
-			{
-				return new List<GameDoorBase>();
-			}
+			return m_doors.TryGetValue(id, out List<GameDoorBase> value) ? value : [];
 		}
 	}
 }

@@ -7,7 +7,7 @@ namespace DOL.GS.RealmAbilities
 {
     public class ArrowSummoningAbility : TimedRealmAbility
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public ArrowSummoningAbility(DbAbility dba, int level) : base(dba, level) { }
         public override void Execute(GameLiving living)
@@ -53,7 +53,7 @@ namespace DOL.GS.RealmAbilities
 		{
 			GamePlayer player = sender as GamePlayer;
 			if (player == null) return;		
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
                 DbInventoryItem item = player.Inventory.GetFirstItemByID("arrow_summoning1", eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack);
 				while (item != null)

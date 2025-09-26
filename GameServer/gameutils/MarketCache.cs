@@ -1,44 +1,16 @@
-﻿/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-// MarketCache by Tolakram.  Donated from Storm
-
-using System;
-using System.Collections;
-using System.Collections.Generic;
-
+﻿using System.Collections.Generic;
+using System.Threading;
 using DOL.Database;
-using DOL.GS;
-using DOL.GS.PacketHandler;
-using DOL.Events;
-
-using log4net;
 
 namespace DOL.GS
 {
 	public class MarketCache
 	{
-		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private static Dictionary<string, DbInventoryItem> m_itemCache = null;
 
-		private static object CacheLock = new object();
+		private static readonly Lock _cacheLock = new();
 
 		/// <summary>
 		/// Return a List of all items in the cache
@@ -60,7 +32,7 @@ namespace DOL.GS
 				m_itemCache = new Dictionary<string, DbInventoryItem>();
 
 				var filterBySlot = DB.Column("SlotPosition").IsGreaterOrEqualTo((int)eInventorySlot.Consignment_First).And(DB.Column("SlotPosition").IsLessOrEqualTo((int)eInventorySlot.Consignment_Last));
-				var list = DOLDB<DbInventoryItem>.SelectObjects(filterBySlot.And(DB.Column("OwnerLot").IsGreatherThan(0)));
+				var list = DOLDB<DbInventoryItem>.SelectObjects(filterBySlot.And(DB.Column("OwnerLot").IsGreaterThan(0)));
 
 				foreach (DbInventoryItem item in list)
 				{
@@ -89,7 +61,7 @@ namespace DOL.GS
 
 			if (item != null && item.OwnerID != null)
 			{
-				lock (CacheLock)
+				lock (_cacheLock)
 				{
 					if (m_itemCache.ContainsKey(item.ObjectId) == false)
 					{
@@ -113,22 +85,13 @@ namespace DOL.GS
 		/// <returns></returns>
 		public static bool RemoveItem(DbInventoryItem item)
 		{
-			bool removed = false;
+			if (item == null)
+				return false;
 
-			if (item != null)
+			lock (_cacheLock)
 			{
-				lock (CacheLock)
-				{
-					if (m_itemCache.ContainsKey(item.ObjectId))
-					{
-						m_itemCache.Remove(item.ObjectId);
-						removed = true;
-					}
-				}
+				return m_itemCache.Remove(item.ObjectId);
 			}
-
-			return removed;
 		}
-
 	}
 }

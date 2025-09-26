@@ -8,30 +8,50 @@ namespace DOL.GS.Spells
 	/// <summary>
 	/// Spell handler for speed decreasing spells
 	/// </summary>
-	[SpellHandler("SpeedDecrease")]
+	[SpellHandler(eSpellType.SpeedDecrease)]
 	public class SpeedDecreaseSpellHandler : UnbreakableSpeedDecreaseSpellHandler
 	{
-		private bool crit = false;
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
+		public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
 		{
-			if (crit)
-				initParams.Effectiveness *= 2; //critical hit effectiveness needs to be set after duration is calculated to prevent double duration
+			return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new StatDebuffECSEffect(i));
+		}
 
-			return new StatDebuffECSEffect(initParams);
+		protected override double GetDebuffEffectivenessCriticalModifier()
+		{
+			// Roots are not allowed to crit, since the lack of walking animation is very confusing.
+			if (Spell.Value == 99)
+				return 1.0;
+
+			int criticalChance = Caster.DebuffCriticalChance;
+
+			if (criticalChance <= 0)
+				return 1.0;
+
+			double randNum = Util.RandomDouble() * 100;
+			int critCap = Math.Min(50, criticalChance);
+			GamePlayer playerCaster = Caster as GamePlayer;
+
+			if (playerCaster?.UseDetailedCombatLog == true && critCap > 0)
+				playerCaster.Out.SendMessage($"Debuff crit chance: {critCap:0.##} random: {randNum:0.##}", eChatType.CT_DamageAdd, eChatLoc.CL_SystemWindow);
+
+			if (critCap <= randNum)
+				return 1.0;
+
+			playerCaster?.Out.SendMessage($"Your snare is doubly effective!", eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
+			return 2.0;
 		}
 
 		public override void ApplyEffectOnTarget(GameLiving target)
 		{
 			// Check for root immunity.
-			if (Spell.Value == 99 && (target.effectListComponent.Effects.ContainsKey(eEffect.SnareImmunity) || target.effectListComponent.Effects.ContainsKey(eEffect.SpeedOfSound)))
+			if (Spell.Value == 99 && (target.effectListComponent.ContainsEffectForEffectType(eEffect.SnareImmunity) || target.effectListComponent.ContainsEffectForEffectType(eEffect.SpeedOfSound)))
 				//FindStaticEffectOnTarget(target, typeof(MezzRootImmunityEffect)) != null)
 			{
-				MessageToCaster("Your target is immune!", eChatType.CT_SpellResisted);
+				MessageToCaster("Your target is immune to this effect!", eChatType.CT_SpellResisted);
 				target.StartInterruptTimer(target.SpellInterruptDuration, AttackData.eAttackType.Spell, Caster);
-				OnSpellResisted(target);
+				OnSpellNegated(target, SpellNegatedReason.Immune);
 				return;
 			}
-
 
 			//check for existing effect
 			// var debuffs = target.effectListComponent.GetSpellEffects(eEffect.MovementSpeedDebuff);
@@ -49,24 +69,6 @@ namespace DOL.GS.Spells
 			// 	}
 			// }
 
-			int criticalChance = Caster.DotCriticalChance;
-
-			if (criticalChance > 0)
-			{
-				int randNum = Util.CryptoNextInt(0, 100);
-				int critCap = Math.Min(50, criticalChance);
-				GamePlayer playerCaster = Caster as GamePlayer;
-
-				if (playerCaster?.UseDetailedCombatLog == true && critCap > 0)
-					playerCaster.Out.SendMessage($"Debuff crit chance: {critCap} random: {randNum}", eChatType.CT_DamageAdd, eChatLoc.CL_SystemWindow);
-
-				if (critCap > randNum)
-				{
-					crit = true;
-					playerCaster?.Out.SendMessage($"Your snare is doubly effective!", eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
-				}
-			}
-			
 			base.ApplyEffectOnTarget(target);
 		}
 
@@ -78,7 +80,7 @@ namespace DOL.GS.Spells
 		public override void OnEffectStart(GameSpellEffect effect)
 		{
 			// Cannot apply if the effect owner has a charging effect
-			if (effect.Owner.EffectList.GetOfType<ChargeEffect>() != null || effect.Owner.effectListComponent.Effects.ContainsKey(eEffect.SpeedOfSound) || effect.Owner.TempProperties.GetProperty("Charging", false))
+			if (effect.Owner.EffectList.GetOfType<ChargeEffect>() != null || effect.Owner.effectListComponent.ContainsEffectForEffectType(eEffect.SpeedOfSound) || effect.Owner.TempProperties.GetProperty<bool>("Charging"))
 			{
 				MessageToCaster(effect.Owner.Name + " is moving too fast for this spell to have any effect!", eChatType.CT_SpellResisted);
 				return;
@@ -89,7 +91,7 @@ namespace DOL.GS.Spells
 			//GameSpellEffect mezz = SpellHandler.FindEffectOnTarget(effect.Owner, "Mesmerize");
 			ECSGameEffect mezz = EffectListService.GetEffectOnTarget(effect.Owner, eEffect.Mez);
 			if (mezz != null)
-				EffectService.RequestImmediateCancelEffect(mezz);
+				mezz.Stop();
 				//mezz.Cancel(false);
 		}
 
@@ -126,7 +128,7 @@ namespace DOL.GS.Spells
 					//GameSpellEffect effect = FindEffectOnTarget(living, this);
 					ECSGameEffect effect = EffectListService.GetEffectOnTarget(living, eEffect.MovementSpeedDebuff);
 					if (effect != null)
-						EffectService.RequestImmediateCancelEffect(effect);
+						effect.Stop();
 						//effect.Cancel(false);
 					break;
 			}

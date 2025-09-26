@@ -6,14 +6,12 @@ using DOL.Database;
 using DOL.GS;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
-using log4net;
 
 namespace DOL.GS
 {
     public class PrinceBaalorien : GameEpicBoss
     {
-        private static new readonly log4net.ILog log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static new readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         [ScriptLoadedEvent]
         public static void ScriptLoaded(DOLEvent e, object sender, EventArgs args)
@@ -57,14 +55,6 @@ namespace DOL.GS
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60165031);
             LoadTemplate(npcTemplate);
 
-            Strength = npcTemplate.Strength;
-            Constitution = npcTemplate.Constitution;
-            Dexterity = npcTemplate.Dexterity;
-            Quickness = npcTemplate.Quickness;
-            Empathy = npcTemplate.Empathy;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-
             // demon
             BodyType = 2;
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
@@ -77,10 +67,7 @@ namespace DOL.GS
             return true;
         }
 
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * Strength / 100 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override int MeleeAttackRange => 450;
         public override bool HasAbility(string keyName)
         {
@@ -96,7 +83,7 @@ namespace DOL.AI.Brain
 {
     public class BaalorienBrain : StandardMobBrain
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         public BaalorienBrain()
             : base()

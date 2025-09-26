@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using DOL.Database;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
@@ -10,7 +9,7 @@ namespace DOL.GS.RealmAbilities
 	{
 		public AtlasOF_SpeedOfSound(DbAbility dba, int level) : base(dba, level) { }
 
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		int m_range = 2000;
 		int m_duration = 30000; // Your group moves at twice normal speed for 30 seconds
@@ -31,8 +30,7 @@ namespace DOL.GS.RealmAbilities
 				 return;
 			 }*/
 
-			if (player.TempProperties.GetProperty("Charging", false)
-				|| player.effectListComponent.GetAllEffects().FirstOrDefault(x => x.GetType() == typeof(SpeedOfSoundECSEffect)) != null)
+			if (player.TempProperties.GetProperty<bool>("Charging") || player.effectListComponent.ContainsEffectForEffectType(eEffect.SpeedOfSound))
 			{
 				player.Out.SendMessage("You already an effect of that type!", eChatType.CT_SpellResisted, eChatLoc.CL_SystemWindow);
 				return;
@@ -62,7 +60,7 @@ namespace DOL.GS.RealmAbilities
 				//send spelleffect
 				foreach (GamePlayer visPlayer in target.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 					visPlayer.Out.SendSpellEffectAnimation(player, target, 7021, 0, false, CastSuccess(true));
-				new SpeedOfSoundECSEffect(new ECSGameEffectInitParams(target, m_duration, 1));
+				ECSGameEffectFactory.Create(new(target, m_duration, 1), static (in ECSGameEffectInitParams i) => new SpeedOfSoundECSEffect(i));
 			}
 
 		}

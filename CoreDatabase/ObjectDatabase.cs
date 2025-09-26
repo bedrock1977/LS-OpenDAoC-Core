@@ -1,14 +1,13 @@
 using System;
-using System.Linq;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
-
 using DOL.Database.Attributes;
 using DOL.Database.Connection;
 using DOL.Database.Handlers;
-
-using log4net;
 
 namespace DOL.Database
 {
@@ -20,12 +19,14 @@ namespace DOL.Database
 		/// <summary>
 		/// Defines a logger for this class.
 		/// </summary>
-		protected static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		protected static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Number Format Info to Use for Database
 		/// </summary>
 		protected static readonly NumberFormatInfo Nfi = new CultureInfo("en-US", false).NumberFormat;
+
+		private static readonly ConcurrentDictionary<Type, Func<IEnumerable<object>, Array>> _castToArrayCache = new();
 
 		/// <summary>
 		/// Data Table Handlers for this Database Handler
@@ -511,16 +512,18 @@ namespace DOL.Database
 			{
 				var dataType = grp.Key;
 				var tableName = AttributeUtil.GetTableOrViewName(dataType);
+
 				try
 				{
-					
-					DataTableHandler tableHandler;
-					if (!TableDatasets.TryGetValue(tableName, out tableHandler))
+					if (!TableDatasets.TryGetValue(tableName, out DataTableHandler tableHandler))
 						throw new DatabaseException(string.Format("Table {0} is not registered for Database Connection...", tableName));
-					
+
 					if (!tableHandler.HasRelations)
-						return;
-					
+					{
+						TakeSnapshots(grp);
+						continue;
+					}
+
 					var relations = tableHandler.ElementBindings.Where(bind => bind.Relation != null);
 					foreach (var relation in relations)
 					{
@@ -528,7 +531,7 @@ namespace DOL.Database
 						if (!(relation.Relation.AutoLoad || force))
 							continue;
 						
-						var remoteName = AttributeUtil.GetTableOrViewName(relation.ValueType);						
+						var remoteName = AttributeUtil.GetTableOrViewName(relation.ValueType);
 						try
 						{
 							DataTableHandler remoteHandler;
@@ -548,12 +551,20 @@ namespace DOL.Database
 								                relation.Relation.LocalField, AttributeUtil.GetTableOrViewName(relation.ValueType), relation.Relation.RemoteField, re);
 						}
 					}
+
+					TakeSnapshots(grp);
 				}
 				catch (Exception e)
 				{
 					if (log.IsErrorEnabled)
 						log.ErrorFormat("Could not Resolve Relations for Table {0}\n{1}", tableName, e);
 				}
+			}
+
+			static void TakeSnapshots(IGrouping<Type, DataObject> group)
+			{
+				foreach (DataObject dataObject in group)
+					dataObject.TakeSnapshot();
 			}
 		}
 		
@@ -627,9 +638,8 @@ namespace DOL.Database
 				{
 					if (result.Results.Any())
 					{
-						MethodInfo castMethod = typeof(Enumerable).GetMethod("OfType").MakeGenericMethod(type);
-						MethodInfo methodToArray = typeof(Enumerable).GetMethod("ToArray").MakeGenericMethod(type);
-						relationBind.SetValue(result.DataObject, methodToArray.Invoke(null, new object[] { castMethod.Invoke(null, new object[] { result.Results }) }));
+						Array array = CastAndToArray(result.Results.Cast<object>(), type);
+						relationBind.SetValue(result.DataObject, array);
 					}
 					else
 					{
@@ -644,6 +654,20 @@ namespace DOL.Database
 			
 			// Fill Sub Relations
 			FillObjectRelations(resultByObjs.SelectMany(result => result.Results), false);
+		}
+
+		private static Array CastAndToArray(IEnumerable<object> source, Type targetType)
+		{
+			var func = _castToArrayCache.GetOrAdd(targetType, static t =>
+			{
+				ParameterExpression param = Expression.Parameter(typeof(IEnumerable<object>), "source");
+				MethodCallExpression castCall = Expression.Call(typeof(Enumerable), "OfType", [t], param);
+				MethodCallExpression toArrayCall = Expression.Call(typeof(Enumerable), "ToArray", [t], castCall);
+				Expression<Func<IEnumerable<object>, Array>> lambda = Expression.Lambda<Func<IEnumerable<object>, Array>>(toArrayCall, param);
+				return lambda.Compile();
+			});
+
+			return func(source);
 		}
 		#endregion
 		#region Public Object Select with Key API

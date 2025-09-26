@@ -21,7 +21,6 @@ using DOL.Events;
 using DOL.GS;
 using DOL.GS.PacketHandler;
 using DOL.GS.PlayerTitles;
-using log4net;
 
 namespace DOL.GS.Quests.Hibernia
 {
@@ -30,7 +29,7 @@ namespace DOL.GS.Quests.Hibernia
         /// <summary>
         /// Defines a logger for this class.
         /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected const string questTitle = "[Memorial] Power of Nature";
         protected const int minimumLevel = 1;
@@ -86,7 +85,7 @@ namespace DOL.GS.Quests.Hibernia
                 Theresa = new GameNPC();
                 Theresa.Model = 310;
                 Theresa.Name = "Theresa";
-                Theresa.GuildName = "";
+                Theresa.GuildName = string.Empty;
                 Theresa.Realm = eRealm.Hibernia;
                 Theresa.CurrentRegionID = 201;
                 Theresa.LoadEquipmentTemplateFromDatabase("Theresa");
@@ -118,7 +117,7 @@ namespace DOL.GS.Quests.Hibernia
                 Karl = new GameNPC();
                 Karl.Model = 956;
                 Karl.Name = "Karl";
-                Karl.GuildName = "";
+                Karl.GuildName = string.Empty;
                 Karl.Realm = eRealm.Hibernia;
                 Karl.CurrentRegionID = 200;
                 Karl.LoadEquipmentTemplateFromDatabase("Karl");
@@ -462,7 +461,7 @@ namespace DOL.GS.Quests.Hibernia
                 MobEffect = new GameNPC();
                 MobEffect.Model = 1;
                 MobEffect.Name = "power of nature";
-                MobEffect.GuildName = "";
+                MobEffect.GuildName = string.Empty;
                 MobEffect.Realm = eRealm.Hibernia;
                 MobEffect.Race = 2007;
                 MobEffect.BodyType = (ushort) NpcTemplateMgr.eBodyType.Magical;

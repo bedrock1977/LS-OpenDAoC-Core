@@ -1,32 +1,12 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using DOL.AI.Brain;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("BeFriend")]
+	[SpellHandler(eSpellType.BeFriend)]
 	public class BeFriendSpellHandler : SpellHandler 
 	{
 		/// <summary>
@@ -49,9 +29,11 @@ namespace DOL.GS.Spells
 		/// </summary>
 		/// <param name="castTarget"></param>
 		/// <returns></returns>
-		public override IList<GameLiving> SelectTargets(GameObject castTarget)
+		public override List<GameLiving> SelectTargets(GameObject castTarget)
 		{
-			return base.SelectTargets(castTarget).Where(t => t is GameNPC).ToList();
+			List<GameLiving> targets = base.SelectTargets(castTarget);
+			targets.RemoveAll(t => t is not GameNPC);
+			return targets;
 		}
 
 		/// <summary>
@@ -66,14 +48,14 @@ namespace DOL.GS.Spells
 			{
 				// Resisted
 				SendSpellResistAnimation(target);
-				this.MessageToCaster(eChatType.CT_SpellResisted, "{0} is too strong for you to charm!", target.GetName(0, true));
+				MessageToCaster($"{target.GetName(0, true)} is too strong for you to charm!", eChatType.CT_SpellResisted);
 				return;
 			}
 			
 			if (npcTarget.Brain is IControlledBrain)
 			{
 				SendSpellResistAnimation(target);
-				this.MessageToCaster(eChatType.CT_SpellResisted, "{0} is already under control.",  target.GetName(0, true));
+				MessageToCaster($"{target.GetName(0, true)} is already under control.", eChatType.CT_SpellResisted);
 				return;
 			}
 			
@@ -123,16 +105,16 @@ namespace DOL.GS.Spells
 
 			return base.OnEffectExpires(effect, noMessages);
 		}
-		
-		/// <summary>
-		/// Spell Resists don't trigger notification or interrupt
-		/// </summary>
-		/// <param name="target"></param>
-		protected override void OnSpellResisted(GameLiving target)
+
+		protected override void OnSpellNegated(GameLiving target, SpellNegatedReason reason)
 		{
-			SendSpellResistAnimation(target);
-			SendSpellResistMessages(target);
-			StartSpellResistLastAttackTimer(target);
+			if (reason is SpellNegatedReason.Resisted)
+			{
+				SendSpellResistAnimation(target);
+				SendSpellResistMessages(target);
+			}
+
+			StartSpellNegatedLastAttackTimer(target);
 		}
 
 		/// <summary>

@@ -5,13 +5,12 @@ using System.Reflection;
 using System.Threading;
 using DOL.Database;
 using DOL.Events;
-using log4net;
 
 namespace DOL.GS
 {
     public sealed class MinotaurRelicManager
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// table of all relics, InternalID as key
@@ -104,14 +103,16 @@ namespace DOL.GS
 
             foreach (MinotaurRelic relic in GetAllRelics())
             {
-                if (!relics.ContainsKey(relic.CurrentRegionID))
+                if (!relics.TryGetValue(relic.CurrentRegionID, out IList<MinotaurRelic> relicsInRegion))
                 {
-                    relics.Add(relic.CurrentRegionID, new List<MinotaurRelic>());
+                    relicsInRegion = [];
+                    relics.Add(relic.CurrentRegionID, relicsInRegion);
                 }
-                relics[relic.CurrentRegionID].Add(relic);
+
+                relicsInRegion.Add(relic);
             }
 
-            foreach (GamePlayer player in ClientService.GetPlayers(Predicate, relics))
+            foreach (GamePlayer player in ClientService.Instance.GetPlayers(Predicate, relics))
             {
                 foreach (MinotaurRelic relic in relics[player.CurrentRegionID])
                 {
@@ -185,10 +186,7 @@ namespace DOL.GS
         {
             lock (m_minotaurrelics)
             {
-                if (!m_minotaurrelics.ContainsKey(ID))
-                    return null;
-
-                return m_minotaurrelics[ID] as MinotaurRelic;
+                return m_minotaurrelics.TryGetValue(ID, out MinotaurRelic value) ? value : null;
             }
         }
 

@@ -25,13 +25,6 @@ namespace DOL.GS.Scripts
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(9907);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 
 			Faction = FactionMgr.GetFactionByID(779);
 			LoadedFromScript = false; //load from database
@@ -41,10 +34,7 @@ namespace DOL.GS.Scripts
 			base.SetOwnBrain(new MistressOfRunesBrain());			
 			return true;
 		}	
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -98,7 +88,7 @@ namespace DOL.GS.Scripts
 		/// <param name="message">The message to be broadcast.</param>
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in base.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in base.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}
@@ -179,7 +169,7 @@ namespace DOL.AI.Brain
 			base.Think();
 		}
 
-		protected override void CheckNPCAggro()
+		protected override void CheckNpcAggro()
 		{
 			if (Body.attackComponent.AttackState)
 				return;
@@ -211,7 +201,7 @@ namespace DOL.AI.Brain
 		/// <param name="message">The message to be broadcast.</param>
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}

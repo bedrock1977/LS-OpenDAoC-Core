@@ -1,28 +1,5 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
 using System;
-using System.Collections;
-using System.Threading;
 using DOL.Events;
-using DOL.GS;
-using log4net;
 using DOL.GS.PacketHandler;
 
 namespace DOL.GS
@@ -38,17 +15,7 @@ namespace DOL.GS
 
 	public class GuildEventHandler
 	{
-		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-		/// <summary>
-		/// Time Interval to check for expired guild buffs
-		/// </summary>
-		public static readonly int BUFFCHECK_INTERVAL = 60 * 1000; // 1 Minute
-
-		/// <summary>
-		/// Static Timer for the Timer to check for expired guild buffs
-		/// </summary>
-		private static Timer m_timer;
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		[ScriptLoadedEvent]
 		public static void OnScriptCompiled(DOLEvent e, object sender, EventArgs args)
@@ -60,9 +27,6 @@ namespace DOL.GS
 			GameEventMgr.AddHandler(GamePlayerEvent.RRLevelUp, new DOLEventHandler(RealmRankUp));
 			GameEventMgr.AddHandler(GamePlayerEvent.RLLevelUp, new DOLEventHandler(RealmRankUp));
 			GameEventMgr.AddHandler(GamePlayerEvent.LevelUp, new DOLEventHandler(LevelUp));
-
-			// Guild Buff Check
-			m_timer = new Timer(new TimerCallback(StartCheck), m_timer, 0, BUFFCHECK_INTERVAL);
 		}
 
 		[ScriptUnloadedEvent]
@@ -75,12 +39,6 @@ namespace DOL.GS
 			GameEventMgr.RemoveHandler(GamePlayerEvent.RRLevelUp, new DOLEventHandler(RealmRankUp));
 			GameEventMgr.RemoveHandler(GamePlayerEvent.RLLevelUp, new DOLEventHandler(RealmRankUp));
 			GameEventMgr.RemoveHandler(GamePlayerEvent.LevelUp, new DOLEventHandler(LevelUp));
-
-			if (m_timer != null)
-			{
-				m_timer.Dispose();
-				m_timer = null;
-			}
 		}
 
 		#region Crafting Tier
@@ -191,40 +149,6 @@ namespace DOL.GS
 					}
 				}
 			}
-
-			if (player.Guild != null)
-				player.Guild.UpdateGuildWindow();
-		}
-
-		#endregion
-
-		#region XP Gain
-
-		public static void XPGain(DOLEvent e, object sender, EventArgs args)
-		{
-			GamePlayer player = sender as GamePlayer;
-
-			if (player == null || player.Guild == null) return;
-
-			GainedExperienceEventArgs xpArgs = args as GainedExperienceEventArgs;
-
-			if (player.Guild != null && !player.Guild.IsStartingGuild && player.Guild.BonusType == Guild.eBonusType.Experience && xpArgs.XPSource == eXPSource.NPC)
-			{
-				long bonusXP = (long)Math.Ceiling((double)xpArgs.ExpBase * ServerProperties.Properties.GUILD_BUFF_XP / 100);
-
-				player.GainExperience(eXPSource.Other, bonusXP, 0, 0, 0, false);
-				player.Out.SendMessage("You gain an additional " + bonusXP + " experience due to your guild's buff!", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
-				// player.Guild.UpdateGuildWindow();
-			}
-			
-			if (player.Guild != null && player.Guild.IsStartingGuild && xpArgs.XPSource == eXPSource.NPC)
-			{
-				long bonusXP = (long)Math.Ceiling((double)xpArgs.ExpBase * ServerProperties.Properties.GUILD_BUFF_XP / 200);
-
-				player.GainExperience(eXPSource.Other, bonusXP, 0, 0, 0, false);
-				player.Out.SendMessage("You gain an additional " + bonusXP + " experience due to your starting guild's buff!", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
-				// player.Guild.UpdateGuildWindow();
-			}
 		}
 
 		#endregion
@@ -290,40 +214,5 @@ namespace DOL.GS
 		}
 
 		#endregion
-
-		#region Guild Buff GameTimer Check
-
-		public static void StartCheck(object timer)
-		{
-			Thread th = new Thread(new ThreadStart(StartCheckThread));
-			th.Start();
-		}
-
-		public static void StartCheckThread()
-		{
-			foreach (Guild checkGuild in GuildMgr.GetAllGuilds())
-			{
-				if (checkGuild.BonusType != Guild.eBonusType.None)
-				{
-					TimeSpan bonusTime = DateTime.Now.Subtract(checkGuild.BonusStartTime);
-
-					if (bonusTime.Days > 0 && !checkGuild.IsStartingGuild)
-					{
-						checkGuild.BonusType = Guild.eBonusType.None;
-
-						checkGuild.SaveIntoDatabase();
-
-						string message = "[Guild Buff] Your guild buff has now worn off!";
-						foreach (GamePlayer player in checkGuild.GetListOfOnlineMembers())
-						{
-							player.Out.SendMessage(message, eChatType.CT_Guild, eChatLoc.CL_ChatWindow);
-						}
-					}
-				}
-			}
-		}
-
-		#endregion
 	}
-	
 }

@@ -66,7 +66,7 @@ namespace DOL.GS
 		/// <returns>list with string messages</returns>
 		public override IList GetExamineMessages(GamePlayer player)
 		{
-			string TrainerClassName = "";
+			string TrainerClassName = string.Empty;
             switch (player.Client.Account.Language)
 			{
                 case "DE":
@@ -192,7 +192,7 @@ namespace DOL.GS
 					}
 					player.RefreshSpecDependantSkills(false);
 					// Notify Player of points
-					player.Out.SendUpdatePlayerSkills();
+					player.Out.SendUpdatePlayerSkills(true);
 					player.Out.SendUpdatePoints();
 					player.Out.SendUpdatePlayer();
 					player.Out.SendTrainerWindow();
@@ -225,7 +225,7 @@ namespace DOL.GS
 		protected virtual void CheckAbilityToUseItem(GamePlayer player)
 		{
 			// drop any equiped-non usable item, in inventory or on the ground if full
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				foreach (DbInventoryItem item in player.Inventory.EquippedItems)
 				{
@@ -297,25 +297,24 @@ namespace DOL.GS
 		/// <summary>
 		/// Check if Player can be Promoted
 		/// </summary>
-		/// <param name="player"></param>
 		public virtual bool CanPromotePlayer(GamePlayer player)
 		{
-			var baseClass = ScriptMgr.FindCharacterBaseClass((int)TrainedClass);
-			ICharacterClass pickedClass = ScriptMgr.FindCharacterClass((int)TrainedClass);
+			var baseClass = ScriptMgr.FindCharacterBaseClass((int) TrainedClass);
+			ICharacterClass pickedClass = ScriptMgr.FindCharacterClass((int) TrainedClass);
 
 			// Error or Base Trainer...
-			if (baseClass == null || baseClass.ID == (int)TrainedClass)
+			if (baseClass == null || (eCharacterClass) baseClass.ID == TrainedClass)
 				return false;
-			
+
 			if (player.Level < 5 || player.CharacterClass.ID != baseClass.ID)
 				return false;
-			
-			if(pickedClass.EligibleRaces.Exists(s => (short)s.ID == player.Race))
+
+			if (!pickedClass.EligibleRaces.Exists(s => s.ID == (eRace) player.Race))
 				return false;
-			
-			if (GlobalConstants.CLASS_GENDER_CONSTRAINTS_DICT.ContainsKey(TrainedClass) && GlobalConstants.CLASS_GENDER_CONSTRAINTS_DICT[TrainedClass] != player.Gender)
+
+			if (GlobalConstants.CLASS_GENDER_CONSTRAINTS_DICT.TryGetValue(TrainedClass, out eGender gender) && gender != player.Gender)
 				return false;
-			    
+
 			return true;
 		}
 
@@ -339,14 +338,14 @@ namespace DOL.GS
 				player.RemoveAllAbilities();
 				player.RemoveAllSpellLines();
 
-				if (messageToPlayer != "")
+				if (messageToPlayer != string.Empty)
 					player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameTrainer.PromotePlayer.Says", this.Name, messageToPlayer), eChatType.CT_System, eChatLoc.CL_PopupWindow);
 				player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameTrainer.PromotePlayer.Upgraded", player.CharacterClass.Name), eChatType.CT_Important, eChatLoc.CL_SystemWindow);
 
 				player.CharacterClass.OnLevelUp(player, player.Level);
 				player.RefreshSpecDependantSkills(true);
 				player.StartPowerRegeneration();
-				player.Out.SendUpdatePlayerSkills();
+				player.Out.SendUpdatePlayerSkills(true);
 				player.Out.SendUpdatePlayer();
 				// drop any non usable item
 				CheckAbilityToUseItem(player);

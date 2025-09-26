@@ -13,7 +13,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Spymaster-2
-    [SpellHandlerAttribute("Decoy")]
+    [SpellHandler(eSpellType.Decoy)]
     public class DecoySpellHandler : SpellHandler
     {
         private GameDecoy decoy;
@@ -27,14 +27,14 @@ namespace DOL.GS.Spells
             m_caster.Mana -= PowerCost(target);
             base.FinishSpellCast(target);
         }
-        public override bool IsOverwritable(ECSGameSpellEffect compare)
+        public override bool HasConflictingEffectWith(ISpellHandler compare)
         {
             return false;
         }
 
         public override void ApplyEffectOnTarget(GameLiving target)
         {
-            GameSpellEffect neweffect = CreateSpellEffect(target, Effectiveness);
+            GameSpellEffect neweffect = CreateSpellEffect(target, CasterEffectiveness);
             decoy.AddToWorld();
             neweffect.Start(decoy);
         }
@@ -81,7 +81,7 @@ namespace DOL.GS.Spells
             decoy.X = caster.X;
             decoy.Y = caster.Y;
             decoy.Z = caster.Z;
-            string TemplateId = "";
+            string TemplateId = string.Empty;
             switch (caster.Realm)
             {
                 case eRealm.Albion:
@@ -108,7 +108,7 @@ namespace DOL.GS.Spells
                 decoy.BroadcastLivingEquipmentUpdate();
             }
             decoy.MaxSpeedBase = 0;
-            decoy.GuildName = "";
+            decoy.GuildName = string.Empty;
         }
     }
     #endregion
@@ -118,7 +118,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Spymaster-4
-    [SpellHandlerAttribute("Sabotage")]
+    [SpellHandler(eSpellType.Sabotage)]
     public class SabotageSpellHandler : SpellHandler
     {
         public override void OnDirectEffect(GameLiving target)
@@ -138,7 +138,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Spymaster-5
-    [SpellHandlerAttribute("TangleSnare")]
+    [SpellHandler(eSpellType.TangleSnare)]
     public class TangleSnareSpellHandler : MineSpellHandler
     {
         // constructor
@@ -188,7 +188,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Spymaster-6
-    [SpellHandlerAttribute("PoisonSpike")]
+    [SpellHandler(eSpellType.PoisonSpike)]
     public class PoisonSpikeSpellHandler : MineSpellHandler
     {
         // constructor
@@ -235,12 +235,12 @@ namespace DOL.GS.Spells
         }
     }
     #region Subspell
-    [SpellHandlerAttribute("PoisonspikeDot")]
+    [SpellHandler(eSpellType.PoisonspikeDot)]
     public class Spymaster6DotHandler : DoTSpellHandler
     {
         // constructor
         public Spymaster6DotHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-        public override int CalculateSpellResistChance(GameLiving target) { return 0; }
+        public override double CalculateSpellResistChance(GameLiving target) { return 0; }
         protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
         {
             return new GameSpellEffect(this, m_spell.Duration, m_spellLine.IsBaseLine ? 5000 : 4000, effectiveness);
@@ -250,7 +250,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Spymaster-7
-    [SpellHandlerAttribute("Loockout")]
+    [SpellHandler(eSpellType.Loockout)]
     public class LoockoutSpellHandler : SpellHandler
     {
         private GameLiving m_target;
@@ -267,7 +267,7 @@ namespace DOL.GS.Spells
             m_target = effect.Owner as GamePlayer;
             if (m_target == null) return;
             if (!m_target.IsAlive || m_target.ObjectState != GameLiving.eObjectState.Active || !m_target.IsSitting) return;
-            Caster.BaseBuffBonusCategory[(int)eProperty.Skill_Stealth] += 100;
+            Caster.BaseBuffBonusCategory[eProperty.Skill_Stealth] += 100;
             GameEventMgr.AddHandler(m_target, GamePlayerEvent.Moving, new DOLEventHandler(PlayerAction));
             GameEventMgr.AddHandler(Caster, GamePlayerEvent.Moving, new DOLEventHandler(PlayerAction));
             new LoockoutOwner().Start(Caster);
@@ -276,7 +276,7 @@ namespace DOL.GS.Spells
 
         public override int OnEffectExpires(GameSpellEffect effect, bool noMessages)
         {
-            Caster.BaseBuffBonusCategory[(int)eProperty.Skill_Stealth] -= 100;
+            Caster.BaseBuffBonusCategory[eProperty.Skill_Stealth] -= 100;
             GameEventMgr.RemoveHandler(Caster, GamePlayerEvent.Moving, new DOLEventHandler(PlayerAction));
             GameEventMgr.RemoveHandler(m_target, GamePlayerEvent.Moving, new DOLEventHandler(PlayerAction));
             return base.OnEffectExpires(effect, noMessages);
@@ -299,7 +299,7 @@ namespace DOL.GS.Spells
 
     //shared timer 1
     #region Spymaster-8
-    [SpellHandlerAttribute("SiegeWrecker")]
+    [SpellHandler(eSpellType.SiegeWrecker)]
     public class SiegeWreckerSpellHandler : MineSpellHandler
     {
         public override void OnEffectPulse(GameSpellEffect effect)
@@ -373,7 +373,7 @@ namespace DOL.GS.Spells
     #endregion
 
     #region Spymaster-9
-    [SpellHandlerAttribute("EssenceFlare")]
+    [SpellHandler(eSpellType.EssenceFlare)]
     public class EssenceFlareSpellHandler : SummonItemSpellHandler
     {
         public EssenceFlareSpellHandler(GameLiving caster, Spell spell, SpellLine line)
@@ -397,7 +397,7 @@ namespace DOL.GS.Spells
     #endregion
 
         #region Spymaster-10
-        [SpellHandler("BlanketOfCamouflage")]
+        [SpellHandler(eSpellType.BlanketOfCamouflage)]
         public class GroupstealthHandler : MasterlevelHandling
         {
             public GroupstealthHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
@@ -419,7 +419,7 @@ namespace DOL.GS.Spells
                     playerTarget.Stealth(true);
                     if (effect.Owner != Caster)
                     {
-                        //effect.Owner.BuffBonusCategory1[(int)eProperty.Skill_Stealth] += 80;
+                        //effect.Owner.BuffBonusCategory1[eProperty.Skill_Stealth] += 80;
                         GameEventMgr.AddHandler(playerTarget, GamePlayerEvent.Moving, new DOLEventHandler(PlayerAction));
                         GameEventMgr.AddHandler(playerTarget, GamePlayerEvent.AttackFinished, new DOLEventHandler(PlayerAction));
                         GameEventMgr.AddHandler(playerTarget, GamePlayerEvent.CastStarting, new DOLEventHandler(PlayerAction));
@@ -439,7 +439,7 @@ namespace DOL.GS.Spells
             {
                 if (effect.Owner != Caster && effect.Owner is GamePlayer)
                 {
-                    //effect.Owner.BuffBonusCategory1[(int)eProperty.Skill_Stealth] -= 80;
+                    //effect.Owner.BuffBonusCategory1[eProperty.Skill_Stealth] -= 80;
                     GamePlayer playerTarget = effect.Owner as GamePlayer;
                     GameEventMgr.RemoveHandler(playerTarget, GamePlayerEvent.AttackFinished, new DOLEventHandler(PlayerAction));
                     GameEventMgr.RemoveHandler(playerTarget, GamePlayerEvent.CastStarting, new DOLEventHandler(PlayerAction));
@@ -483,24 +483,24 @@ namespace DOL.GS.Spells
         #endregion
     }
 
-    //to show an Icon & informations to the caster
-    namespace DOL.GS.Effects
-    {
+//to show an Icon & informations to the caster
+namespace DOL.GS.Effects
+{
     public class LoockoutOwner : StaticEffect, IGameEffect
+    {
+        public LoockoutOwner() : base() { }
+        public void Start(GamePlayer player) { base.Start(player); }
+        public override void Stop() { base.Stop(); }
+        public override ushort Icon { get { return 2616; } }
+        public override string Name { get { return "Loockout"; } }
+        public override IList<string> DelveInfo
         {
-            public LoockoutOwner() : base() { }
-            public void Start(GamePlayer player) { base.Start(player); }
-            public override void Stop() { base.Stop(); }
-            public override ushort Icon { get { return 2616; } }
-            public override string Name { get { return "Loockout"; } }
-            public override IList<string> DelveInfo
+            get
             {
-                get
-                {
-                    var delveInfoList = new List<string>();
-                    delveInfoList.Add("Your stealth range is increased.");
-                    return delveInfoList;
-                }
+                var delveInfoList = new List<string>();
+                delveInfoList.Add("Your stealth range is increased.");
+                return delveInfoList;
             }
         }
     }
+}

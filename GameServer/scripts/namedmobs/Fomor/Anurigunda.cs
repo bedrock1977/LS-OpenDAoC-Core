@@ -66,13 +66,6 @@ namespace DOL.GS
 		{
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60157942);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			Level = Convert.ToByte(npcTemplate.Level);
 			RespawnInterval = ServerProperties.Properties.SET_EPIC_GAME_ENCOUNTER_RESPAWNINTERVAL * 60000;//1min is 60000 miliseconds
 
@@ -91,7 +84,7 @@ namespace DOL.AI.Brain
 {
 	public class AnurigundaBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public AnurigundaBrain() : base()
 		{
 			AggroLevel = 100;
@@ -291,10 +284,7 @@ namespace DOL.GS
 				default: return 25;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 70;
-		}
+
 		List<int> Id_npctemplates = new List<int>()
 		{
 			60160948,60160946,60160979,60161009
@@ -305,13 +295,6 @@ namespace DOL.GS
 			int idtemplate = Id_npctemplates[Util.Random(0, Id_npctemplates.Count - 1)];
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(idtemplate);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			RespawnInterval = -1;
 
 			Faction = FactionMgr.GetFactionByID(82);

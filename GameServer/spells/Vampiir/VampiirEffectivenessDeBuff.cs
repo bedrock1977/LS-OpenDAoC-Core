@@ -23,7 +23,7 @@ using DOL.GS.PacketHandler;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandlerAttribute("VampiirEffectivenessDeBuff")]
+	[SpellHandler(eSpellType.VampiirEffectivenessDeBuff)]
 	public class VampiirEffectivenessDeBuff : SpellHandler
 	{
 		public override void FinishSpellCast(GameLiving target)
@@ -96,7 +96,7 @@ namespace DOL.GS.Spells
 				//Name
 				list.Add("Name: " + Spell.Name);
 				//Description
-				list.Add("Description: " + Spell.Description);
+				list.Add("Description: " + ShortDescription);
 				//Target
 				list.Add("Target: " + Spell.Target);
 				//Cast

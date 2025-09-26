@@ -36,7 +36,7 @@ namespace DOL.GS.Commands
 		"AdminCommands.Shutdown.Usage.Stop")]
 	public class ShutdownCommandHandler : AbstractCommandHandler, ICommandHandler
 	{
-		private static log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private const int AUTOMATEDSHUTDOWN_CHECKINTERVALMINUTES = 15;
 		private const int AUTOMATEDSHUTDOWN_HOURTOSHUTDOWN = 4; // local time
@@ -92,12 +92,13 @@ namespace DOL.GS.Commands
 				date = date.AddSeconds(m_counter);
 				string msg = $"Automated server restart in {m_counter / 60} mins! (Restart at {date:HH:mm \"GMT\" zzz})";
 
-				foreach (GamePlayer player in ClientService.GetPlayers())
+				foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 					player.Out.SendDialogBox(eDialogCode.SimpleWarning, 0, 0, 0, 0, eDialogType.Ok, true, msg);
 
-				log.Warn(msg);
+				if (log.IsWarnEnabled)
+					log.Warn(msg);
 			}
-			else
+			else if (log.IsInfoEnabled)
 				log.Info($"Uptime = {uptime.TotalHours:N1}, restart uptime = {Properties.HOURS_UPTIME_BETWEEN_SHUTDOWN} | current hour = {DateTime.Now.Hour}, restart hour = {AUTOMATEDSHUTDOWN_HOURTOSHUTDOWN}");
 		}
 		
@@ -115,16 +116,19 @@ namespace DOL.GS.Commands
 			}
 			else
 			{
-				if (m_counter > 120)
-					log.Warn("Server restart in " + (int)(m_counter / 60) + " minutes!");
-				else
-					log.Warn("Server restart in " + m_counter + " seconds!");
+				if (log.IsWarnEnabled)
+				{
+					if (m_counter > 120)
+						log.Warn("Server restart in " + (int)(m_counter / 60) + " minutes!");
+					else
+						log.Warn("Server restart in " + m_counter + " seconds!");
+				}
 
 				long secs = m_counter;
 				long mins = secs / 60;
 				long hours = mins / 60;
 
-				string translationID = "";
+				string translationID = string.Empty;
 				long args1 = 0;
 				long args2 = 0;
 
@@ -235,9 +239,9 @@ namespace DOL.GS.Commands
 				//Change the timer to the new callback time
 				m_timer.Change(m_currentCallbackTime, m_currentCallbackTime);
 
-				if (translationID != "")
+				if (translationID != string.Empty)
 				{
-					foreach (GamePlayer player in ClientService.GetPlayers())
+					foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 					{
 						if (args2 == -1)
 							ChatUtil.SendServerMessage(player.Client, translationID, args1);
@@ -250,7 +254,7 @@ namespace DOL.GS.Commands
 				{
 					GameServer.Instance.Close();
 
-					foreach (GamePlayer player in ClientService.GetPlayers())
+					foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 					{
 						// Message: "The server is now closed to all incoming connections! The server will shut down in {0} seconds!"
 						ChatUtil.SendDebugMessage(player.Client, "AdminCommands.Account.Msg.ServerClosed", secs);
@@ -294,16 +298,19 @@ namespace DOL.GS.Commands
 			}
 			else
 			{
-				if (m_counter > 120)
-					log.Warn("Server restart in " + (int)(m_counter / 60) + " minutes!");
-				else
-					log.Warn("Server restart in " + m_counter + " seconds!");
+				if (log.IsWarnEnabled)
+				{
+					if (m_counter > 120)
+						log.Warn("Server restart in " + (int)(m_counter / 60) + " minutes!");
+					else
+						log.Warn("Server restart in " + m_counter + " seconds!");
+				}
 
 				long secs = m_counter;
 				long mins = secs / 60;
 				long hours = mins / 60;
 
-				string translationID = "";
+				string translationID = string.Empty;
 				long args1 = 0;
 				long args2 = 0;
 
@@ -414,9 +421,9 @@ namespace DOL.GS.Commands
 				//Change the timer to the new callback time
 				m_timer.Change(m_currentCallbackTime, m_currentCallbackTime);
 
-				if (translationID != "")
+				if (translationID != string.Empty)
 				{
-					foreach (GamePlayer player in ClientService.GetPlayers())
+					foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 					{
 						if (args2 == -1)
 							ChatUtil.SendServerMessage(player.Client, translationID, args1);
@@ -429,7 +436,7 @@ namespace DOL.GS.Commands
 				{
 					GameServer.Instance.Close();
 
-					foreach (GamePlayer player in ClientService.GetPlayers())
+					foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 					{
 						// Message: "The server is now closed to all incoming connections! The server will shut down in {0} seconds!"
 						ChatUtil.SendDebugMessage(player.Client, "AdminCommands.Account.Msg.ServerClosed", secs);
@@ -467,10 +474,10 @@ namespace DOL.GS.Commands
 		{
 			if (GameServer.Instance.IsRunning)
 			{
+				if (log.IsInfoEnabled)
+					log.Info("Executed server shutdown!");
+
 				GameServer.Instance.Stop();
-				log.Info("Executed server shutdown!");
-				Thread.Sleep(2000);
-				Environment.Exit(0);
 			}
 		}
 
@@ -535,7 +542,7 @@ namespace DOL.GS.Commands
 						ChatUtil.SendDebugMessage(client, "AdminCommands.Shutdown.Msg.YouCancel", null);
 						
 						// Send message to all players letting them know the shutdown isn't occurring
-						foreach (GamePlayer player in ClientService.GetPlayers())
+						foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 						{
 							// Message: "{0} stopped the server shutdown!"
 							ChatUtil.SendDebugMessage(player.Client, "AdminCommands.Shutdown.Msg.StaffCancel", user.Name);
@@ -550,13 +557,13 @@ namespace DOL.GS.Commands
 							GameServer.Instance.Open();
 							// Message: "The server is now open and accepting incoming connections!"
 							ChatUtil.SendDebugMessage(client, "AdminCommands.Shutdown.Msg.ServerOpen", null);
-							log.Info("Shutdown aborted. Server now accepting incoming connections!");
+
+							if (log.IsInfoEnabled)
+								log.Info("Shutdown aborted. Server now accepting incoming connections!");
 						}
-						else
-						{
+						else if (log.IsInfoEnabled)
 							log.Info("Shutdown aborted. Server still accepting incoming connections!");
-						}
-						
+
 						if (Properties.DISCORD_ACTIVE && (!string.IsNullOrEmpty(Properties.DISCORD_WEBHOOK_ID)))
 						{
 
@@ -715,7 +722,7 @@ namespace DOL.GS.Commands
 			bool popup = (m_counter / 60) < 60;
 			long counter = m_counter / 60;
 			
-			foreach (GamePlayer player in ClientService.GetPlayers())
+			foreach (GamePlayer player in ClientService.Instance.GetPlayers())
 			{
 				if (popup)
 				{

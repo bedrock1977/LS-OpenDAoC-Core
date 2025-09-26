@@ -1,4 +1,3 @@
-using System.Linq;
 using DOL.GS.PacketHandler;
 using DOL.GS.Scripts.discord;
 using DOL.GS.ServerProperties;
@@ -45,7 +44,7 @@ namespace DOL.GS.Commands
 
         private static void Broadcast(GamePlayer player, string message)
         {
-            foreach (GamePlayer otherPlayer in ClientService.GetPlayersForRealmWideChatMessage(player))
+            foreach (GamePlayer otherPlayer in ClientService.Instance.GetPlayersForRealmWideChatMessage(player))
                 otherPlayer.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "Scripts.Players.LFG.Message", $"{player.Name} ({player.Level}, {player.CharacterClass.Name})", message), eChatType.CT_LFG, eChatLoc.CL_ChatWindow);
 
             if (Properties.DISCORD_ACTIVE)

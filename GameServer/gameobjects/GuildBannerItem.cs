@@ -1,31 +1,7 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
 using System;
 using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using DOL.Events;
-using DOL.Language;
-using DOL.GS.PacketHandler;
 using DOL.Database;
-using DOL.GS.Spells;
-using log4net;
+using DOL.GS.PacketHandler;
 
 namespace DOL.GS
 {
@@ -34,7 +10,7 @@ namespace DOL.GS
 	/// </summary>
 	public class GuildBannerItem : GameInventoryItem
 	{
-		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
 		public enum eStatus : byte
 		{
@@ -56,13 +32,6 @@ namespace DOL.GS
 		public GuildBannerItem(DbItemTemplate template)
 			: base(template)
 		{
-		}
-
-		public GuildBannerItem(DbInventoryItem item)
-			: base(item)
-		{
-			OwnerID = item.OwnerID;
-			ObjectId = item.ObjectId;
 		}
 
 		/// <summary>
@@ -120,12 +89,11 @@ namespace DOL.GS
 			if (realm != player.Realm)
 			{
 				DbItemUnique template = new DbItemUnique(Template);
-				template.ClassType = "";
+				template.ClassType = string.Empty;
 				template.Model = trophyModel;
 				template.IsDropable = true;
 				template.IsIndestructible = false;
 
-				GameServer.Database.AddObject(template);
 				GameInventoryItem trophy = new GameInventoryItem(template);
                 player.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, trophy);
 				OwnerGuild.SendMessageToGuildMembers(player.Name + " of " + GlobalConstants.RealmToName(player.Realm) + " has captured your guild banner!", eChatType.CT_Guild, eChatLoc.CL_SystemWindow);

@@ -1,26 +1,23 @@
 using System;
+using System.Buffers;
 using System.IO;
+using System.Text;
 
 namespace DOL.Network
 {
 	/// <summary>
 	/// Writes primitives data types to an underlying stream.
 	/// </summary>
-	public class PacketOut : MemoryStream, IPacket
+	public abstract class PacketOut : MemoryStream, IPacket
 	{
-		/// <summary>
-		/// Default Constructor
-		/// </summary>
-		protected PacketOut()
-		{
-		}
+		public byte Code { get; protected set; }
+		public bool IsSizeSet { get; private set; }
 
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="size">Size of the internal buffer</param>
-		public PacketOut(int size) : base(size)
+		public virtual PacketOut Init(byte code)
 		{
+			Code = code;
+			IsSizeSet = false;
+			return this;
 		}
 
 		#region IPacket Members
@@ -117,8 +114,11 @@ namespace DOL.Network
 		/// </summary>
 		public void WriteFloatLowEndian(float val)
 		{
-			var bytes = BitConverter.GetBytes(val);
-			Write(bytes, 0, bytes.Length);
+			uint intValue = BitConverter.SingleToUInt32Bits(val);
+			WriteByte((byte) (intValue & 0xFF));
+			WriteByte((byte) ((intValue >> 8) & 0xFF));
+			WriteByte((byte) ((intValue >> 16) & 0xFF));
+			WriteByte((byte) ((intValue >> 24) & 0xFF));
 		}
 		
 		/// <summary>
@@ -152,18 +152,19 @@ namespace DOL.Network
 		}
 
 		/// <summary>
-		/// Writes the length of the patcket at the beginning of the stream
+		/// Writes the length of the packet at the beginning of the stream
 		/// </summary>
 		/// <returns>Length of the packet</returns>
-		public virtual ushort WritePacketLength()
+		public virtual void WritePacketLength()
 		{
+			// Intended to be overridden.
+			throw new NotImplementedException();
+		}
+
+		protected void OnStartWritePacketLength()
+		{
+			IsSizeSet = true;
 			Position = 0;
-
-			WriteShort((ushort) (Length - 3));
-
-			Capacity = (int) Length;
-
-			return (ushort) (Length - 3);
 		}
 
 		/// <summary>
@@ -178,7 +179,7 @@ namespace DOL.Network
 				return;
 			}
 
-			byte[] bytes = Constants.DefaultEncoding.GetBytes(str);
+			byte[] bytes = BaseServer.DefaultEncoding.GetBytes(str);
 			WriteByte((byte) bytes.Length);
 			Write(bytes, 0, bytes.Length);
 		}
@@ -191,7 +192,7 @@ namespace DOL.Network
 				return;
 			}
 
-			byte[] bytes = Constants.DefaultEncoding.GetBytes(str);
+			byte[] bytes = BaseServer.DefaultEncoding.GetBytes(str);
 			WriteIntLowEndian((uint)bytes.Length + 1);
 			Write(bytes, 0, bytes.Length);
 			WriteByte(0);
@@ -207,6 +208,10 @@ namespace DOL.Network
 			WriteByte(0x0);
 		}
 
+		public void WriteNonNullTerminatedString(string str)
+		{
+			WriteStringBytes(str);
+		}
 
 		/// <summary>
 		/// Writes exactly the bytes from the string without any trailing 0
@@ -214,25 +219,47 @@ namespace DOL.Network
 		/// <param name="str">the string to write</param>
 		public void WriteStringBytes(string str)
 		{
-			if (str.Length <= 0)
-				return;
-
-			byte[] bytes = Constants.DefaultEncoding.GetBytes(str);
-			Write(bytes, 0, bytes.Length);
+			WriteString(str, int.MaxValue);
 		}
 
 		/// <summary>
 		/// Writes up to maxlen bytes to the stream from the supplied string
 		/// </summary>
 		/// <param name="str">String to write</param>
-		/// <param name="maxlen">Maximum number of bytes to be written</param>
-		public void WriteString(string str, int maxlen)
+		/// <param name="maxByteLen">Maximum number of bytes to be written</param>
+		public void WriteString(string str, int maxByteLen)
 		{
-			if (str.Length <= 0)
+			if (string.IsNullOrEmpty(str) || maxByteLen <= 0)
 				return;
 
-			byte[] bytes = Constants.DefaultEncoding.GetBytes(str);
-			Write(bytes, 0, bytes.Length < maxlen ? bytes.Length : maxlen);
+			int maxByteCount = BaseServer.DefaultEncoding.GetMaxByteCount(str.Length);
+			int bufferSize = Math.Min(maxByteCount, maxByteLen);
+
+			// Stack for small buffers, ArrayPool for large buffers.
+			if (bufferSize <= 1024)
+			{
+				Span<byte> buffer = stackalloc byte[bufferSize];
+				Encoder encoder = BaseServer.GetEncoder();
+				encoder.Reset();
+				encoder.Convert(str.AsSpan(), buffer, true, out _, out int bytesUsed, out _);
+				Write(buffer[..bytesUsed]);
+			}
+			else
+			{
+				byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+				try
+				{
+					Encoder encoder = BaseServer.GetEncoder();
+					encoder.Reset();
+					encoder.Convert(str.AsSpan(), buffer, true, out _, out int bytesUsed, out _);
+					Write(buffer.AsSpan()[..bytesUsed]);
+				}
+				finally
+				{
+					ArrayPool<byte>.Shared.Return(buffer);
+				}
+			}
 		}
 
 		/// <summary>
@@ -243,31 +270,24 @@ namespace DOL.Network
 		public void FillString(string str, int len)
 		{
 			long pos = Position;
-
 			Fill(0x0, len);
-
-			if (str == null)
-				return;
-
 			Position = pos;
-
-			if (str.Length <= 0)
-			{
-				Position = pos + len;
-				return;
-			}
-
-			byte[] bytes = Constants.DefaultEncoding.GetBytes(str);
-			Write(bytes, 0, len > bytes.Length ? bytes.Length : len);
+			WriteString(str, len);
 			Position = pos + len;
 		}
 
 		/// <summary>
 		/// Returns a <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
-		/// </summary>		
+		/// </summary>
 		public override string ToString()
 		{
 			return GetType().Name;
+		}
+
+		public override void Close()
+		{
+			// Called by Dispose and normally invalidates the stream.
+			// But this is both pointless (`MemoryStream` doesn't have any unmanaged resource) and undesirable (we always want the buffer to remain accessible)
 		}
 	}
 }

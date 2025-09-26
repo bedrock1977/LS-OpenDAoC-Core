@@ -18,12 +18,12 @@ namespace DOL.GS.Commands
             Hashtable ip = new();
             string accountIp;
 
-            foreach (GameClient otherClient in ClientService.GetClients())
+            foreach (GameClient otherClient in ClientService.Instance.GetClients())
             {
                 if (otherClient.Account.PrivLevel > 1)
                     continue;
 
-                accountIp = ((IPEndPoint) otherClient.Socket.RemoteEndPoint).Address.ToString();
+                accountIp = otherClient.TcpEndpointAddress;
 
                 if (!ip.Contains(accountIp))
                     ip.Add(accountIp, otherClient);

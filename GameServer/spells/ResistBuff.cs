@@ -1,255 +1,196 @@
 namespace DOL.GS.Spells
 {
-	/// <summary>
-	/// Base class for all resist buffs, needed to set effectiveness
-	/// </summary>
-	public abstract class AbstractResistBuff : PropertyChangingSpell
-	{
-		public override void ApplyEffectOnTarget(GameLiving target)
-		{
-			Effectiveness *= (1.0 + m_caster.GetModified(eProperty.BuffEffectiveness) * 0.01);
-			base.ApplyEffectOnTarget(target);
-		}
+    /// <summary>
+    /// Base class for all resist buffs, needed to set effectiveness
+    /// </summary>
+    public abstract class AbstractResistBuff(GameLiving caster, Spell spell, SpellLine line) : PropertyChangingSpell(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to {PropertyToString(Property1)} damage by {Spell.Value}%.";
 
-		public override ECSGameSpellEffect CreateECSEffect(ECSGameEffectInitParams initParams)
-		{
-			return new StatBuffECSEffect(initParams);
-		}
+        public override ECSGameSpellEffect CreateECSEffect(in ECSGameEffectInitParams initParams)
+        {
+            return ECSGameEffectFactory.Create(initParams, static (in ECSGameEffectInitParams i) => new StatBuffECSEffect(i));
+        }
 
-		protected override void SendUpdates(GameLiving target)
-		{
-			base.SendUpdates(target);
-			if (target is GamePlayer)
-			{
-				GamePlayer player = (GamePlayer)target;
-				player.Out.SendCharResistsUpdate();
-			}
-		}
+        protected override void SendUpdates(GameLiving target)
+        {
+            base.SendUpdates(target);
 
-		public AbstractResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+            if (target is GamePlayer)
+            {
+                GamePlayer player = (GamePlayer)target;
+                player.Out.SendCharResistsUpdate();
+            }
+        }
+    }
 
-	/// <summary>
-	/// Body resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("BodyResistBuff")]
-	public class BodyResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Body; } }
+    [SpellHandler(eSpellType.BodyResistBuff)]
+    public class BodyResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Body;
+    }
 
-		// constructor
-		public BodyResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.ColdResistBuff)]
+    public class ColdResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Cold;
+    }
 
-	/// <summary>
-	/// Cold resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("ColdResistBuff")]
-	public class ColdResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Cold; } }
+    [SpellHandler(eSpellType.EnergyResistBuff)]
+    public class EnergyResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Energy;
+    }
 
-		// constructor
-		public ColdResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.HeatResistBuff)]
+    public class HeatResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Heat;
+    }
 
-	/// <summary>
-	/// Energy resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("EnergyResistBuff")]
-	public class EnergyResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Energy; } }
+    [SpellHandler(eSpellType.MatterResistBuff)]
+    public class MatterResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Matter;
+    }
 
-		// constructor
-		public EnergyResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.SpiritResistBuff)]
+    public class SpiritResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Spirit;
+    }
 
-	/// <summary>
-	/// Heat resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("HeatResistBuff")]
-	public class HeatResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Heat; } }
+    [SpellHandler(eSpellType.BodySpiritEnergyBuff)]
+    public class BodySpiritEnergyBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to body, spirit and energy by {Spell.Value}%.";
 
-		// constructor
-		public HeatResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.BaseBuff;
 
-	/// <summary>
-	/// Matter resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("MatterResistBuff")]
-	public class MatterResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Matter; } }
+        public override eProperty Property1 => eProperty.Resist_Body;
+        public override eProperty Property2 => eProperty.Resist_Spirit;
+        public override eProperty Property3 => eProperty.Resist_Energy;
+    }
 
-		// constructor
-		public MatterResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.HeatColdMatterBuff)]
+    public class HeatColdMatterBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to heat, cold and matter by {Spell.Value}%.";
 
-	/// <summary>
-	/// Spirit resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("SpiritResistBuff")]
-	public class SpiritResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Spirit; } }
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.BaseBuff;
 
-		// constructor
-		public SpiritResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+        public override eProperty Property1 => eProperty.Resist_Heat;
+        public override eProperty Property2 => eProperty.Resist_Cold;
+        public override eProperty Property3 => eProperty.Resist_Matter;
+    }
 
-	/// <summary>
-	/// Body/Spirit/Energy resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("BodySpiritEnergyBuff")]
-	public class BodySpiritEnergyBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory3 { get { return eBuffBonusCategory.BaseBuff; } }
+    [SpellHandler(eSpellType.AllMagicResistsBuff)]
+    public class AllMagicResistsBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to all magic damage by {Spell.Value}%.";
 
-		public override eProperty Property1 { get { return eProperty.Resist_Body; } }
-		public override eProperty Property2 { get { return eProperty.Resist_Spirit; } }
-		public override eProperty Property3 { get { return eProperty.Resist_Energy; } }
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory4 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory5 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory6 => eBuffBonusCategory.BaseBuff;
 
-		// constructor
-		public BodySpiritEnergyBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+        public override eProperty Property1 => eProperty.Resist_Heat;
+        public override eProperty Property2 => eProperty.Resist_Cold;
+        public override eProperty Property3 => eProperty.Resist_Matter;
+        public override eProperty Property4 => eProperty.Resist_Body;
+        public override eProperty Property5 => eProperty.Resist_Spirit;
+        public override eProperty Property6 => eProperty.Resist_Energy;
+    }
 
-	/// <summary>
-	/// Heat/Cold/Matter resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("HeatColdMatterBuff")]
-	public class HeatColdMatterBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory3 { get { return eBuffBonusCategory.BaseBuff; } }
+    [SpellHandler(eSpellType.AllSecondaryMagicResistsBuff)]
+    public class AllMagicResistsAbilityBuff(GameLiving caster, Spell spell, SpellLine line) : AllMagicResistsBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.AbilityBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.AbilityBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.AbilityBuff;
+        public override eBuffBonusCategory BonusCategory4 => eBuffBonusCategory.AbilityBuff;
+        public override eBuffBonusCategory BonusCategory5 => eBuffBonusCategory.AbilityBuff;
+        public override eBuffBonusCategory BonusCategory6 => eBuffBonusCategory.AbilityBuff;
 
-		public override eProperty Property1 { get { return eProperty.Resist_Heat; } }
-		public override eProperty Property2 { get { return eProperty.Resist_Cold; } }
-		public override eProperty Property3 { get { return eProperty.Resist_Matter; } }
+        public override eProperty Property1 => eProperty.Resist_Heat;
+        public override eProperty Property2 => eProperty.Resist_Cold;
+        public override eProperty Property3 => eProperty.Resist_Matter;
+        public override eProperty Property4 => eProperty.Resist_Body;
+        public override eProperty Property5 => eProperty.Resist_Spirit;
+        public override eProperty Property6 => eProperty.Resist_Energy;
+    }
 
-		// constructor
-		public HeatColdMatterBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.CrushSlashThrustBuff)]
+    [SpellHandler(eSpellType.AllMeleeResistsBuff)]
+    public class CrushSlashThrustBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to all melee damage by {Spell.Value}%.";
 
-	/// <summary>
-	/// Body/Spirit/Energy/Heat/Cold/Matter resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("AllMagicResistsBuff")]
-	public class AllMagicResistsBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory3 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory4 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory5 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory6 { get { return eBuffBonusCategory.BaseBuff; } }
-		
-		public override eProperty Property1 { get { return eProperty.Resist_Heat; } }
-		public override eProperty Property2 { get { return eProperty.Resist_Cold; } }
-		public override eProperty Property3 { get { return eProperty.Resist_Matter; } }
-		public override eProperty Property4 { get { return eProperty.Resist_Body; } }
-		public override eProperty Property5 { get { return eProperty.Resist_Spirit; } }
-		public override eProperty Property6 { get { return eProperty.Resist_Energy; } }
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.BaseBuff;
 
-		// constructor
-		public AllMagicResistsBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+        public override eProperty Property1 => eProperty.Resist_Crush;
+        public override eProperty Property2 => eProperty.Resist_Slash;
+        public override eProperty Property3 => eProperty.Resist_Thrust;
+    }
 
-	/// <summary>
-	/// Crush/Slash/Thrust resistance buff
-	/// </summary>
-	[SpellHandlerAttribute("CrushSlashThrustBuff")]
-	[SpellHandlerAttribute("AllMeleeResistsBuff")]
-	public class CrushSlashThrustBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory3 { get { return eBuffBonusCategory.BaseBuff; } }
+    [SpellHandler(eSpellType.CrushResistBuff)]
+    public class CrushResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Crush;
+    }
 
-		public override eProperty Property1 { get { return eProperty.Resist_Crush; } }
-		public override eProperty Property2 { get { return eProperty.Resist_Slash; } }
-		public override eProperty Property3 { get { return eProperty.Resist_Thrust; } }
+    [SpellHandler(eSpellType.SlashResistBuff)]
+    public class SlashResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Slash;
+    }
 
-		// constructor
-		public CrushSlashThrustBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+    [SpellHandler(eSpellType.ThrustResistBuff)]
+    public class ThrustResistBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eProperty Property1 => eProperty.Resist_Thrust;
+    }
 
-	[SpellHandlerAttribute("CrushResistBuff")]
-	public class CrushResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Crush; } }
+    [SpellHandler(eSpellType.AllResistsBuff)]
+    public class AllResistsBuff(GameLiving caster, Spell spell, SpellLine line) : AbstractResistBuff(caster, spell, line)
+    {
+        public override string ShortDescription => $"Increases the target's resistance to all damage by {Spell.Value}%.";
 
-		// constructor
-		public CrushResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
+        public override eBuffBonusCategory BonusCategory1 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory2 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory3 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory4 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory5 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory6 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory7 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory8 => eBuffBonusCategory.BaseBuff;
+        public override eBuffBonusCategory BonusCategory9 => eBuffBonusCategory.BaseBuff;
 
-	/// <summary>
-	/// Slash buff
-	/// </summary>
-	[SpellHandlerAttribute("SlashResistBuff")]
-	public class SlashResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Slash; } }
-
-		// constructor
-		public SlashResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
-
-	/// <summary>
-	/// Thrust buff
-	/// </summary>
-	[SpellHandlerAttribute("ThrustResistBuff")]
-	public class ThrustResistBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eProperty Property1 { get { return eProperty.Resist_Thrust; } }
-
-		// constructor
-		public ThrustResistBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
-
-	/// <summary>
-	/// Resist all 
-	/// </summary>
-	[SpellHandlerAttribute("AllResistsBuff")]
-	public class AllResistsBuff : AbstractResistBuff
-	{
-		public override eBuffBonusCategory BonusCategory1 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory2 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory3 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory4 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory5 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory6 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory7 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory8 { get { return eBuffBonusCategory.BaseBuff; } }
-		public override eBuffBonusCategory BonusCategory9 { get { return eBuffBonusCategory.BaseBuff; } }
-
-		public override eProperty Property1 { get { return eProperty.Resist_Heat; } }
-		public override eProperty Property2 { get { return eProperty.Resist_Cold; } }
-		public override eProperty Property3 { get { return eProperty.Resist_Matter; } }
-		public override eProperty Property4 { get { return eProperty.Resist_Body; } }
-		public override eProperty Property5 { get { return eProperty.Resist_Spirit; } }
-		public override eProperty Property6 { get { return eProperty.Resist_Energy; } }
-		public override eProperty Property7 { get { return eProperty.Resist_Crush; } }
-		public override eProperty Property8 { get { return eProperty.Resist_Slash; } }
-		public override eProperty Property9 { get { return eProperty.Resist_Thrust; } }
-
-		// constructor
-		public AllResistsBuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
-	}
-
+        public override eProperty Property1 => eProperty.Resist_Heat;
+        public override eProperty Property2 => eProperty.Resist_Cold;
+        public override eProperty Property3 => eProperty.Resist_Matter;
+        public override eProperty Property4 => eProperty.Resist_Body;
+        public override eProperty Property5 => eProperty.Resist_Spirit;
+        public override eProperty Property6 => eProperty.Resist_Energy;
+        public override eProperty Property7 => eProperty.Resist_Crush;
+        public override eProperty Property8 => eProperty.Resist_Slash;
+        public override eProperty Property9 => eProperty.Resist_Thrust;
+    }
 }

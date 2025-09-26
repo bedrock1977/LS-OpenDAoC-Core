@@ -25,10 +25,7 @@ namespace DOL.GS.Scripts
             // 85% ABS is cap.
             return 0.20;
         }
-        public override double AttackDamage(DbInventoryItem weapon)
-        {
-            return base.AttackDamage(weapon) * 30 * ServerProperties.Properties.EPICS_DMG_MULTIPLIER;
-        }
+
         public override bool HasAbility(string keyName)
         {
             if (IsAlive && keyName == GS.Abilities.CCImmunity)
@@ -44,13 +41,6 @@ namespace DOL.GS.Scripts
             RespawnInterval = ServerProperties.Properties.SET_SI_EPIC_ENCOUNTER_RESPAWNINTERVAL * 60000; //1min is 60000 miliseconds
             INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(60158245);
             LoadTemplate(npcTemplate);
-            Strength = npcTemplate.Strength;
-            Dexterity = npcTemplate.Dexterity;
-            Constitution = npcTemplate.Constitution;
-            Quickness = npcTemplate.Quickness;
-            Piety = npcTemplate.Piety;
-            Intelligence = npcTemplate.Intelligence;
-            Empathy = npcTemplate.Empathy;
 
             BaneOfHopeBrain adds = new BaneOfHopeBrain();
             SetOwnBrain(adds);
@@ -68,7 +58,7 @@ namespace DOL.AI.Brain
 {
     public class BaneOfHopeBrain : StandardMobBrain
     {
-        private static readonly log4net.ILog log =  log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public BaneOfHopeBrain()
             :base()
         {

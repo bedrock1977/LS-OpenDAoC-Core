@@ -14,13 +14,12 @@ namespace DOL.GS.Scripts
 		{
 			m_SpawnAnnounce = "{0} will start to \'shake violently\' and spawns out some {1}!";
 			TetherRange = 4500;
-			ScalingFactor = 25;
 		}
 
 		public override bool AddToWorld()
 		{
 			this.Name = "Archilus";
-			this.GuildName = "";
+			this.GuildName = string.Empty;
 			this.Model = 817;
 			this.Size = 100;
 			this.Level = 58;
@@ -35,7 +34,7 @@ namespace DOL.GS.Scripts
 		/// <param name="message">The message to be broadcast.</param>
 		public void BroadcastMessage(String message)
 		{
-			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.OBJ_UPDATE_DISTANCE))
+			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				player.Out.SendMessage(message, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 			}

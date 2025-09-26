@@ -4,10 +4,10 @@ using DOL.Events;
 
 namespace DOL.GS.Spells
 {
-	[SpellHandler("AtensShield")]
+	[SpellHandler(eSpellType.AtensShield)]
 	public class AtensShield : SummonItemSpellHandler
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		private DbItemTemplate m_goldenTridentofFlame;
 
@@ -194,7 +194,7 @@ namespace DOL.GS.Spells
 				return;
 
 			GamePlayer player = sender as GamePlayer;
-			lock (player.Inventory.LockObject)
+			lock (player.Inventory.Lock)
 			{
 				var items = player.Inventory.GetItemRange(eInventorySlot.MinEquipable, eInventorySlot.LastBackpack);
 				foreach (DbInventoryItem invItem in items)

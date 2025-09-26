@@ -14,19 +14,20 @@ namespace DOL.GS
         {
             get
             {
+                GamePlayer playerOwner = Owner as GamePlayer;
+
                 return Source != null && Target != null
-                    ? LanguageMgr.GetTranslation(((GamePlayer) Owner).Client, "Effects.ProtectEffect.ProtectByName", Target.GetName(0, false), Source.GetName(0, false))
-                    : LanguageMgr.GetTranslation(((GamePlayer) Owner).Client, "Effects.ProtectEffect.Name");
+                    ? LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.ProtectEffect.ProtectByName", Target.GetName(0, false), Source.GetName(0, false))
+                    : LanguageMgr.GetTranslation(playerOwner?.Client, "Effects.ProtectEffect.Name");
             }
         }
         public override bool HasPositiveEffect => true;
 
-        public ProtectECSGameEffect(ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
+        public ProtectECSGameEffect(in ECSGameEffectInitParams initParams, GameLiving source, GameLiving target) : base(initParams)
         {
             Source = source;
             Target = target;
             EffectType = eEffect.Protect;
-            EffectService.RequestStartEffect(this);
         }
 
         public override void OnStartEffect()
@@ -61,7 +62,7 @@ namespace DOL.GS
                     playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.ProtectEffect.XProtectingYou", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 }
 
-                PairedEffect = new ProtectECSGameEffect(new ECSGameEffectInitParams(Target, 0, 1), Source, Target);
+                PairedEffect = ECSGameEffectFactory.Create(new(Target, 0, 1), Source, Target, static (in ECSGameEffectInitParams i, GameLiving source, GameLiving target) => new ProtectECSGameEffect(i, source, target));
                 PairedEffect.PairedEffect = this;
             }
 
@@ -78,7 +79,7 @@ namespace DOL.GS
                 playerTarget?.Out.SendMessage(LanguageMgr.GetTranslation(playerTarget.Client, "Effects.ProtectEffect.XNoProtectYou", Source.GetName(0, true)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
             }
 
-            EffectService.RequestCancelEffect(PairedEffect);
+            PairedEffect?.Stop();
             base.OnStopEffect();
         }
     }

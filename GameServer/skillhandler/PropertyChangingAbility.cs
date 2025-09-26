@@ -24,7 +24,7 @@ namespace DOL.GS.SkillHandler
 {
 	public class PropertyChangingAbility : Ability
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		// property to modify
 		protected eProperty[] m_property;
@@ -77,7 +77,7 @@ namespace DOL.GS.SkillHandler
 		/// <summary>
 		/// Unit for values like %
 		/// </summary>
-		protected virtual string ValueUnit { get { return ""; } }
+		protected virtual string ValueUnit { get { return string.Empty; } }
 
 		public override void Activate(GameLiving living, bool sendUpdates)
 		{
@@ -86,7 +86,7 @@ namespace DOL.GS.SkillHandler
 				m_activeLiving = living;
 				foreach (eProperty property in m_property)
 				{
-					living.AbilityBonus[(int)property] += GetAmountForLevel(living.CalculateSkillLevel(this));
+					living.AbilityBonus[property] += GetAmountForLevel(living.CalculateSkillLevel(this));
 				}
 				
 				if (sendUpdates)
@@ -104,7 +104,7 @@ namespace DOL.GS.SkillHandler
 			{
 				foreach (eProperty property in m_property)
 				{
-					living.AbilityBonus[(int)property] -= GetAmountForLevel(living.CalculateSkillLevel(this));
+					living.AbilityBonus[property] -= GetAmountForLevel(living.CalculateSkillLevel(this));
 				}
 				if (sendUpdates) SendUpdates(living);
 				m_activeLiving = null;
@@ -122,7 +122,7 @@ namespace DOL.GS.SkillHandler
 
 			foreach (eProperty property in m_property)
 			{
-				m_activeLiving.AbilityBonus[(int)property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
+				m_activeLiving.AbilityBonus[property] += GetAmountForLevel(newLevel) - GetAmountForLevel(oldLevel);
 			}
 
 			SendUpdates(m_activeLiving);

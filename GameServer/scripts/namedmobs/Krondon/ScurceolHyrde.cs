@@ -54,10 +54,7 @@ namespace DOL.GS
 				}
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -162,7 +159,7 @@ namespace DOL.AI.Brain
 {
 	public class ScurceolHyrdeBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public ScurceolHyrdeBrain() : base()
 		{
 			AggroLevel = 100;
@@ -265,7 +262,7 @@ namespace DOL.AI.Brain
 {
 	public class LyftMihtBrain1 : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LyftMihtBrain1() : base()
 		{
 			AggroLevel = 100;
@@ -396,7 +393,7 @@ namespace DOL.AI.Brain
 {
 	public class LyftMihtBrain2 : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LyftMihtBrain2() : base()
 		{
 			AggroLevel = 100;
@@ -527,7 +524,7 @@ namespace DOL.AI.Brain
 {
 	public class LyftMihtBrain3 : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LyftMihtBrain3() : base()
 		{
 			AggroLevel = 100;
@@ -658,7 +655,7 @@ namespace DOL.AI.Brain
 {
 	public class LyftMihtBrain4 : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LyftMihtBrain4() : base()
 		{
 			AggroLevel = 100;

@@ -20,7 +20,6 @@
 using System.Reflection;
 using DOL.GS.PacketHandler;
 using DOL.Language;
-using log4net;
 
 namespace DOL.GS.SkillHandler
 {
@@ -30,7 +29,7 @@ namespace DOL.GS.SkillHandler
         /// <summary>
         /// Defines a logger for this class.
         /// </summary>
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// wait 5 sec to engage after attack
@@ -104,7 +103,7 @@ namespace DOL.GS.SkillHandler
                 return;
             }
 
-            new EngageECSGameEffect(new ECSGameEffectInitParams(player, 0, 1, null));
+            ECSGameEffectFactory.Create(new(player, 0, 1, null), static (in ECSGameEffectInitParams i) => new EngageECSGameEffect(i));
         }
     }
 }

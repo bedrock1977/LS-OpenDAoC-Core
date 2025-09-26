@@ -88,10 +88,6 @@ namespace DOL.Events
 		/// </summary>
 		public static readonly GameLivingEvent EnemyKilled = new GameLivingEvent("GameLiving.EnemyKilled");
 		/// <summary>
-		/// The GainedExperience event is fired whenever the living gains experience
-		/// </summary>
-		public static readonly GameLivingEvent GainedExperience = new GameLivingEvent("GameLiving.GainedExperience");
-		/// <summary>
 		/// The GainRealmPoints event is fired whenever the living gains realm points
 		/// </summary>
 		public static readonly GameLivingEvent GainedRealmPoints = new GameLivingEvent("GameLiving.GainedRealmPoints");
@@ -135,17 +131,9 @@ namespace DOL.Events
 		/// </summary>
 		public static readonly GameLivingEvent HealthChanged = new GameLivingEvent("GameLiving.HealthChanged");
 		/// <summary>
-		/// The PetReleased event is fired whenever the player commands to release controlled NPC
-		/// </summary>
-		public static readonly GameLivingEvent PetReleased = new GameLivingEvent("GameLiving.PetReleased");
-		/// <summary>
 		/// The RegionChanging event is fired when a living is changing regions
 		/// </summary>
 		public static readonly GameLivingEvent RegionChanging = new GameLivingEvent("GameLiving.RegionChanging");
-        /// <summary>
-        /// The LowHealth event is fired when a living's health drops below a certain threshold
-        /// </summary>
-        public static readonly GameLivingEvent LowHealth = new GameLivingEvent("GameLiving.LowHealth");
         /// <summary>
         /// The CrowdControlled event is fired when a living is crowd controlled
         /// </summary>
@@ -154,10 +142,6 @@ namespace DOL.Events
         /// The CrowdControlExpired event is fired when a living's crowd control effect expires.
         /// </summary>
         public static readonly GameLivingEvent CrowdControlExpired = new GameLivingEvent("GameLiving.CrowdControlExpired");
-        /// <summary>
-        /// The Interrupted event is fired when a living is interrupted.
-        /// </summary>
-        public static readonly GameLivingEvent Interrupted = new GameLivingEvent("GameLiving.Interrupted");
         /// <summary>
         /// The InterruptExpired event is fired when a living's interrupt timer expires.
         /// </summary>

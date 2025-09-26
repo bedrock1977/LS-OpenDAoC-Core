@@ -1,37 +1,43 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using DOL.Database;
-using ECS.Debug;
+using DOL.Logging;
 
 namespace DOL.GS
 {
-    public class WeeklyQuestService
+    public sealed class WeeklyQuestService : GameServiceBase
     {
-        private const string SERVICE_NAME = "WeeklyQuestService";
+        private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
+
         private const string WEEKLY_INTERVAL_KEY = "WEEKLY";
-        private static DateTime lastWeeklyRollover;
+        private static DateTime _lastWeeklyRollover;
+
+        public static WeeklyQuestService Instance { get; }
 
         static WeeklyQuestService()
+        {
+            Instance = new();
+        }
+
+        private WeeklyQuestService()
         {
             IList<DbTaskRefreshInterval> loadQuestsProp = GameServer.Database.SelectAllObjects<DbTaskRefreshInterval>();
 
             foreach (DbTaskRefreshInterval interval in loadQuestsProp)
             {
                 if (interval.RolloverInterval.Equals(WEEKLY_INTERVAL_KEY))
-                    lastWeeklyRollover = interval.LastRollover;
+                    _lastWeeklyRollover = interval.LastRollover;
             }
         }
 
-        public static void Tick()
+        public override void Tick()
         {
-            GameLoop.CurrentServiceTick = SERVICE_NAME;
-            Diagnostics.StartPerfCounter(SERVICE_NAME);
-            //.WriteLine($"daily:{lastDailyRollover.Date.DayOfYear} weekly:{lastWeeklyRollover.Date.DayOfYear+7} now:{DateTime.Now.Date.DayOfYear}");
+            ProcessPostedActionsParallel();
 
             // This is where the weekly check will go once testing is finished.
-            if (lastWeeklyRollover.Date.DayOfYear + 7 < DateTime.Now.Date.DayOfYear || lastWeeklyRollover.Year < DateTime.Now.Year)
+            if (_lastWeeklyRollover.Date.DayOfYear + 7 < DateTime.Now.Date.DayOfYear || _lastWeeklyRollover.Year < DateTime.Now.Year)
             {
-                lastWeeklyRollover = DateTime.Now;
                 DbTaskRefreshInterval loadQuestsProp = GameServer.Database.SelectObject<DbTaskRefreshInterval>(DB.Column("RolloverInterval").IsEqualTo(WEEKLY_INTERVAL_KEY));
 
                 // Update the one we've got, or make a new one.
@@ -48,15 +54,26 @@ namespace DOL.GS
                     GameServer.Database.AddObject(newTime);
                 }
 
-                List<GameClient> clients = EntityManager.UpdateAndGetAll<GameClient>(EntityManager.EntityType.Client, out int lastValidIndex);
+                List<GameClient> clients;
+                int lastValidIndex;
+
+                try
+                {
+                    clients = ServiceObjectStore.UpdateAndGetAll<GameClient>(ServiceObjectType.Client, out lastValidIndex);
+                }
+                catch (Exception e)
+                {
+                    if (log.IsErrorEnabled)
+                        log.Error($"{nameof(ServiceObjectStore.UpdateAndGetAll)} failed. Skipping this tick.", e);
+
+                    return;
+                }
+
+                _lastWeeklyRollover = DateTime.Now;
 
                 for (int i = 0; i < lastValidIndex + 1; i++)
                 {
                     GameClient client = clients[i];
-
-                    if (client?.EntityManagerId.IsSet != true)
-                        return;
-
                     client.Player?.RemoveFinishedQuests(x => x is Quests.WeeklyQuest);
                 }
 
@@ -68,8 +85,6 @@ namespace DOL.GS
                         GameServer.Database.DeleteObject(existingWeeklyQuest);
                 }
             }
-
-            Diagnostics.StopPerfCounter(SERVICE_NAME);
         }
     }
 }

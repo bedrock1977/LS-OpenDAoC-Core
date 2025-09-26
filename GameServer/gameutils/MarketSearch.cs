@@ -30,13 +30,12 @@ using DOL.GS.PacketHandler;
 using DOL.Events;
 
 
-using log4net;
 
 namespace DOL.GS
 {
 	public class MarketSearch
 	{
-		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
 		public struct SearchData
 		{
@@ -562,8 +561,11 @@ namespace DOL.GS
 				// ------------------------------------------------------------------------
 				// search criteria
 
-				if (search.name != "" && item.Name.ToLower().Contains(search.name.ToLower()) == false)
-					continue;
+				if (search.name != string.Empty)
+				{
+					if (!item.Name.Contains(search.name, StringComparison.OrdinalIgnoreCase))
+						continue;
+				}
 
 				if (search.levelMin > 1 && item.Level < search.levelMin)
 					continue;

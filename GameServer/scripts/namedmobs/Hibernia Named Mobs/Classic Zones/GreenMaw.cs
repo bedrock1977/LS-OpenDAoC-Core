@@ -26,10 +26,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override bool HasAbility(string keyName)
 		{
@@ -75,13 +72,6 @@ namespace DOL.GS
 			}
 			INpcTemplate npcTemplate = NpcTemplateMgr.GetTemplate(50022);
 			LoadTemplate(npcTemplate);
-			Strength = npcTemplate.Strength;
-			Dexterity = npcTemplate.Dexterity;
-			Constitution = npcTemplate.Constitution;
-			Quickness = npcTemplate.Quickness;
-			Piety = npcTemplate.Piety;
-			Intelligence = npcTemplate.Intelligence;
-			Empathy = npcTemplate.Empathy;
 			GreenMawAdd.GreenMawRedCount = 0;
 			GreenMawAdd2.GreenMawOrangeCount = 0;
 
@@ -117,7 +107,7 @@ namespace DOL.AI.Brain
 {
 	public class GreenMawBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GreenMawBrain() : base()
 		{
 			AggroLevel = 100;
@@ -154,10 +144,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
@@ -198,9 +185,7 @@ namespace DOL.GS
 				SpawnCopies();
 			base.Die(killer);
         }
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		private void SpawnCopies()
 		{
 			for (int i = 0; i < 4; i++)
@@ -220,7 +205,7 @@ namespace DOL.AI.Brain
 {
 	public class GreenMawAddBrain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GreenMawAddBrain() : base()
 		{
 			AggroLevel = 100;
@@ -251,10 +236,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 		public override double GetArmorAF(eArmorSlot slot)
 		{
@@ -295,9 +277,7 @@ namespace DOL.GS
 				SpawnCopies();
 			base.Die(killer);
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 		private void SpawnCopies()
 		{
 			for (int i = 0; i < 2; i++)
@@ -317,7 +297,7 @@ namespace DOL.AI.Brain
 {
 	public class GreenMawAdd2Brain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GreenMawAdd2Brain() : base()
 		{
 			AggroLevel = 100;
@@ -348,10 +328,7 @@ namespace DOL.GS
 				default: return 20;// dmg reduction for rest resists
 			}
 		}
-		public override double AttackDamage(DbInventoryItem weapon)
-		{
-			return base.AttackDamage(weapon) * Strength / 100;
-		}
+
 		public override int MeleeAttackRange => 350;
 
 		public override double GetArmorAF(eArmorSlot slot)
@@ -385,16 +362,14 @@ namespace DOL.GS
 			base.AddToWorld();
 			return true;
 		}
-		public override void DropLoot(GameObject killer) //no loot
-		{
-		}
+		public override bool CanDropLoot => false;
 	}
 }
 namespace DOL.AI.Brain
 {
 	public class GreenMawAdd3Brain : StandardMobBrain
 	{
-		private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly Logging.Logger log = Logging.LoggerManager.Create(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public GreenMawAdd3Brain() : base()
 		{
 			AggroLevel = 100;

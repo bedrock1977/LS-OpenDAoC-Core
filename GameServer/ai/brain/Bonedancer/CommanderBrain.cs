@@ -2,10 +2,10 @@ using DOL.GS;
 
 namespace DOL.AI.Brain
 {
-	/// <summary>
-	/// A brain for the commanders
-	/// </summary>
-	public class CommanderBrain : ControlledMobBrain
+    /// <summary>
+    /// A brain for the commanders
+    /// </summary>
+    public class CommanderBrain : ControlledMobBrain
 	{
 		public CommanderBrain(GameLiving owner) : base(owner) { }
 
@@ -20,45 +20,47 @@ namespace DOL.AI.Brain
 		{
 			if (Body.ControlledNpcList != null)
 			{
-				lock (Body.ControlledNpcList)
+				lock ((Body as CommanderPet).ControlledNpcListLock)
 				{
 					foreach (IControlledBrain icb in Body.ControlledNpcList)
+					{
 						if (brain == icb)
 							return true;
+					}
 				}
 			}
+
 			return false;
 		}
 
-		public override void OnOwnerAttacked(AttackData ad)
+		public override void OnAttackedByEnemy(AttackData ad)
 		{
+			base.OnAttackedByEnemy(ad);
+
+			// Notify subpets.
 			if (Body.ControlledNpcList != null)
 			{
 				foreach (var controlledBrain in Body.ControlledNpcList)
 				{
-					if (controlledBrain is BDPetBrain bdPetBrain)
+					if (controlledBrain is BdPetBrain bdPetBrain)
 						bdPetBrain.OnOwnerAttacked(ad);
 				}
 			}
-		
-			// react only on these attack results
-			switch (ad.AttackResult)
+		}
+
+		public override void OnOwnerAttacked(AttackData ad)
+		{
+			base.OnOwnerAttacked(ad);
+
+			// Notify subpets.
+			if (Body.ControlledNpcList != null)
 			{
-				case eAttackResult.Blocked:
-				case eAttackResult.Evaded:
-				case eAttackResult.Fumbled:
-				case eAttackResult.HitStyle:
-				case eAttackResult.HitUnstyled:
-				case eAttackResult.Missed:
-				case eAttackResult.Parried:
-					AddToAggroList(ad.Attacker, ad.Attacker.EffectiveLevel + ad.Damage + ad.CriticalDamage);
-					break;
+				foreach (var controlledBrain in Body.ControlledNpcList)
+				{
+					if (controlledBrain is BdPetBrain bdPetBrain)
+						bdPetBrain.OnOwnerAttacked(ad);
+				}
 			}
-
-			if (FSM.GetState(eFSMStateType.AGGRO) != FSM.GetCurrentState())
-				FSM.SetCurrentState(eFSMStateType.AGGRO);
-
-			AttackMostWanted();
 		}
 
 		/// <summary>
@@ -68,13 +70,12 @@ namespace DOL.AI.Brain
 		public override void Attack(GameObject target)
 		{
 			base.Attack(target);
-			CheckAbilities();
 
 			if (MinionsAssisting && Body.ControlledNpcList != null)
 			{
-				lock (Body.ControlledNpcList)
+				lock ((Body as CommanderPet).ControlledNpcListLock)
 				{
-					foreach (BDPetBrain icb in Body.ControlledNpcList)
+					foreach (BdPetBrain icb in Body.ControlledNpcList)
 						icb?.Attack(target);
 				}
 			}
@@ -86,9 +87,9 @@ namespace DOL.AI.Brain
 
 			if (Body.ControlledNpcList != null)
 			{
-				lock (Body.ControlledNpcList)
+				lock ((Body as CommanderPet).ControlledNpcListLock)
 				{
-					foreach (BDPetBrain icb in Body.ControlledNpcList)
+					foreach (BdPetBrain icb in Body.ControlledNpcList)
 					{
 						if (icb != null)
 							icb.Disengage();
@@ -126,9 +127,9 @@ namespace DOL.AI.Brain
 		{
 			if (Body.ControlledNpcList != null)
 			{
-				lock (Body.ControlledNpcList)
+				lock ((Body as CommanderPet).ControlledNpcListLock)
 				{
-					foreach (BDPetBrain icb in Body.ControlledNpcList)
+					foreach (BdPetBrain icb in Body.ControlledNpcList)
 					{
 						if (icb == null)
 							continue;
@@ -173,9 +174,9 @@ namespace DOL.AI.Brain
 			base.SetAggressionState(state);
 			if (Body.ControlledNpcList != null)
 			{
-				lock (Body.ControlledNpcList)
+				lock ((Body as CommanderPet).ControlledNpcListLock)
 				{
-					foreach (BDPetBrain icb in Body.ControlledNpcList)
+					foreach (BdPetBrain icb in Body.ControlledNpcList)
 					{
 						if (icb != null)
 							icb.SetAggressionState(state);

@@ -1,36 +1,35 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using DOL.Events;
+using DOL.GS.PacketHandler;
 using DOL.GS.PerformanceStatistics;
-using log4net;
 
-namespace DOL.GS.GameEvents
+namespace DOL.GS
 {
     public class StatPrint
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Logging.Logger log = Logging.LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static volatile Timer _timer;
-        private static long _lastBytesIn;
-        private static long _lastBytesOut;
-        private static long _lastPacketsIn;
-        private static long _lastPacketsOut;
-        private static long _lastMeasureTick = DateTime.Now.Ticks;
+
+        private static long _prevGen0;
+        private static long _prevGen1;
+        private static long _prevGen2;
         private static IPerformanceStatistic _systemCpuUsagePercent;
         private static IPerformanceStatistic _programCpuUsagePercent;
         private static IPerformanceStatistic _pageFaultsPerSecond;
         private static IPerformanceStatistic _diskTransfersPerSecond;
-        private static object _lock  = new();
+        private static readonly Lock _lock  = new();
 
-        [GameServerStartedEvent]
-        public static void OnScriptCompiled(DOLEvent e, object sender, EventArgs args)
+        public static bool Init()
         {
             if (ServerProperties.Properties.STATPRINT_FREQUENCY <= 0)
-                return;
+                return true;
 
-            lock (_lock)
+            try
             {
                 _timer = new(new TimerCallback(PrintStats), null, 10000, 0);
                 _systemCpuUsagePercent = TryToCreateStatistic(() => new SystemCpuUsagePercent());
@@ -38,78 +37,124 @@ namespace DOL.GS.GameEvents
                 _pageFaultsPerSecond = TryToCreateStatistic(() => new PageFaultsPerSecondStatistic());
                 _diskTransfersPerSecond = TryToCreateStatistic(() => new DiskTransfersPerSecondStatistic());
             }
-        }
-
-        [ScriptUnloadedEvent]
-        public static void OnScriptUnloaded(DOLEvent e, object sender, EventArgs args)
-        {
-            lock (_lock)
+            catch (Exception e)
             {
-                if (_timer == null)
-                    return;
+                if (log.IsErrorEnabled)
+                    log.Error(e);
 
-                _timer.Change(Timeout.Infinite, Timeout.Infinite);
-                _timer.Dispose();
-                _timer = null;
+                return false;
             }
+
+            return true;
         }
 
         public static void PrintStats(object state)
         {
+            const int PADDING = 27;
+
             try
             {
-                long newTick = DateTime.Now.Ticks;
-                long time = newTick - _lastMeasureTick;
-                _lastMeasureTick = newTick;
-                time /= 10000000L;
+                if (!log.IsInfoEnabled)
+                    return;
 
-                if (time < 1)
-                {
-                    log.Warn("Time has not changed since last call of PrintStats");
-                    time = 1;
-                }
+                ThreadPriority oldPriority = Thread.CurrentThread.Priority;
+                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-                long inRate = (Statistics.BytesIn - _lastBytesIn) / time;
-                long outRate = (Statistics.BytesOut - _lastBytesOut) / time;
-                long inPckRate = (Statistics.PacketsIn - _lastPacketsIn) / time;
-                long outPckRate = (Statistics.PacketsOut - _lastPacketsOut) / time;
-                _lastBytesIn = Statistics.BytesIn;
-                _lastBytesOut = Statistics.BytesOut;
-                _lastPacketsIn = Statistics.PacketsIn;
-                _lastPacketsOut = Statistics.PacketsOut;
+                // Memory usage.
+                long memUsedMb = GC.GetTotalMemory(false) / 1024 / 1024;
+                long memCommittedMb = GC.GetGCMemoryInfo().TotalCommittedBytes / 1024 / 1024;
 
-                // Get thread pool info.
-                ThreadPool.GetAvailableThreads(out int poolCurrent, out int iocpCurrent);
-                ThreadPool.GetMinThreads(out int poolMin, out int iocpMin);
-                ThreadPool.GetMaxThreads(out int poolMax, out int iocpMax);
+                // GC Collection counts (delta since last check).
+                long gen0Total = GC.CollectionCount(0);
+                long gen1Total = GC.CollectionCount(1);
+                long gen2Total = GC.CollectionCount(2);
+                long gen0Delta = gen0Total - _prevGen0;
+                long gen1Delta = gen1Total - _prevGen1;
+                long gen2Delta = gen2Total - _prevGen2;
+                _prevGen0 = gen0Total;
+                _prevGen1 = gen1Total;
+                _prevGen2 = gen2Total;
 
+                // Thread pool info.
+                ThreadPool.GetMaxThreads(out int maxWorkers, out int maxIocp);
+                ThreadPool.GetAvailableThreads(out int availableWorkers, out int availableIocp);
+                int usedWorkers = maxWorkers - availableWorkers;
+                int usedIocp = maxIocp - availableIocp;
+
+                // Application-specific stats.
+                int clientCount = ClientService.Instance.ClientCount;
                 int globalHandlers = GameEventMgr.NumGlobalHandlers;
                 int objectHandlers = GameEventMgr.NumObjectHandlers;
+                long sendBufferPoolExhaustedCount = PacketProcessor.SendBufferPoolExhaustedCount;
 
-                if (log.IsInfoEnabled)
+                // Game loop average TPS.
+                List<(int, double)> averageTps = GameLoop.GetAverageTps();
+
+                // Performance counters.
+                double procCpu = _programCpuUsagePercent?.GetNextValue() ?? 0.0;
+                double sysCpu = _systemCpuUsagePercent?.GetNextValue() ?? 0.0;
+                double pageFaults = _pageFaultsPerSecond?.GetNextValue() ?? 0.0;
+                double diskTransfers = _diskTransfersPerSecond?.GetNextValue() ?? 0.0;
+
+                StringBuilder stats = new(512);
+
+                stats.AppendLine();
+                stats.AppendLine("[System]");
+                stats.AppendLine($"  {"CPU (process/system):".PadRight(PADDING)} {procCpu:F1}% / {sysCpu:F1}%");
+                stats.AppendLine($"  {"Memory (used/commit):".PadRight(PADDING)} {memUsedMb} MB / {memCommittedMb} MB");
+                stats.AppendLine($"  {"Page faults/sec:".PadRight(PADDING)} {pageFaults:F1}");
+                stats.AppendLine($"  {"Disk transfers/sec:".PadRight(PADDING)} {diskTransfers:F1}");
+
+                stats.AppendLine("[Application]");
+                stats.AppendLine($"  {"Clients:".PadRight(PADDING)} {clientCount}");
+                stats.AppendLine($"  {"Event handlers (G/O):".PadRight(PADDING)} {globalHandlers} / {objectHandlers}");
+
+                if (averageTps.Count != 0)
                 {
-                    StringBuilder stats = new StringBuilder(256)
-                        .Append("-stats- Mem=").Append(GC.GetTotalMemory(false) / 1024 / 1024).Append("MB")
-                        .Append("  Clients=").Append(ClientService.ClientCount)
-                        //.Append("  Down=").Append(inRate / 1024).Append("kb/s (").Append(Statistics.BytesIn / 1024 / 1024).Append("MB)")
-                        //.Append("  Up=").Append(outRate / 1024).Append("kb/s (").Append(Statistics.BytesOut / 1024 / 1024).Append("MB)")
-                        //.Append("  In=").Append(inPckRate).Append("pck/s (").Append(Statistics.PacketsIn / 1000).Append("K)")
-                        //.Append("  Out=").Append(outPckRate).Append("pck/s (").Append(Statistics.PacketsOut / 1000).Append("K)")
-                        .AppendFormat("  Pool={0}/{1}({2})", poolCurrent, poolMax, poolMin)
-                        .AppendFormat("  IOCP={0}/{1}({2})", iocpCurrent, iocpMax, iocpMin)
-                        .AppendFormat("  GH/OH={0}/{1}", globalHandlers, objectHandlers);
+                    stats.Append("  ");
+                    StringBuilder labelBuilder = new("Game loop TPS (");
 
-                    AppendStatistic(stats, "CPU(sys)", _systemCpuUsagePercent, "%");
-                    AppendStatistic(stats, "CPU(proc)", _programCpuUsagePercent, "%");
-                    AppendStatistic(stats, "pg/s", _pageFaultsPerSecond);
-                    AppendStatistic(stats, "dsk/s", _diskTransfersPerSecond);
+                    for (int i = averageTps.Count - 1; i >= 0; i--)
+                    {
+                        double interval = averageTps[i].Item1 / 1000.0;
+                        labelBuilder.Append($"{interval}");
 
-                    log.Info(stats);
+                        if (i != 0)
+                            labelBuilder.Append('/');
+                    }
+
+                    labelBuilder.Append(")s:");
+                    stats.Append($"{labelBuilder.ToString().PadRight(PADDING)} ");
+
+                    for (int i = averageTps.Count - 1; i >= 0; i--)
+                    {
+                        double percentOfTarget = averageTps[i].Item2 / (10 / GameLoop.TickDuration);
+                        stats.Append($"{percentOfTarget:F1}%");
+
+                        if (i != 0)
+                            stats.Append(" / ");
+                    }
+
+                    stats.AppendLine();
                 }
+                else
+                    stats.AppendLine("  No TPS data available.");
+
+                if (sendBufferPoolExhaustedCount > 0)
+                    stats.AppendLine($"  {"Packet pool misses:".PadRight(PADDING)} {sendBufferPoolExhaustedCount}");
+
+                stats.AppendLine("[.NET]");
+                stats.AppendLine($"  {"Workers (used/max):".PadRight(PADDING)} {usedWorkers} / {maxWorkers}");
+                stats.AppendLine($"  {"IOCP (used/max):".PadRight(PADDING)} {usedIocp} / {maxIocp}");
+                stats.Append($"  {"GC ƒ¢ (0/1/2):".PadRight(PADDING)} {gen0Delta} / {gen1Delta} / {gen2Delta}");
+
+                log.Info(stats.ToString());
+                Thread.CurrentThread.Priority = oldPriority;
             }
             catch (Exception e)
             {
-                log.Error("stats Log callback", e);
+                if (log.IsErrorEnabled)
+                    log.Error("Stats log callback failed", e);
             }
             finally
             {
@@ -120,14 +165,6 @@ namespace DOL.GS.GameEvents
             }
         }
 
-        private static void AppendStatistic(StringBuilder stringBuilder, string shortName, IPerformanceStatistic statistic, string unit = "")
-        {
-            if (statistic == null)
-                return;
-
-            stringBuilder.Append($"  {shortName}={statistic.GetNextValue().ToString("0.0")}{unit}");
-        }
-
         private static IPerformanceStatistic TryToCreateStatistic(Func<IPerformanceStatistic> createFunc)
         {
             try
@@ -136,8 +173,10 @@ namespace DOL.GS.GameEvents
             }
             catch (Exception ex)
             {
-                log.Error(ex);
-                return null;
+                if (log.IsErrorEnabled)
+                    log.Error(ex);
+
+                return DummyPerformanceStatistic.Instance;
             }
         }
     }

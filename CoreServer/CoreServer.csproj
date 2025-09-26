@@ -6,7 +6,7 @@
     </PropertyGroup>
     <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <OutputType>Exe</OutputType>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -14,16 +14,24 @@
         <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
         <OutputPath>..\$(Configuration)\</OutputPath>
         <IntermediateOutputPath>..\build\CoreServer\$(Configuration)\obj\</IntermediateOutputPath>
-        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
         <Deterministic>false</Deterministic>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <ServerGarbageCollection>true</ServerGarbageCollection>
         <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+        <InvariantGlobalization>false</InvariantGlobalization>
+        <RegisterForComInterop>false</RegisterForComInterop>
+        <AssemblyTitle>OpenDAoC - CoreServer</AssemblyTitle>
+        <AssemblyDescription>Main entry point for starting the server</AssemblyDescription>
+        <AssemblyCompany>OpenDAoC Development Team</AssemblyCompany>
+        <AssemblyProduct>DAoC Server Side Emulation Package - OpenDAoC</AssemblyProduct>
+        <AssemblyCopyright>OpenDAoC Development Team</AssemblyCopyright>
+        <AssemblyTrademark>OpenDAoC Development Team</AssemblyTrademark>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <DefineConstants>DEBUG;TRACE</DefineConstants>
-        <Optimize>False</Optimize>
-        <DebugType>Full</DebugType>
+        <Optimize>false</Optimize>
+        <DebugType>full</DebugType>
         <DebugSymbols>true</DebugSymbols>
         <RemoveIntegerChecks>false</RemoveIntegerChecks>
         <ErrorReport>prompt</ErrorReport>
@@ -31,19 +39,14 @@
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <DefineConstants>TRACE</DefineConstants>
         <Optimize>true</Optimize>
-        <DebugType>None</DebugType>
-        <DebugSymbols>false</DebugSymbols>
+        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
         <RemoveIntegerChecks>false</RemoveIntegerChecks>
     </PropertyGroup>
-    <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
-        <RegisterForComInterop>False</RegisterForComInterop>
-    </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
-        <PackageReference Include="log4net" Version="2.0.16" />
+        <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="9.0.5" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.5" />
         <ProjectReference Include="..\GameServer\GameServer.csproj" Name="GameServer" />
-    </ItemGroup>
-    <ItemGroup>
         <Content Include=".\config\serverconfig.xml">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>

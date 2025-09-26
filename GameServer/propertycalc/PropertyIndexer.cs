@@ -1,44 +1,40 @@
-/*
- * DAWN OF LIGHT - The first free open source DAoC server emulator
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- */
-
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace DOL.GS.PropertyCalc
 {
-    /// <summary>
-    /// helper class for memory efficient usage of property fields
-    /// it keeps integer values indexed by integer keys
-    /// </summary>
     public sealed class PropertyIndexer : IPropertyIndexer
     {
-        private readonly ConcurrentDictionary<int, int> m_propDict = new();
+        private readonly Lock _lock = new();
+        private readonly Dictionary<eProperty, int> _properties = new();
 
-        public int this[int index]
+        public void Clear()
         {
-            get => m_propDict.TryGetValue(index, out int val) ? val : 0;
-            set => m_propDict[index] = value;
+            lock (_lock)
+            {
+                _properties?.Clear();
+            }
         }
 
         public int this[eProperty index]
         {
-            get => this[(int) index];
-            set => this[(int) index] = value;
+            get
+            {
+                lock (_lock)
+                {
+                    return _properties.TryGetValue(index, out int value) ? value : 0;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    if (value == 0)
+                        _properties.Remove(index);
+                    else
+                        _properties[index] = value;
+                }
+            }
         }
     }
 }
