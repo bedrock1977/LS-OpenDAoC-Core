@@ -11,7 +11,7 @@ namespace DOL.GS
             // Tick here if the effect hasn't ticked yet.
             // This allows two poisons to do damage when being applied during the same server tick.
             // Otherwise, only one will call `OnEffectPulse`.
-            if (SpellHandler is not DoTSpellHandler dotHandler || !dotHandler.FirstTick)
+            if (SpellHandler is not DoTSpellHandler dotHandler || !dotHandler.IsFirstTick(Owner))
                 return;
 
             OnEffectPulse();
@@ -45,8 +45,14 @@ namespace DOL.GS
         protected void FinalizeEffectPulse()
         {
             // DoTs subsequent ticks set `AttackData.CausesCombat` to false, but we need them to keep the victim (and only the victim) in combat.
-            // We however respect the `IsAlive` check.
-            if (!SpellHandler.Caster.IsAlive)
+            // The only exception is if the attacker is dead or died during this effect. This will allow restealthing.
+            // This won't work as intended if the attacker is a NPC that respawned.
+            if (SpellHandler.Caster is GamePlayer playerCaster)
+            {
+                if (StartTick < playerCaster.DeathTick)
+                    return;
+            }
+            else if (!SpellHandler.Caster.IsAlive)
                 return;
 
             if (Owner.Realm == 0 || SpellHandler.Caster.Realm == 0)

@@ -111,7 +111,7 @@ namespace DOL.GS
 
         public override double GetSpellScalingFactor()
         {
-            return Level / (double) Properties.PET_SCALE_SPELL_MAX_LEVEL;
+            return Level / Math.Floor(GamePlayer.MAX_LEVEL * Math.Abs(SummonSpellDamage) / 100);
         }
 
         public override void SetStats(DbMob dbMob = null)
