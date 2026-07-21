@@ -334,25 +334,51 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
-		protected override void WriteGroupMemberUpdate(GSTCPPacketOut pak, bool updateIcons, GameLiving living)
+		public override void SendGroupMembersMapUpdate(ReadOnlySpan<GameLiving> livings)
 		{
-			base.WriteGroupMemberUpdate(pak, updateIcons, living);
-			WriteGroupMemberMapUpdate(pak, living);
-		}
+			GamePlayer player = m_gameClient.Player;
 
-		protected virtual void WriteGroupMemberMapUpdate(GSTCPPacketOut pak, GameLiving living)
-		{
-			bool sameRegion = living.CurrentRegion == m_gameClient.Player.CurrentRegion;
-			if (sameRegion && living.CurrentSpeed != 0)//todo : find a better way to detect when player change coord
+			bool hasData = false;
+
+			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.GroupMemberUpdate)))
 			{
-				Zone zone = living.CurrentZone;
-				if (zone == null)
+				foreach (GameLiving living in livings)
+				{
+					if (player == living)
+						continue;
+
+					Zone zone = living.CurrentZone;
+
+					if (zone == null)
+						continue;
+
+					pak.WriteByte((byte)(0x40 | living.GroupIndex));
+
+					if (player.CurrentRegion == living.CurrentRegion)
+					{
+						pak.WriteShort(zone.ZoneSkinID);
+						pak.WriteShort((ushort) (living.X - zone.XOffset));
+						pak.WriteShort((ushort) (living.Y - zone.YOffset));
+					}
+					else
+					{
+						// Seems to work to remove dots, but no idea if that's what Live does.
+						pak.WriteShort(0);
+						pak.WriteShort(0);
+						pak.WriteShort(0);
+					}
+
+					hasData = true;
+				}
+
+				if (!hasData)
+				{
+					pak.ReleasePooledObject();
 					return;
-				pak.WriteByte((byte)(0x40 | living.GroupIndex));
-                //Dinberg - ZoneSkinID for group members aswell.
-				pak.WriteShort(zone.ZoneSkinID);
-				pak.WriteShort((ushort)(living.X - zone.XOffset));
-				pak.WriteShort((ushort)(living.Y - zone.YOffset));
+				}
+
+				pak.WriteByte(0x00);
+				SendTCP(pak);
 			}
 		}
 

@@ -219,18 +219,18 @@ namespace DOL.GS
                 {
                     player.RemoveMoney(COST_RE_EMBLEM, null);
                     InventoryLogging.LogInventoryAction(player, $"(GUILD;{guild.Name})", eInventoryActionType.Other, COST_RE_EMBLEM);
+                }
 
-                    // Update guild house emblem.
-                    if (guild.GuildOwnsHouse && guild.GuildHouseNumber > 0)
+                // Update guild house emblem.
+                if (guild.GuildOwnsHouse && guild.GuildHouseNumber > 0)
+                {
+                    House guildHouse = HouseMgr.GetHouse(guild.GuildHouseNumber);
+
+                    if (guildHouse != null)
                     {
-                        House guildHouse = HouseMgr.GetHouse(guild.GuildHouseNumber);
-
-                        if (guildHouse != null)
-                        {
-                            guildHouse.Emblem = guild.Emblem;
-                            guildHouse.SaveIntoDatabase();
-                            guildHouse.SendUpdate();
-                        }
+                        guildHouse.Emblem = guild.Emblem;
+                        guildHouse.SaveIntoDatabase();
+                        guildHouse.SendUpdate();
                     }
                 }
 
@@ -336,6 +336,27 @@ namespace DOL.GS
 
                         // Reload the guild to fix the relations.
                         guild = new Guild(DOLDB<DbGuild>.SelectObjects(DB.Column("GuildID").IsEqualTo(dbGuild.GuildID)).FirstOrDefault());
+                    }
+
+                    // Ensure guild houses have the correct emblem.
+                    House guildHouse = HouseMgr.GetHouse(guild.GuildHouseNumber);
+
+                    if (guildHouse != null)
+                    {
+                        int houseEmblem = guildHouse.Emblem;
+                        int guildEmblem = guild.Emblem;
+
+                        if (houseEmblem != guildEmblem)
+                        {
+                            if (log.IsWarnEnabled)
+                            {
+                                log.Warn($"Guild house emblem for '{guild.Name}' was incorrect. Fixing it. " +
+                                    $"(Previous: {houseEmblem}) (New: {guildEmblem}) (House: {guildHouse.HouseNumber})");
+                            }
+
+                            guildHouse.Emblem = guild.Emblem;
+                            guildHouse.SaveIntoDatabase();
+                        }
                     }
 
                     AddGuild(guild);

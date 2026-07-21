@@ -12,6 +12,7 @@ using DOL.AI.Brain;
 using DOL.Database;
 using DOL.Events;
 using DOL.GS.Housing;
+using DOL.GS.Keeps;
 using DOL.GS.Movement;
 using DOL.GS.PacketHandler;
 using DOL.GS.Quests;
@@ -801,7 +802,7 @@ namespace DOL.GS
 			set => movementComponent.RoamingRange = value;
 		}
 		public bool IsMovingOnPath => movementComponent.IsMovingOnPath;
-		public bool IsNearSpawn => movementComponent.IsNearSpawn;
+		public bool IsAtSpawn => IsWithinRadius(SpawnPoint, 0);
 		public bool IsDestinationValid => movementComponent.IsDestinationValid;
 		public bool IsAtDestination => movementComponent.IsAtDestination;
 		public bool CanRoam => movementComponent.CanRoam;
@@ -832,7 +833,7 @@ namespace DOL.GS
 			movementComponent.StopMoving();
 		}
 
-		public virtual void Follow(GameObject target, int minDistance, int maxDistance)
+		public virtual void Follow(GameObject target, long minDistance, long maxDistance)
 		{
 			movementComponent.Follow(target as GameLiving, minDistance, maxDistance);
 		}
@@ -887,6 +888,19 @@ namespace DOL.GS
 		public virtual void TurnTo(GameObject target, int duration = 0)
 		{
 			movementComponent.TurnTo(target, duration);
+		}
+
+		public bool IsAllowedToFollow(GameObject target)
+		{
+			if (MaxSpeedBase <= 0)
+				return false;
+
+			if (this is not GuardArcher and not GuardCaster)
+				return true;
+
+			return target is GameLiving livingTarget &&
+				livingTarget.ActiveWeaponSlot is not eActiveWeaponSlot.Distance &&
+				livingTarget.IsWithinRadius(this, livingTarget.attackComponent.AttackRange);
 		}
 
 		#endregion
@@ -2658,8 +2672,6 @@ namespace DOL.GS
 		{
 			if (ActiveWeaponSlot is not eActiveWeaponSlot.Distance)
 			{
-				StopFollowing();
-
 				if (attackComponent.AttackState)
 					attackComponent.StopAttack();
 
@@ -2878,22 +2890,6 @@ namespace DOL.GS
 
 			base.StartInterruptTimer(duration, attackType, attacker);
 		}
-
-		protected override bool CheckRangedAttackInterrupt(GameLiving attacker, AttackData.eAttackType attackType)
-		{
-			// Immobile NPCs can only be interrupted by their own target, and in melee range.
-			if (MaxSpeedBase == 0 && (attacker != TargetObject || !IsWithinRadius(attacker, MeleeAttackRange)))
-				return false;
-
-			bool interrupted = base.CheckRangedAttackInterrupt(attacker, attackType);
-
-			if (interrupted)
-				attackComponent.attackAction.OnAimInterrupt(attacker);
-
-			return interrupted;
-		}
-
-		public override int SelfInterruptDurationOnMeleeAttack => AttackSpeed(ActiveWeapon);
 
 		/// <summary>
 		/// The time to wait before each mob respawn
@@ -3354,17 +3350,6 @@ namespace DOL.GS
 		public virtual bool CastSpell(Spell spell, SpellLine line, bool checkLos)
 		{
 			return base.CastSpell(spell, line, null, checkLos);
-		}
-
-		public virtual void OnCastSpellLosCheckFail(GameObject target)
-		{
-			// In case the NPC changes target while casting on the current one and the first LoS check was positive.
-			if (castingComponent.QueuedSpellHandler?.Target == target)
-				castingComponent.ClearUpQueuedSpellHandler();
-
-			// Start following the target if there is no LoS.
-			if (TargetObject == target)
-				Follow(target, StickMinimumRange, StickMaximumRange);
 		}
 
 		#endregion
@@ -3980,7 +3965,6 @@ namespace DOL.GS
 		private double m_campBonus = 1;
 
 		public virtual double CampBonus { get => m_campBonus; set => m_campBonus = value; }
-		public virtual double MaxHealthScalingFactor => 1.0;
 		public double DamageFactor { get => damageFactor; set => damageFactor = value; }
 	}
 }

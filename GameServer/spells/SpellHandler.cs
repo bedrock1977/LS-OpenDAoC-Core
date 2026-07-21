@@ -32,6 +32,38 @@ namespace DOL.GS.Spells
 		private const int PULSING_SPELL_END_OF_CAST_MESSAGE_INTERVAL = 2000;
 
 		public virtual string ShortDescription => Spell.Description;
+
+		// Prevent the frequency from being shown in the short description in case it's used for a different purpose.
+		protected virtual bool ShortDescriptionIncludesFrequency => true;
+
+		protected string GetFrequencyAndDurationSuffix()
+		{
+			bool hasFrequency = Spell.Frequency > 0;
+
+			if (hasFrequency)
+			{
+				// Appending duration and / or frequency to chants / focus spells other than DoTs would be confusing for many spells.
+				// For example, Minstrel's flute mez, Paladin's heal chant.
+				if (Spell.IsPulsing)
+					return string.Empty;
+			}
+
+			bool showDuration = Spell.Duration is > 0 and < (ushort.MaxValue * 1000);
+
+			if (hasFrequency && ShortDescriptionIncludesFrequency)
+			{
+				if (showDuration)
+					return $" every {Spell.Frequency / 1000.0} seconds for {Util.FormatSeconds(Spell.Duration / 1000)}";
+
+				return $" every {Spell.Frequency / 1000.0} seconds";
+			}
+
+			if (showDuration)
+				return $" for {Util.FormatSeconds(Spell.Duration / 1000)}";
+
+			return string.Empty;
+		}
+
 		protected string TargetPronoun => Spell.Target is eSpellTarget.SELF ? "your" : "the target's";
 		protected string TargetPronounCapitalized => Spell.Target is eSpellTarget.SELF ? "Your" : "The target's";
 
@@ -89,11 +121,6 @@ namespace DOL.GS.Spells
 		/// AttackData result for this spell, if any
 		/// </summary>
 		protected AttackData m_lastAttackData = null;
-
-		/// <summary>
-		/// The property key for the interrupt timeout
-		/// </summary>
-		public const string INTERRUPT_TIMEOUT_PROPERTY = "CAST_INTERRUPT_TIMEOUT";
 
 		private long _lastDuringCastLosCheckTime;
 
@@ -311,7 +338,44 @@ namespace DOL.GS.Spells
 			}
 		}
 
-		public virtual bool CasterIsAttacked(GameLiving attacker)
+		private bool _halfwayCastChecked;
+
+		private bool HasPassedHalfCastTime => _castStartTick + _calculatedCastTime * 0.5 <= GameLoop.GameLoopTime;
+
+		public bool PerformOnAttackedInterruptCheck(GameLiving attacker)
+		{
+			if (CastState is not eCastState.Focusing)
+			{
+				if (!Properties.HARD_INTERRUPT_ON_ATTACKED)
+					return false;
+
+				if (!IsInCastingPhase || HasPassedHalfCastTime)
+					return false;
+			}
+
+			return TryInterruptCaster(attacker);
+		}
+
+		private bool PerformDuringCastInterruptCheck(GameLiving attacker)
+		{
+			// If we reach the half cast time while an interrupt timer is running, initiate a self interrupt.
+
+			if (Properties.HARD_INTERRUPT_ON_ATTACKED)
+				return false;
+
+			if (_halfwayCastChecked || !HasPassedHalfCastTime)
+				return false;
+
+			_halfwayCastChecked = true;
+
+			if (!Caster.IsInterrupted || !TryInterruptCaster(attacker))
+				return false;
+
+			Caster.StartInterruptTimer(Caster.SpellSelfInterruptDuration, AttackData.eAttackType.Spell, Caster);
+			return true;
+		}
+
+		protected virtual bool TryInterruptCaster(GameLiving attacker)
 		{
 			if (Spell.Uninterruptible)
 				return false;
@@ -325,16 +389,11 @@ namespace DOL.GS.Spells
 					return false;
 			}
 
-			if (Caster.effectListComponent.ContainsEffectForEffectType(eEffect.MasteryOfConcentration)
-				|| Caster.effectListComponent.ContainsEffectForEffectType(eEffect.FacilitatePainworking)
-				|| IsQuickCasting)
-				return false;
-
-			if (CastState is not eCastState.Focusing)
+			if (Caster.effectListComponent.ContainsEffectForEffectType(eEffect.MasteryOfConcentration) ||
+				Caster.effectListComponent.ContainsEffectForEffectType(eEffect.FacilitatePainworking) ||
+				IsQuickCasting)
 			{
-				// Only interrupt if we're under 50% of the way through the cast.
-				if (!IsInCastingPhase || GameLoop.GameLoopTime >= _castStartTick + _calculatedCastTime * 0.5)
-					return false;
+				return false;
 			}
 
 			if (Caster is GameSummonedPet petCaster && petCaster.Owner is GamePlayer casterOwner)
@@ -463,7 +522,7 @@ namespace DOL.GS.Spells
 			{
 				long nextSpellAvailTime = m_caster.TempProperties.GetProperty<long>(GamePlayer.NEXT_SPELL_AVAIL_TIME_BECAUSE_USE_POTION);
 
-				if (nextSpellAvailTime > m_caster.CurrentRegion.Time && Spell.CastTime > 0) // instant spells ignore the potion cast delay
+				if (nextSpellAvailTime > GameLoop.GameLoopTime && Spell.CastTime > 0) // instant spells ignore the potion cast delay
 				{
 					playerCaster.Out.SendMessage(LanguageMgr.GetTranslation(playerCaster.Client, "GamePlayer.CastSpell.MustWaitBeforeCast", (nextSpellAvailTime - m_caster.CurrentRegion.Time) / 1000), eChatType.CT_System, eChatLoc.CL_SystemWindow);
 					return false;
@@ -544,7 +603,8 @@ namespace DOL.GS.Spells
 
 				if (interruptRemainingDuration > 0)
 				{
-					interruptRemainingDuration /= 1000 + 1;
+					interruptRemainingDuration /= 1000;
+					interruptRemainingDuration++;
 
 					if (playerCaster != null)
 					{
@@ -891,12 +951,16 @@ namespace DOL.GS.Spells
 					}
 				}
 
-				if (!m_caster.IsWithinRadius(target, Spell.CalculateEffectiveRange(m_caster)))
+				if (m_caster is not GameNPC || Properties.CHECK_RANGE_AT_NPC_CAST_END)
 				{
-					if (verbose)
-						MessageToCaster("That target is too far away!", eChatType.CT_SpellResisted);
+					if (!m_caster.IsWithinRadius(target, Spell.CalculateEffectiveRange(m_caster)))
+					{
+						if (verbose)
+							MessageToCaster("That target is too far away!", eChatType.CT_SpellResisted);
 
-					return false;
+						m_caster.castingComponent.OnOutOfRangeOrNoLos(target);
+						return false;
+					}
 				}
 
 				switch (m_spell.Target)
@@ -963,8 +1027,10 @@ namespace DOL.GS.Spells
 
 		public virtual bool CheckDuringCast(GameLiving target, bool quiet)
 		{
-			if (m_interrupted)
+			if (PerformDuringCastInterruptCheck(Caster.LastInterrupter))
 				return false;
+
+			bool checkLos = false;
 
 			if (Caster is GameNPC npcOwner)
 			{
@@ -976,9 +1042,13 @@ namespace DOL.GS.Spells
 
 				if (npcOwner != Target)
 					npcOwner.TurnTo(Target);
-			}
 
-			if (Properties.CHECK_LOS_DURING_CAST && GameLoop.GameLoopTime > _lastDuringCastLosCheckTime + Properties.CHECK_LOS_DURING_CAST_MINIMUM_INTERVAL)
+				checkLos = Properties.CHECK_LOS_DURING_NPC_CAST;
+			}
+			else if (Caster is GamePlayer)
+				checkLos = Properties.CHECK_LOS_DURING_PLAYER_CAST;
+
+			if (checkLos && GameLoop.GameLoopTime > _lastDuringCastLosCheckTime + Properties.CHECK_LOS_DURING_CAST_MINIMUM_INTERVAL)
 			{
 				_lastDuringCastLosCheckTime = GameLoop.GameLoopTime;
 
@@ -1025,18 +1095,16 @@ namespace DOL.GS.Spells
 						}
 						else
 						{
+							_calculatedCastTime = CalculateCastingTime();
+							_castEndTick = _castStartTick + _calculatedCastTime;
+
 							SendSpellMessages();
-							SendCastAnimation();
+							SendCastAnimation((ushort) (_calculatedCastTime * 0.01));
 							CastState = eCastState.Casting;
 						}
 					}
 					else
-					{
-						if (Caster.IsBeingInterrupted)
-							CastState = eCastState.Interrupted;
-						else
-							CastState = eCastState.Cleanup;
-					}
+						CastState = Caster.IsBeingInterrupted ? eCastState.Interrupted : eCastState.Cleanup;
 
 					break;
 				}
@@ -1222,23 +1290,9 @@ namespace DOL.GS.Spells
 		/// <summary>
 		/// Sends the cast animation
 		/// </summary>
-		public virtual void SendCastAnimation()
-		{
-			if (Spell.CastTime == 0)
-				SendCastAnimation(0);
-			else
-				SendCastAnimation((ushort)(CalculateCastingTime() / 100));
-		}
-
-		/// <summary>
-		/// Sends the cast animation
-		/// </summary>
 		/// <param name="castTime">The cast time</param>
 		public virtual void SendCastAnimation(ushort castTime)
 		{
-			_calculatedCastTime = castTime * 100;
-			_castEndTick = _castStartTick + _calculatedCastTime;
-
 			foreach (GamePlayer player in m_caster.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
 				if (player == null)
@@ -2020,11 +2074,11 @@ namespace DOL.GS.Spells
 
 		protected virtual double GetDebuffEffectivenessCriticalModifier()
 		{
-			if (Caster.Chance(RandomDeckEvent.CriticalChance, Caster.DebuffCriticalChance))
+			if (Caster.RandomProvider.Chance(RandomContextFactory.MagicCriticalChance(), Caster.DebuffCriticalChance))
 			{
 				double min = 0.1;
 				double max = 1.0;
-				double criticalMod = min + Caster.GetPseudoDoubleIncl(RandomDeckEvent.CriticalVariance) * (max - min);
+				double criticalMod = min + Caster.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.MagicCriticalVariance()) * (max - min);
 				(Caster as GamePlayer)?.Out.SendMessage($"Your {Spell.Name} critically debuffs the enemy for {criticalMod * 100:0}% additional effect!", eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
 				return 1.0 + criticalMod;
 			}
@@ -2324,7 +2378,7 @@ namespace DOL.GS.Spells
 			if (spellResistChance <= 0)
 				return false;
 
-			double spellResistRoll = Caster.GetPseudoDouble(RandomDeckEvent.Miss);
+			double spellResistRoll = Caster.RandomProvider.GetPseudoDouble(RandomContextFactory.Resist());
 			spellResistRoll *= 100;
 
 			if (Caster is GamePlayer playerCaster && playerCaster.UseDetailedCombatLog)
@@ -2943,7 +2997,7 @@ namespace DOL.GS.Spells
 			if (DistanceFallOff > 0)
 				spellDamage *= 1 - DistanceFallOff;
 
-			double variance = minVariance + Caster.GetPseudoDoubleIncl(RandomDeckEvent.DamageVariance) * (maxVariance - minVariance);
+			double variance = minVariance + Caster.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.MagicVariance()) * (maxVariance - minVariance);
 			double finalDamage = spellDamage * variance;
 
 			// Live testing done Summer 2009 by Bluraven, Tolakram. Levels 40, 45, 50, 55, 60, 65, 70.
@@ -2992,11 +3046,11 @@ namespace DOL.GS.Spells
 			if (playerCaster != null && playerCaster.UseDetailedCombatLog)
 				playerCaster.Out.SendMessage($"BaseDamage: {baseDamage:0.##} | SpecMod: {variance:0.##} ({minVariance:0.00}~{maxVariance:0.00})", eChatType.CT_ResistsChanged, eChatLoc.CL_SystemWindow);
 
-			if (Caster.Chance(RandomDeckEvent.CriticalChance, criticalChance))
+			if (Caster.RandomProvider.Chance(RandomContextFactory.MagicCriticalChance(), criticalChance))
 			{
 				double min = 0.1;
 				double max = ad.Target is GamePlayer ? 0.5 : 1.0;
-				double criticalMod = min + Caster.GetPseudoDoubleIncl(RandomDeckEvent.CriticalVariance) * (max - min);
+				double criticalMod = min + Caster.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.MagicCriticalVariance()) * (max - min);
 				criticalDamage = (int) (finalDamage * criticalMod);
 			}
 

@@ -63,20 +63,24 @@ namespace DOL.AI.Brain
 
         #region AI
 
-        protected const int MAX_LOS_CHECK_PER_TICK = 5;
-        protected int _aggroLosChecksThisTick;
+        protected const int MAX_PLAYER_AGGRO_LOS_CHECK_PER_TICK = 5;
+        protected const int MAX_NPC_AGGRO_LOS_CHECK_PER_TICK = 3;
+        protected int _playerAggroLosChecksThisTick;
+        protected int _npcAggroLosChecksThisTick;
         protected int _playerAggroIndex;
         protected int _npcAggroIndex;
 
         public override void Think()
         {
-            _aggroLosChecksThisTick = 0;
             FSM.Think();
         }
 
         public virtual bool CheckProximityAggro()
         {
             FireAmbientSentence();
+
+            _playerAggroLosChecksThisTick = 0;
+            _npcAggroLosChecksThisTick = 0;
 
             // Check aggro only if our aggro list is empty and we're not in combat.
             if (AggroLevel > 0 && AggroRange > 0 && Body.CurrentSpellHandler == null && !HasAggro && !_aggroLosCheckListener.HasPendingLosChecks)
@@ -104,7 +108,7 @@ namespace DOL.AI.Brain
                     continue;
 
                 if (Properties.CHECK_LOS_BEFORE_AGGRO)
-                    SendAggroLosCheck(player, player);
+                    SendPlayerAggroLosCheck(player, player);
                 else
                     AddToAggroList(player);
 
@@ -115,7 +119,7 @@ namespace DOL.AI.Brain
         protected AggroCandidateLoop<GamePlayer> BuildPlayerAggroCandidateLoop()
         {
             var players = Body.GetPlayersInRadius((ushort) AggroRange);
-            return new(players, MAX_LOS_CHECK_PER_TICK, ref _aggroLosChecksThisTick, ref _playerAggroIndex);
+            return new(players, 1, ref _playerAggroLosChecksThisTick, ref _playerAggroIndex);
         }
 
         protected virtual void CheckNpcAggro()
@@ -133,12 +137,12 @@ namespace DOL.AI.Brain
                     // Check LoS if either the target or the current mob is a pet
                     if (npc.Brain is ControlledMobBrain theirControlledNpcBrain && theirControlledNpcBrain.GetPlayerOwner() is GamePlayer theirOwner)
                     {
-                        SendAggroLosCheck(theirOwner, npc);
+                        SendNpcAggroLosCheck(theirOwner, npc);
                         continue;
                     }
                     else if (this is ControlledMobBrain ourControlledNpcBrain && ourControlledNpcBrain.GetPlayerOwner() is GamePlayer ourOwner)
                     {
-                        SendAggroLosCheck(ourOwner, npc);
+                        SendNpcAggroLosCheck(ourOwner, npc);
                         continue;
                     }
                 }
@@ -151,16 +155,27 @@ namespace DOL.AI.Brain
         protected AggroCandidateLoop<GameNPC> BuildNpcAggroCandidateLoop()
         {
             var npcs = Body.GetNPCsInRadius((ushort) AggroRange);
-            return new(npcs, MAX_LOS_CHECK_PER_TICK, ref _aggroLosChecksThisTick, ref _npcAggroIndex);
+            return new(npcs, 1, ref _npcAggroLosChecksThisTick, ref _npcAggroIndex);
         }
 
-        protected void SendAggroLosCheck(GamePlayer losChecker, GameObject target)
+        private void SendAggroLosCheck(GamePlayer losChecker, GameLiving target)
         {
             if (!losChecker.Out.SendLosCheckRequest(Body, target, _aggroLosCheckListener))
                 return;
 
             _aggroLosCheckListener.OnLosCheckStarted();
-            _aggroLosChecksThisTick++;
+        }
+
+        protected void SendPlayerAggroLosCheck(GamePlayer losChecker, GamePlayer target)
+        {
+            SendAggroLosCheck(losChecker, target);
+            _playerAggroLosChecksThisTick++;
+        }
+
+        protected void SendNpcAggroLosCheck(GamePlayer losChecker, GameNPC target)
+        {
+            SendAggroLosCheck(losChecker, target);
+            _npcAggroLosChecksThisTick++;
         }
 
         public virtual void FireAmbientSentence()
@@ -274,7 +289,12 @@ namespace DOL.AI.Brain
                 return;
 
             foreach (var pair in AggroList)
+            {
+                if (brain.AggroList.ContainsKey(pair.Key))
+                    continue;
+
                 brain.AddToAggroList(pair.Key, pair.Value.Base);
+            }
         }
 
         public virtual void AddToAggroList(GameLiving living, long aggroAmount = 0)
@@ -520,6 +540,8 @@ namespace DOL.AI.Brain
             // It isn't built here because ordering all entities in the aggro list can be expensive, and we typically don't need it.
             // It's built on demand, when `GetOrderedAggroList` is called.
             OrderedAggroList.Clear();
+            LastHighestThreatInAttackRange = null;
+
             int attackRange = Body.attackComponent.AttackRange;
             GameLiving highestThreat = null;
             KeyValuePair<GameLiving, AggroAmount> currentTarget = default;
@@ -1073,7 +1095,7 @@ namespace DOL.AI.Brain
             bool isInterruptible = spell.CastTime > 0 && !spell.Uninterruptible;
             blockedBySelfInterrupt = false;
 
-            if (isInterruptible && Body.IsBeingInterruptedByOther)
+            if (isInterruptible && Body.IsInterrupted)
                 return false;
 
             if (spell.HasRecastDelay && Body.GetSkillDisabledDuration(spell) > 0)
@@ -1088,7 +1110,7 @@ namespace DOL.AI.Brain
                     return false;
             }
 
-            if (isInterruptible && Body.IsBeingSelfInterrupted)
+            if (isInterruptible && Body.IsSelfInterrupted)
             {
                 blockedBySelfInterrupt = true;
                 return false;
@@ -1139,7 +1161,7 @@ namespace DOL.AI.Brain
             target = null;
             blockedBySelfInterrupt = false;
 
-            if (isInterruptible && Body.IsBeingInterruptedByOther)
+            if (isInterruptible && Body.IsInterrupted)
                 return false;
 
             if (spell.HasRecastDelay && Body.GetSkillDisabledDuration(spell) > 0)
@@ -1150,7 +1172,7 @@ namespace DOL.AI.Brain
             if (target == null)
                 return false;
 
-            if (isInterruptible && Body.IsBeingSelfInterrupted)
+            if (isInterruptible && Body.IsSelfInterrupted)
             {
                 blockedBySelfInterrupt = true;
                 return false;

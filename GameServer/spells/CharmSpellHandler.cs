@@ -35,7 +35,7 @@ namespace DOL.GS.Spells
             get
             {
                 charmTypeToTextMap.TryGetValue((eCharmType) Spell.AmnesiaChance, out string charmableSpecies);
-                string description = $"Attempt to bring the target {charmableSpecies}monster under the caster's control.";
+                string description = $"Attempt to bring the target {charmableSpecies}monster under the caster's control{GetFrequencyAndDurationSuffix()}.";
 
                 if (Spell.Pulse == 0)
                     description += $" Affects monsters up to {(Spell.Damage == 100 ? string.Empty : Spell.Damage + "% of ")}your level, to a maximum of level {Spell.Value}.";
@@ -79,12 +79,7 @@ namespace DOL.GS.Spells
             }
 
             target ??= Target;
-
-            if (Caster.Chance(RandomDeckEvent.Miss, CalculateSpellResistChance(target)))
-                OnSpellNegated(target, SpellNegatedReason.Resisted);
-            else
-                ApplyEffectOnTarget(target);
-
+            ApplyEffectOnTarget(target);
             return true;
         }
 
@@ -415,7 +410,7 @@ namespace DOL.GS.Spells
                     resistChance = 100 - CalculateToHitChance(target);
 
                 double spellResistChance = resistChance;
-                double resistResult = Caster.GetPseudoDouble(RandomDeckEvent.Miss) * 100;
+                double resistResult = Caster.RandomProvider.GetPseudoDouble(RandomContextFactory.Resist()) * 100;
                 string resistString = string.Format("{0:0.##}", spellResistChance);
                 string rollString = string.Format("{0:0.##}", resistResult);
 

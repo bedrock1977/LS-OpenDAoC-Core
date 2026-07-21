@@ -7,7 +7,7 @@ namespace DOL.GS.Spells
     {
         private bool _combatBlock;
 
-        public override string ShortDescription => $"A magical bolt shoots toward the target, exploding on impact for {Spell.Damage} {Spell.DamageTypeToString()} damage. Can be blocked.";
+        public override string ShortDescription => $"A magical bolt shoots toward the target, exploding on impact for {Spell.Damage} {Spell.DamageTypeToString()} damage{GetFrequencyAndDurationSuffix()}. Can be blocked.";
 
         public BoltSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
@@ -62,7 +62,7 @@ namespace DOL.GS.Spells
             double halfBaseDamage = damage * 0.5;
             damage = base.ModifyDamageWithTargetResist(ad, halfBaseDamage);
 
-            if (!ad.Target.attackComponent.CheckBlock(null, ad) || ad.Target.attackComponent.CheckGuard(ad, false))
+            if (!ad.Target.attackComponent.CheckBlock(null, ad) || ad.Target.attackComponent.CheckGuard(null, ad, false))
             {
                 // This is normally set in 'AttackComponent.CalculateEnemyAttackResult', but we don't call it.
                 if (ad.Target is GamePlayer playerTarget)

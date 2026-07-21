@@ -83,7 +83,7 @@ namespace DOL.GS.Spells
     {
         private int check = 0;
 
-        public override string ShortDescription => "You are stunned and cannot take any actions.";
+        public override string ShortDescription => $"You are stunned and cannot take any actions{GetFrequencyAndDurationSuffix()}.";
 
         public override bool CheckBeginCast(GameLiving selectedTarget)
         {
@@ -620,7 +620,7 @@ namespace DOL.GS.Spells
                 else
                 {
                     ad.CriticalChance = player.attackComponent.CalculateCriticalChance(null);
-                    ad.CriticalDamage = player.attackComponent.CalculateCriticalDamage(ad);
+                    ad.CriticalDamage = player.attackComponent.CalculateCriticalDamage(null, ad);
                 }
 
                 static int GetDamageResist(GameLiving living, eResist resistType)
@@ -679,7 +679,6 @@ namespace DOL.GS.Spells
                 GamePlayer player = effect.Owner as GamePlayer;
                 player.Out.SendCharStatsUpdate();
                 player.UpdateEncumbrance();
-                player.UpdatePlayerStatus();
                 player.Out.SendUpdatePlayer();
             }
         }
@@ -692,7 +691,6 @@ namespace DOL.GS.Spells
             {
                 GamePlayer player = effect.Owner as GamePlayer;
                 player.Out.SendCharStatsUpdate();
-                player.UpdatePlayerStatus();
                 player.Out.SendUpdatePlayer();
             }
             return base.OnEffectExpires(effect, noMessages);
@@ -766,7 +764,6 @@ namespace DOL.GS.Spells
             {
                 GamePlayer player = effect.Owner as GamePlayer;
                 player.Out.SendCharStatsUpdate();
-                player.UpdatePlayerStatus();
                 player.Out.SendUpdatePlayer();
             }
         }
@@ -780,7 +777,6 @@ namespace DOL.GS.Spells
             {
                 GamePlayer player = effect.Owner as GamePlayer;
                 player.Out.SendCharStatsUpdate();
-                player.UpdatePlayerStatus();
                 player.Out.SendUpdatePlayer();
             }
             return base.OnEffectExpires(effect, noMessages);

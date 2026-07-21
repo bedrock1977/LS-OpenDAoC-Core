@@ -197,6 +197,8 @@ namespace DOL.GS
             SpellHandler = null;
         }
 
+        public virtual void OnOutOfRangeOrNoLos(GameObject target) { }
+
         public void ClearUpQueuedSpellHandler()
         {
             QueuedSpellHandler = null;
@@ -273,19 +275,7 @@ namespace DOL.GS
 
         private static string FormatCooldown(int durationMs)
         {
-            int totalSeconds = durationMs / 1000 + 1;
-            string timeMsg;
-
-            if (totalSeconds >= 60)
-            {
-                int minutes = totalSeconds / 60;
-                int seconds = totalSeconds % 60;
-                timeMsg = $"{minutes} minutes {seconds} seconds";
-            }
-            else
-                timeMsg = $"{totalSeconds} seconds";
-
-            return timeMsg;
+            return Util.FormatSeconds(durationMs / 1000 + 1);
         }
 
         public class CastSpellRequest : StartSkillRequest

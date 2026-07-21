@@ -15,12 +15,12 @@ namespace DOL.GS.Keeps
         private eRealm m_lastRealm = eRealm.None;
         private long m_lastSpawnTime = 0;
 
+        public override double MaxHealthScalingFactor => 3.0;
+
         public override double GetArmorAbsorb(eArmorSlot slot)
         {
             return base.GetArmorAbsorb(slot) + 0.05;
         }
-
-        public override int MaxHealth => base.MaxHealth * 3;
 
         public override int RealmPointsValue
         {
@@ -236,7 +236,6 @@ namespace DOL.GS.Keeps
             return false;
         }
 
-
         /// <summary>
         /// From a great distance, damage does not harm lord
         /// </summary>
@@ -384,7 +383,7 @@ namespace DOL.GS.Keeps
             }
         }
 
-        private string GetKeepShortName(string KeepName)
+        private static string GetKeepShortName(string KeepName)
         {
             string ShortName;
             if (KeepName.StartsWith("Caer"))//Albion

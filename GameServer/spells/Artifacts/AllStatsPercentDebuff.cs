@@ -18,7 +18,7 @@ namespace DOL.GS.Spells
         protected int ChaDebuff = 0;
         protected int PieDebuff = 0;
 
-		public override string ShortDescription => $"Decreases the target's stats by {Spell.Value}%.";
+		public override string ShortDescription => $"Decreases the target's stats by {Spell.Value}%{GetFrequencyAndDurationSuffix()}.";
 
 		public AllStatsPercentDebuff(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
@@ -56,7 +56,6 @@ namespace DOL.GS.Spells
 				GamePlayer player = effect.Owner as GamePlayer;
 				player.Out.SendCharStatsUpdate();
 				player.UpdateEncumbrance();
-				player.UpdatePlayerStatus();
 				player.Out.SendUpdatePlayer();
 			}
 		}
@@ -78,7 +77,6 @@ namespace DOL.GS.Spells
 				GamePlayer player = effect.Owner as GamePlayer;
 				player.Out.SendCharStatsUpdate();
 				player.UpdateEncumbrance();
-				player.UpdatePlayerStatus();
 				player.Out.SendUpdatePlayer();
 			}
 			return base.OnEffectExpires(effect, noMessages);

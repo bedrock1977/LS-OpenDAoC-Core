@@ -23,65 +23,6 @@ namespace DOL.GS
             _npcOwner = owner;
         }
 
-        public override void OnAimInterrupt(GameObject attacker)
-        {
-            // Use the follow target or current target (maybe redundant) instead of the interrupter.
-            // We really don't want guards to move because a pet attacked them in melee.
-            GameObject target = _npcOwner.TargetObject ?? _npcOwner.FollowTarget;
-
-            if (target is not GameLiving livingFollowTarget)
-                return;
-
-            if (IsArcherGuardOrImmobile &&
-                (livingFollowTarget.ActiveWeaponSlot is eActiveWeaponSlot.Distance || !livingFollowTarget.IsWithinRadius(_npcOwner, livingFollowTarget.attackComponent.AttackRange)))
-            {
-                _npcOwner.StopFollowing();
-                return;
-            }
-
-            SwitchToMeleeAndTick();
-        }
-
-        public override void OnForcedWeaponSwitch()
-        {
-            switch (_npcOwner.ActiveWeaponSlot)
-            {
-                case eActiveWeaponSlot.Standard:
-                case eActiveWeaponSlot.TwoHanded:
-                {
-                    _wasMeleeWeaponSwitchForced = true;
-                    break;
-                }
-                case eActiveWeaponSlot.Distance:
-                {
-                    _wasMeleeWeaponSwitchForced = false;
-                    break;
-                }
-            }
-        }
-
-        public override bool OnOutOfRangeOrNoLosRangedAttack()
-        {
-            // If we're a guard or an immobile NPC, let's forget about our target so that we can attack another one and not stare at the wall.
-            // Otherwise, switch to melee, but keep the timer alive.
-            if (IsArcherGuardOrImmobile)
-            {
-                StandardMobBrain brain = _npcOwner.Brain as StandardMobBrain;
-
-                if (_losCheckTarget is GameLiving livingLosCheckTarget)
-                    brain.RemoveFromAggroList(livingLosCheckTarget);
-
-                return true;
-            }
-            else if (AttackComponent.AttackState && !_hasLos)
-            {
-                SwitchToMeleeAndTick();
-                return true;
-            }
-
-            return false;
-        }
-
         protected override bool PrepareMeleeAttack()
         {
             // Check spells before attacking to allow spell casting opportunity.
@@ -116,20 +57,16 @@ namespace DOL.GS
                 !_npcOwner.IsWithinRadius(_target, meleeAttackRange) &&
                 !_wasMeleeWeaponSwitchForced)
             {
-                // But only if there is no timer running or if it has LoS on its current target.
-                // If the timer is running, it'll check for LoS continuously.
-                if (!Properties.CHECK_LOS_BEFORE_NPC_RANGED_ATTACK || _checkLosTimer == null || !_checkLosTimer.IsAlive)
-                {
-                    SwitchToRangedAndTick();
-                    return false;
-                }
+                bool timerActive = _checkLosTimer != null && _checkLosTimer.IsAlive;
+                bool targetChanged = _losCheckTarget != _target;
 
-                if (_losCheckTarget != _target)
+                if (timerActive && targetChanged)
                 {
                     _hasLos = false;
                     _checkLosTimer.ChangeTarget(_target);
                 }
-                else if (_hasLos)
+
+                if (!timerActive || targetChanged || _hasLos)
                 {
                     SwitchToRangedAndTick();
                     return false;
@@ -146,7 +83,10 @@ namespace DOL.GS
                 _npcOwner.Brain is not IControlledBrain &&
                 _npcOwner.Brain is StandardMobBrain npcBrain)
             {
-                _target = npcBrain.LastHighestThreatInAttackRange;
+                GameLiving lastHighestThreatInAttackRange = npcBrain.LastHighestThreatInAttackRange;
+
+                if (lastHighestThreatInAttackRange != null)
+                    _target = lastHighestThreatInAttackRange;
 
                 if (_target == null || !_npcOwner.IsWithinRadius(_target, meleeAttackRange))
                 {
@@ -160,26 +100,100 @@ namespace DOL.GS
 
         protected override bool PrepareRangedAttack()
         {
-            if (Properties.CHECK_LOS_BEFORE_NPC_RANGED_ATTACK)
+            if (_checkLosTimer == null)
+                _checkLosTimer = new(_npcOwner, this, _target);
+            else if (_losCheckTarget != _target)
             {
-                if (_checkLosTimer == null)
-                    _checkLosTimer = new(_npcOwner, this, _target);
-                else if (_losCheckTarget != _target)
-                {
-                    _hasLos = false;
-                    _checkLosTimer.ChangeTarget(_target);
-                }
-
-                if (!_hasLos)
-                {
-                    _interval = TICK_INTERVAL_FOR_NON_ATTACK;
-                    return false;
-                }
+                _hasLos = false;
+                _checkLosTimer.ChangeTarget(_target);
+                _interval = TICK_INTERVAL_FOR_NON_ATTACK;
+                return false;
             }
-            else
-                _hasLos = true;
+
+            bool isAiming = _npcOwner.rangeAttackComponent.RangedAttackState is not eRangedAttackState.None;
+            bool shouldCheckLos = !isAiming || Properties.CHECK_LOS_DURING_NPC_RANGED_ATTACK;
+
+            if (shouldCheckLos && !_hasLos)
+            {
+                if (isAiming && _losCheckTarget == _target)
+                    OnOutOfRangeOrNoLosRangedAttack();
+
+                _interval = TICK_INTERVAL_FOR_NON_ATTACK;
+                return false;
+            }
+
+            bool shouldCheckDistance = !isAiming || Properties.CHECK_RANGE_AT_NPC_RANGED_ATTACK_END;
+
+            if (shouldCheckDistance && !_npcOwner.IsWithinRadius(_target, _npcOwner.attackComponent.AttackRange))
+            {
+                OnOutOfRangeOrNoLosRangedAttack();
+                return false;
+            }
 
             return base.PrepareRangedAttack();
+        }
+
+        protected override bool FinalizeRangedAttack()
+        {
+            bool lostLos = !_hasLos && _losCheckTarget == _target;
+
+            // If we've lost LoS against our current target, or if we're out of attack range.
+            if (lostLos || !_npcOwner.IsWithinRadius(_target, _npcOwner.attackComponent.AttackRange))
+            {
+                _interval = TICK_INTERVAL_FOR_NON_ATTACK;
+
+                // Keep RangedAttackState as Aim for mobile NPCs so StopAttack applies the melee switch delay and resets state.
+                if (IsArcherGuardOrImmobile)
+                    _npcOwner.rangeAttackComponent.RangedAttackState = eRangedAttackState.None;
+
+                OnOutOfRangeOrNoLosRangedAttack();
+                return false;
+            }
+
+            return base.FinalizeRangedAttack();
+        }
+
+        public override void OnForcedWeaponSwitch()
+        {
+            switch (_npcOwner.ActiveWeaponSlot)
+            {
+                case eActiveWeaponSlot.Standard:
+                case eActiveWeaponSlot.TwoHanded:
+                {
+                    _wasMeleeWeaponSwitchForced = true;
+                    break;
+                }
+                case eActiveWeaponSlot.Distance:
+                {
+                    _wasMeleeWeaponSwitchForced = false;
+                    break;
+                }
+            }
+        }
+
+        protected override void InterruptAim(GameLiving attacker)
+        {
+            // Lords can only be interrupted by their own target, and in melee range.
+            if (_npcOwner is GuardLord &&
+                _npcOwner.MaxSpeedBase == 0 &&
+                (attacker != _npcOwner.TargetObject || !_npcOwner.IsWithinRadius(attacker, _npcOwner.MeleeAttackRange)))
+            {
+               return;
+            }
+
+            _npcOwner.StopAttack();
+            GameObject target = _npcOwner.TargetObject ?? _npcOwner.FollowTarget;
+
+            if (target is not GameLiving livingFollowTarget)
+                return;
+
+            if (!_npcOwner.IsAllowedToFollow(livingFollowTarget))
+            {
+                _npcOwner.StopFollowing();
+                return;
+            }
+
+            SwitchToMeleeAndTick();
         }
 
         public override void CleanUp()
@@ -203,12 +217,24 @@ namespace DOL.GS
         {
             _losCheckTarget = _npcOwner.CurrentRegion.GetObject(targetId);
 
+            // The target may have changed. Don't act on an obsolete check.
             if (_losCheckTarget == null || _losCheckTarget != _target)
+            {
                 _hasLos = false;
-            else
-                _hasLos = response is LosCheckResponse.True;
+                return;
+            }
 
-            if (!_hasLos)
+            // Refresh the LoS checker if the current one stops responding, and wait for a reply.
+            if (response is LosCheckResponse.Timeout && _checkLosTimer != null && _checkLosTimer.IsAlive)
+            {
+                _checkLosTimer.RefreshLosCheckerForCurrentTarget();
+                return;
+            }
+
+            _hasLos = response is LosCheckResponse.True;
+
+            // Only react immediately if we aren't currently waiting for a bow draw completion.
+            if (!_hasLos && _npcOwner.rangeAttackComponent.RangedAttackState is eRangedAttackState.None)
                 OnOutOfRangeOrNoLosRangedAttack();
         }
 
@@ -228,10 +254,24 @@ namespace DOL.GS
             _npcOwner.StartAttackWithRangedWeapon(_target);
         }
 
-        private void ForceLos()
+        private void OnOutOfRangeOrNoLosRangedAttack()
         {
-            _hasLos = true;
-            _npcOwner.TurnTo(_losCheckTarget);
+            // If we're a guard or an immobile NPC, let's forget about our target so that we can attack another one and not stare at the wall.
+            // Otherwise, switch to melee, but keep the timer alive.
+
+            if (IsArcherGuardOrImmobile)
+            {
+                StandardMobBrain brain = _npcOwner.Brain as StandardMobBrain;
+
+                if (_losCheckTarget is GameLiving livingLosCheckTarget)
+                    brain.RemoveFromAggroList(livingLosCheckTarget);
+
+                // We could not return here. This would force the NPC to draw its bow again.
+                return;
+            }
+
+            if (AttackComponent.AttackState)
+                _npcOwner.StopAttack();
         }
 
         private class CheckLosTimer : ECSGameTimerWrapperBase
@@ -258,30 +298,15 @@ namespace DOL.GS
                     return;
                 }
 
-                if (_target != newTarget)
-                {
-                    _target = newTarget;
-
-                    if (_npcOwner.Brain is IControlledBrain brain)
-                        _losChecker = brain.GetPlayerOwner();
-                    else if (_target is GamePlayer targetPlayer)
-                        _losChecker = targetPlayer;
-                    else if (_target is GameNPC npcTarget && npcTarget.Brain is IControlledBrain targetBrain)
-                        _losChecker = targetBrain.GetPlayerOwner();
-                    else
-                        _losChecker = null;
-                }
-
-                // If there's no LoS checker, stop the timer and force LoS.
-                if (_losChecker == null)
-                {
-                    _attackAction.ForceLos();
-                    Stop();
-                    return;
-                }
-
+                _target = newTarget;
+                RefreshLosCheckerForCurrentTarget();
                 Start(0);
                 Interval = LosCheckInterval;
+            }
+
+            public void RefreshLosCheckerForCurrentTarget()
+            {
+                _losChecker = _npcOwner.Brain.GetLosChecker(_target);
             }
 
             protected override int OnTick(ECSGameTimer timer)

@@ -1648,36 +1648,53 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
-		public virtual void SendGroupMemberUpdate(bool updateIcons, bool updateMap, GameLiving living)
+		public virtual void SendGroupMembersUpdate(ReadOnlySpan<GameLiving> livings)
 		{
-			if (m_gameClient.Player == null)
+			if (m_gameClient.Player?.Group == null)
 				return;
-			Group group = m_gameClient.Player.Group;
-			if (group == null)
-				return;
+
+			bool hasData = false;
 
 			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.GroupMemberUpdate)))
 			{
-				if (living.Group != group)
+				foreach (GameLiving living in livings)
+				{
+					WriteGroupMemberUpdate(pak, living);
+					hasData = true;
+				}
+
+				if (!hasData)
+				{
+					pak.ReleasePooledObject();
 					return;
-				WriteGroupMemberUpdate(pak, updateIcons, living);
+				}
+
 				pak.WriteByte(0x00);
 				SendTCP(pak);
 			}
 		}
 
-		public virtual void SendGroupMembersUpdate(bool updateIcons, bool updateMap)
+		public virtual void SendGroupMembersIconsUpdate(ReadOnlySpan<GameLiving> livings)
 		{
-			if (m_gameClient.Player == null)
+			if (m_gameClient.Player?.Group == null)
 				return;
 
-			Group group = m_gameClient.Player.Group;
-			if (group == null)
-				return;
+			bool hasData = false;
+
 			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.GroupMemberUpdate)))
 			{
-				foreach (GameLiving living in group.GetMembersInTheGroup())
-					WriteGroupMemberUpdate(pak, updateIcons, living);
+				foreach (GameLiving living in livings)
+				{
+					WriteGroupMemberIconsUpdate(pak, living);
+					hasData = true;
+				}
+
+				if (!hasData)
+				{
+					pak.ReleasePooledObject();
+					return;
+				}
+
 				pak.WriteByte(0x00);
 				SendTCP(pak);
 			}
@@ -2893,8 +2910,6 @@ namespace DOL.GS.PacketHandler
 				SendTCP(pak);
 			}
 
-			SendStatusUpdate();
-
 			static void WriteTruncatedName(GSTCPPacketOut pak, ReadOnlySpan<char> text)
 			{
 				const int MAX_LENGTH = 14;
@@ -3884,7 +3899,7 @@ namespace DOL.GS.PacketHandler
 			return name;
 		}
 
-		protected virtual void WriteGroupMemberUpdate(GSTCPPacketOut pak, bool updateIcons, GameLiving living)
+		protected virtual void WriteGroupMemberUpdate(GSTCPPacketOut pak, GameLiving living)
 		{
 			pak.WriteByte((byte) (living.GroupIndex + 1)); // From 1 to 8
 			bool sameRegion = living.CurrentRegion == m_gameClient.Player.CurrentRegion;
@@ -3894,15 +3909,12 @@ namespace DOL.GS.PacketHandler
             {
                 player = living as GamePlayer;
 
-                if (player != null)
-                    pak.WriteByte(player.CharacterClass.HealthPercentGroupWindow);
-                else
-                    pak.WriteByte(living.HealthPercent);
+				pak.WriteByte(player != null ? player.HealthPercentGroupWindow : living.HealthPercent);
 
 				pak.WriteByte(living.ManaPercent);
 
 				byte playerStatus = 0;
-				if (!living.IsAlive)
+				if (living.Health <=0)
 					playerStatus |= 0x01;
 				if (living.IsMezzed)
 					playerStatus |= 0x02;
@@ -3916,36 +3928,38 @@ namespace DOL.GS.PacketHandler
 				pak.WriteByte(playerStatus);
 				// 0x00 = Normal , 0x01 = Dead , 0x02 = Mezzed , 0x04 = Diseased ,
 				// 0x08 = Poisoned , 0x10 = Link Dead , 0x20 = In Another Region
-
-				if (updateIcons)
-				{
-					pak.WriteByte((byte) (0x80 | living.GroupIndex));
-					lock (living.EffectList)
-					{
-						byte i = 0;
-						foreach (IGameEffect effect in living.EffectList)
-							if (effect is GameSpellEffect)
-								i++;
-						pak.WriteByte(i);
-						foreach (IGameEffect effect in living.EffectList)
-							if (effect is GameSpellEffect)
-						{
-							pak.WriteShort(effect.Icon);
-						}
-					}
-				}
 			}
 			else
 			{
 				pak.WriteShort(0);
 				pak.WriteByte(0x20);
-				if (updateIcons)
-				{
-					pak.WriteByte((byte) (0x80 | living.GroupIndex));
-					pak.WriteByte(0);
-				}
 			}
 		}
+
+		protected virtual void WriteGroupMemberIconsUpdate(GSTCPPacketOut pak, GameLiving living)
+		{
+			pak.WriteByte((byte) (0x80 | living.GroupIndex));
+
+			if (living.CurrentRegion != m_gameClient.Player.CurrentRegion)
+			{
+				pak.WriteByte(0);
+				return;
+			}
+
+			lock (living.EffectList)
+			{
+				byte i = 0;
+				foreach (IGameEffect effect in living.EffectList)
+					if (effect is GameSpellEffect)
+						i++;
+				pak.WriteByte(i);
+				foreach (IGameEffect effect in living.EffectList)
+					if (effect is GameSpellEffect)
+						pak.WriteShort(effect.Icon);
+			}
+		}
+
+		public virtual void SendGroupMembersMapUpdate(ReadOnlySpan<GameLiving> livings) { }
 
 		protected virtual void SendInventorySlotsUpdateRange(List<eInventorySlot> slots, eInventoryWindowType windowType)
 		{

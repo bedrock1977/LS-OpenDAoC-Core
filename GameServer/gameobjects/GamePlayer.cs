@@ -137,39 +137,7 @@ namespace DOL.GS
 
         public override int TargetInViewAlwaysTrueMinRange => (TargetObject is GamePlayer targetPlayer && targetPlayer.IsMoving) ? 100 : 64;
 
-        private Dictionary<RandomDeckEvent, RandomDeck> _randomDecks = new();
-
-        public override bool Chance(RandomDeckEvent deckEvent, int chancePercent)
-        {
-            return !Properties.OVERRIDE_DECK_RNG && _randomDecks.TryGetValue(deckEvent, out RandomDeck deck) ?
-                deck.Draw() < chancePercent :
-                base.Chance(deckEvent, chancePercent);
-        }
-
-        public override bool Chance(RandomDeckEvent deckEvent, double chancePercent)
-        {
-            return GetPseudoDouble(deckEvent) < chancePercent;
-        }
-
-        public override double GetPseudoDouble(RandomDeckEvent deckEvent)
-        {
-            return !Properties.OVERRIDE_DECK_RNG && _randomDecks.TryGetValue(deckEvent, out RandomDeck deck) ?
-                (deck.Draw() + Util.RandomDouble()) / 100.0 :
-                base.GetPseudoDouble(deckEvent);
-        }
-
-        public override double GetPseudoDoubleIncl(RandomDeckEvent deckEvent)
-        {
-            return !Properties.OVERRIDE_DECK_RNG && _randomDecks.TryGetValue(deckEvent, out RandomDeck deck) ?
-                (deck.Draw() + Util.RandomDoubleIncl()) / 100.0 :
-                base.GetPseudoDoubleIncl(deckEvent);
-        }
-
-        public void InitializeRandomDecks()
-        {
-            foreach (RandomDeckEvent deckEvent in Enum.GetValues<RandomDeckEvent>())
-                _randomDecks[deckEvent] = new();
-        }
+        public override IRandomProvider RandomProvider { get; } = RandomProviderFactory.GetDeckRandomProvider();
 
         /// <summary>
         /// Gets or sets the GroundTargetObject's visibility
@@ -243,7 +211,7 @@ namespace DOL.GS
         /// <summary>
         /// The character the player is based on
         /// </summary>
-        internal DbCoreCharacter DBCharacter
+        public DbCoreCharacter DBCharacter
         {
             get { return m_dbCharacter; }
         }
@@ -891,7 +859,7 @@ namespace DOL.GS
 
             _linkDeathTimer = new(this); // Keep link-dead characters in game.
             TradeWindow?.CloseTrade();
-            Group?.UpdateMember(this, false, false);
+            Group?.UpdateMember(this, false);
 
             // Hard LD only.
             if (Client.ClientState is GameClient.eClientState.Linkdead)
@@ -1703,7 +1671,6 @@ namespace DOL.GS
             StartPowerRegeneration();
             StartEnduranceRegeneration();
             LastDeathPvP = false;
-            UpdatePlayerStatus();
 
             Out.SendMessage(LanguageMgr.GetTranslation(Client.Account.Language, "GamePlayer.Release.SurroundingChange"), eChatType.CT_YourDeath, eChatLoc.CL_SystemWindow);
 
@@ -1839,7 +1806,6 @@ namespace DOL.GS
             GameEventMgr.RemoveHandler(this, GamePlayerEvent.Revive, new DOLEventHandler(OnRevive));
             m_deathtype = eDeathType.None;
             LastDeathPvP = false;
-            UpdatePlayerStatus();
             Out.SendPlayerRevive(this);
         }
 
@@ -2293,6 +2259,57 @@ namespace DOL.GS
 
         #region Health/Mana/Endurance/Regeneration
 
+        private byte _cachedHealthPercentGroupWindow;
+
+        public void RefreshCachedHealthPercentGroupWindow()
+        {
+            _cachedHealthPercentGroupWindow = CharacterClass.HealthPercentGroupWindow;
+        }
+
+        public bool RefreshCachedHealthPercentGroupWindowAndNotifyGroup()
+        {
+            byte old = _cachedHealthPercentGroupWindow;
+            RefreshCachedHealthPercentGroupWindow();
+
+            if (old == _cachedHealthPercentGroupWindow)
+                return false;
+
+            Group?.UpdateMember(this, false);
+            return true;
+        }
+
+        protected override void OnCachedHealthPercentChanged(byte oldPercent, byte newPercent)
+        {
+            RefreshCachedHealthPercentGroupWindow();
+            RequestResourceStatusUpdate(true);
+        }
+
+        protected override void OnCachedManaPercentChanged(byte oldPercent, byte newPercent)
+        {
+            RequestResourceStatusUpdate(true);
+        }
+
+        protected override void OnCachedEndurancePercentChanged(byte oldPercent, byte newPercent)
+        {
+            RequestResourceStatusUpdate(true);
+        }
+
+        protected override void OnCachedConcentrationPercentChanged(byte oldPercent, byte newPercent)
+        {
+            // Concentration isn't sent to group members.
+            RequestResourceStatusUpdate(false);
+        }
+
+        public override void OnUsedConcentrationChanged()
+        {
+            int maxConcentration = MaxConcentration;
+            byte oldPercent = _cachedConcentrationPercent;
+            UpdateCachedConcentrationPercent(maxConcentration, Concentration);
+
+            if (oldPercent != _cachedConcentrationPercent)
+                OnCachedConcentrationPercentChanged(oldPercent, _cachedConcentrationPercent);
+        }
+
         private int GetHealthAndPowerRegenerationInterval()
         {
             // From Uthgard.
@@ -2412,7 +2429,7 @@ namespace DOL.GS
             get => DBCharacter != null ? DBCharacter.Health : base.Health;
             set
             {
-                int oldPercent = HealthPercent;
+                byte oldPercent = HealthPercent;
                 base.Health = value;
 
                 if (DBCharacter != null)
@@ -2420,8 +2437,8 @@ namespace DOL.GS
 
                 if (oldPercent != HealthPercent)
                 {
-                    Group?.UpdateMember(this, false, false);
-                    UpdatePlayerStatus();
+                    RefreshCachedHealthPercentGroupWindow();
+                    RequestResourceStatusUpdate(true);
                 }
             }
         }
@@ -2453,7 +2470,7 @@ namespace DOL.GS
             return Math.Max(1, (int)hp4);
         }
 
-        public override byte HealthPercentGroupWindow => CharacterClass.HealthPercentGroupWindow;
+        public override byte HealthPercentGroupWindow => _cachedHealthPercentGroupWindow;
 
         /// <summary>
         /// Calculate max mana for this player based on level and mana stat level
@@ -2505,44 +2522,34 @@ namespace DOL.GS
             get => DBCharacter != null ? DBCharacter.Mana : base.Mana;
             set
             {
-                int oldPercent = ManaPercent;
+                byte oldPercent = ManaPercent;
                 base.Mana = value;
 
                 if (DBCharacter != null)
                     DBCharacter.Mana = base.Mana; // Base clamps between 0 and max value.
 
                 if (oldPercent != ManaPercent)
-                {
-                    Group?.UpdateMember(this, false, false);
-                    UpdatePlayerStatus();
-                }
+                    RequestResourceStatusUpdate(true);
             }
         }
-
-        public override int MaxMana => base.MaxMana;
 
         public override int Endurance
         {
             get => DBCharacter != null ? DBCharacter.Endurance : base.Endurance;
             set
             {
-                int oldPercent = EndurancePercent;
+                byte oldPercent = EndurancePercent;
                 base.Endurance = value;
 
                 if (DBCharacter != null)
                     DBCharacter.Endurance = base.Endurance; // Base clamps between 0 and max value.
 
                 if (oldPercent != EndurancePercent)
-                {
-                    Group?.UpdateMember(this, false, false);
-                    UpdatePlayerStatus();
-                }
+                    RequestResourceStatusUpdate(true);
             }
         }
 
-        public override int MaxEndurance => base.MaxEndurance;
         public override int Concentration => MaxConcentration - effectListComponent.UsedConcentration;
-        public override int MaxConcentration => GetModified(eProperty.MaxConcentration);
 
         #region Calculate Fall Damage
 
@@ -2650,7 +2657,7 @@ namespace DOL.GS
 
             if (Group != null)
             {
-                Group.UpdateMember(this, false, true);
+                Group.UpdateMember(this, true);
             }
             return true;
         }
@@ -4751,7 +4758,6 @@ namespace DOL.GS
             Out.SendCharResistsUpdate();
             Out.SendUpdatePlayerSkills(true);
             Out.SendUpdatePoints();
-            UpdatePlayerStatus();
 
             // not sure what package this is, but it triggers the mob color update
             Out.SendLevelUpSound();
@@ -4806,7 +4812,6 @@ namespace DOL.GS
             Out.SendCharStatsUpdate(); // Update Stats and MaxHitpoints
             Out.SendUpdatePlayerSkills(true);
             Out.SendUpdatePoints();
-            UpdatePlayerStatus();
             // save player to database
             SaveIntoDatabase();
 
@@ -5258,22 +5263,6 @@ namespace DOL.GS
                 Out.SendCloseTimerWindow();
             }
         }
-        /// <summary>
-        /// Does needed interrupt checks and interrupts if needed
-        /// </summary>
-        /// <param name="attacker">the attacker that is interrupting</param>
-        /// <param name="attackType">The attack type</param>
-        /// <returns>true if interrupted successfully</returns>
-        protected override bool CheckRangedAttackInterrupt(GameLiving attacker, AttackData.eAttackType attackType)
-        {
-            if (base.CheckRangedAttackInterrupt(attacker, attackType))
-            {
-                attackComponent.attackAction.OnAimInterrupt(attacker);
-                return true;
-            }
-
-            return false;
-        }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
         {
@@ -5307,6 +5296,16 @@ namespace DOL.GS
             }
         }
 
+        private static readonly Dictionary<eArmorSlot, int> _armorHitLocationChances = new()
+        {
+            { eArmorSlot.TORSO, 40 },
+            { eArmorSlot.LEGS, 25 },
+            { eArmorSlot.ARMS, 15 },
+            { eArmorSlot.HEAD, 10 },
+            { eArmorSlot.FEET, 5 },
+            { eArmorSlot.HAND, 5 },
+        };
+
         /// <summary>
         /// Gets the effective AF of this living.  This is used for the overall AF display
         /// on the character but not used in any damage equations.
@@ -5315,137 +5314,99 @@ namespace DOL.GS
         {
             get
             {
-                int eaf = 0;
-                int abs = 0;
+                double armorLevel = 0;
+                double armorAbsorb = 0;
+
                 foreach (DbInventoryItem item in Inventory.VisibleItems)
                 {
-                    double factor = 0;
-                    switch (item.Item_Type)
-                    {
-                        case Slot.TORSO:
-                            factor = 2.2;
-                            break;
-                        case Slot.LEGS:
-                            factor = 1.3;
-                            break;
-                        case Slot.ARMS:
-                            factor = 0.75;
-                            break;
-                        case Slot.HELM:
-                            factor = 0.5;
-                            break;
-                        case Slot.HANDS:
-                            factor = 0.25;
-                            break;
-                        case Slot.FEET:
-                            factor = 0.25;
-                            break;
-                    }
+                    if (!GlobalConstants.IsArmor(item.Object_Type))
+                        continue;
 
-                    int itemAFCap = Level << 1;
-                    if (RealmLevel > 39)
-                        itemAFCap += 2;
-                    switch ((eObjectType)item.Object_Type)
+                    eArmorSlot armorSlot = item.Item_Type switch
                     {
-                        case eObjectType.Cloth:
-                            abs = 0;
-                            itemAFCap >>= 1;
-                            break;
-                        case eObjectType.Leather:
-                            abs = 10;
-                            break;
-                        case eObjectType.Reinforced:
-                            abs = 19;
-                            break;
-                        case eObjectType.Studded:
-                            abs = 19;
-                            break;
-                        case eObjectType.Scale:
-                            abs = 27;
-                            break;
-                        case eObjectType.Chain:
-                            abs = 27;
-                            break;
-                        case eObjectType.Plate:
-                            abs = 34;
-                            break;
-                    }
+                        Slot.TORSO => eArmorSlot.TORSO,
+                        Slot.LEGS => eArmorSlot.LEGS,
+                        Slot.ARMS => eArmorSlot.ARMS,
+                        Slot.HELM => eArmorSlot.HEAD,
+                        Slot.HANDS => eArmorSlot.HAND,
+                        Slot.FEET => eArmorSlot.FEET,
+                        _ => eArmorSlot.NOTSET,
+                    };
 
-                    if (factor > 0)
-                    {
-                        int af = item.DPS_AF;
-                        if (af > itemAFCap)
-                            af = itemAFCap;
-                        double piece_eaf = af * item.Quality / 100.0 * item.ConditionPercent / 100.0 * (1 + abs / 100.0);
-                        eaf += (int)(piece_eaf * factor);
-                    }
+                    if (!_armorHitLocationChances.TryGetValue(armorSlot, out int hitChancePercent) || hitChancePercent <= 0)
+                        continue;
+
+                    eObjectType armorType = (eObjectType) item.Object_Type;
+                    _ = GetArmorFactorCap(armorType, out int itemArmorFactorCap);
+                    double effectiveAF = Math.Min(item.DPS_AF, itemArmorFactorCap) * item.Quality * 0.01 * item.ConditionPercent * 0.01;
+                    double useableItemLevel = effectiveAF * 0.5;
+                    double itemAbsorb = item.SPD_ABS * 0.01;
+
+                    armorLevel += useableItemLevel * hitChancePercent * 0.01;
+                    armorAbsorb += itemAbsorb * hitChancePercent * 0.01;
                 }
 
-                // Overall AF CAP = 10 * level * (1 + abs%/100)
                 int bestLevel = -1;
                 bestLevel = Math.Max(bestLevel, GetAbilityLevel(Abilities.AlbArmor));
                 bestLevel = Math.Max(bestLevel, GetAbilityLevel(Abilities.HibArmor));
                 bestLevel = Math.Max(bestLevel, GetAbilityLevel(Abilities.MidArmor));
-                switch (bestLevel)
+
+                int abs = bestLevel switch
                 {
-                    default: abs = 0; break; // cloth etc
-                    case ArmorLevel.Leather: abs = 10; break;
-                    case ArmorLevel.Studded: abs = 19; break;
-                    case ArmorLevel.Chain: abs = 27; break;
-                    case ArmorLevel.Plate: abs = 34; break;
+                    ArmorLevel.Leather => GetArmorTypeAbsorbPercent(eObjectType.Leather),
+                    ArmorLevel.Studded => GetArmorTypeAbsorbPercent(eObjectType.Studded),
+                    ArmorLevel.Chain => GetArmorTypeAbsorbPercent(eObjectType.Chain),
+                    ArmorLevel.Plate => GetArmorTypeAbsorbPercent(eObjectType.Plate),
+                    _ => 0
+                };
+
+                double eaf = 10 * armorLevel * (1 + armorAbsorb);
+                int eafCap = (int) (10 * Level * (1 + abs * 0.01));
+
+                eaf += BaseBuffBonusCategory[eProperty.ArmorFactor]; // Base buff before cap.
+                eaf = Math.Min(eaf, eafCap);
+                eaf += Math.Min(Level * 1.875, SpecBuffBonusCategory[eProperty.ArmorFactor]) -
+                    DebuffCategory[eProperty.ArmorFactor] +
+                    OtherBonus[eProperty.ArmorFactor] +
+                    Math.Min(Level, ItemBonus[eProperty.ArmorFactor]);
+                eaf *= BuffBonusMultCategory1.Get((int) eProperty.ArmorFactor);
+                return (int) eaf;
+
+                static int GetArmorTypeAbsorbPercent(eObjectType armorType)
+                {
+                    return armorType switch
+                    {
+                        eObjectType.Cloth => 0,
+                        eObjectType.Leather => 10,
+                        eObjectType.Studded or eObjectType.Reinforced => 19,
+                        eObjectType.Chain or eObjectType.Scale => 27,
+                        eObjectType.Plate => 34,
+                        _ => 0,
+                    };
                 }
-
-                eaf += BaseBuffBonusCategory[eProperty.ArmorFactor]; // base buff before cap
-                int eafcap = (int)(10 * Level * (1 + abs * 0.01));
-                if (eaf > eafcap)
-                    eaf = eafcap;
-                eaf += (int)Math.Min(Level * 1.875, SpecBuffBonusCategory[eProperty.ArmorFactor])
-                       - DebuffCategory[eProperty.ArmorFactor]
-                       + OtherBonus[eProperty.ArmorFactor]
-                       + Math.Min(Level, ItemBonus[eProperty.ArmorFactor]);
-
-                eaf = (int)(eaf * BuffBonusMultCategory1.Get((int)eProperty.ArmorFactor));
-
-                return eaf;
             }
         }
-        /// <summary>
-        /// Calc Armor hit location when player is hit by enemy
-        /// </summary>
-        /// <returns>slotnumber where enemy hits</returns>
-        /// attackdata(ad) changed
+
         public virtual eArmorSlot CalculateArmorHitLocation(AttackData ad)
         {
             if (ad.Style != null)
             {
-                if (ad.Style.ArmorHitLocation != eArmorSlot.NOTSET)
+                if (ad.Style.ArmorHitLocation is not eArmorSlot.NOTSET)
                     return ad.Style.ArmorHitLocation;
             }
-            int chancehit = Util.Random(1, 100);
-            if (chancehit <= 40)
+
+            int roll = Util.Random(1, 100);
+            int cumulative = 0;
+
+            foreach (var pair in _armorHitLocationChances)
             {
-                return eArmorSlot.TORSO;
+                cumulative += pair.Value;
+
+                if (roll <= cumulative)
+                    return pair.Key;
             }
-            else if (chancehit <= 65)
-            {
-                return eArmorSlot.LEGS;
-            }
-            else if (chancehit <= 80)
-            {
-                return eArmorSlot.ARMS;
-            }
-            else if (chancehit <= 90)
-            {
-                return eArmorSlot.HEAD;
-            }
-            else if (chancehit <= 95)
-            {
-                return eArmorSlot.HAND;
-            }
-            else
-            {
-                return eArmorSlot.FEET;
-            }
+
+            return eArmorSlot.FEET;
         }
 
         public override int WeaponSpecLevel(eObjectType objectType, int slotPosition)
@@ -7783,6 +7744,7 @@ namespace DOL.GS
                 return false;
             }
 
+            RefreshCachedHealthPercentGroupWindow();
             movementComponent.ForceUpdatePosition();
             m_invulnerabilityTick = 0;
 
@@ -8742,10 +8704,6 @@ namespace DOL.GS
                     m_prayAction.Stop();
             }
 
-            // Update the client.
-            if (sit && !IsSitting)
-                Out.SendStatusUpdate(2);
-
             IsSitting = sit;
             UpdatePlayerStatus();
         }
@@ -8771,9 +8729,12 @@ namespace DOL.GS
         /// <summary>
         /// Updates Health, Mana, Sitting, Endurance, Concentration and Alive status to client
         /// </summary>
-        public void UpdatePlayerStatus()
+        public void UpdatePlayerStatus(bool notifyGroup = false)
         {
             Out.SendStatusUpdate();
+
+            if (notifyGroup)
+                Group?.UpdateMember(this, false);
         }
         #endregion
 
@@ -8855,7 +8816,6 @@ namespace DOL.GS
             Out.SendCharStatsUpdate();
             Out.SendUpdateWeaponAndArmorStats();
             UpdateEncumbrance();
-            UpdatePlayerStatus();
             base.UpdateHealthManaEndu();
         }
 
@@ -9026,7 +8986,7 @@ namespace DOL.GS
                     TempProperties.SetProperty("ITEMREUSEDELAY" + item.Id_nb, CurrentRegion.Time);
             }
 
-            _statsSenderOnEquipmentChange ??= new(this, OnStatsSendCompletionAfterEquipmentChange);
+            _statsSenderOnEquipmentChange.Start(0);
             _statsSenderOnEquipmentChange.BroadcastEquipment |= GameLivingInventory.VisibleSlots.Contains((eInventorySlot) item.Template.Item_Type);
         }
 
@@ -9183,36 +9143,59 @@ namespace DOL.GS
             if (item is IGameInventoryItem inventoryItem)
                 inventoryItem.OnUnEquipped(this);
 
-            _statsSenderOnEquipmentChange ??= new(this, OnStatsSendCompletionAfterEquipmentChange);
+            _statsSenderOnEquipmentChange.Start(0);
             _statsSenderOnEquipmentChange.BroadcastEquipment |= GameLivingInventory.VisibleSlots.Contains((eInventorySlot) item.Template.Item_Type);
         }
 
-        private StatsSenderOnEquipmentChange _statsSenderOnEquipmentChange;
-
-        private int OnStatsSendCompletionAfterEquipmentChange()
+        private void RequestResourceStatusUpdate(bool notifyGroup)
         {
-            _statsSenderOnEquipmentChange = null;
-            return 0;
+            if (notifyGroup)
+                _statusSenderOnResourceChange.NotifyGroupOnTick = true;
+
+            _statusSenderOnResourceChange.Start(0);
         }
 
-        public class StatsSenderOnEquipmentChange : ECSGameTimerWrapperBase
+        private StatusSenderOnResourceChange _statusSenderOnResourceChange;
+        private StatsSenderOnEquipmentChange _statsSenderOnEquipmentChange;
+
+        public class StatusSenderOnResourceChange : ECSGameTimerWrapperBase
         {
             private new GamePlayer Owner { get; }
-            private Func<int> _onCompletion;
 
-            public bool BroadcastEquipment { get; set; }
+            public bool NotifyGroupOnTick { get; set; }
 
-            public StatsSenderOnEquipmentChange(GameObject owner, Func<int> OnCompletion) : base(owner)
+            public StatusSenderOnResourceChange(GameObject owner) : base(owner)
             {
                 Owner = owner as GamePlayer;
-                _onCompletion = OnCompletion;
-                Start(0);
             }
 
             protected override int OnTick(ECSGameTimer timer)
             {
                 if (Owner.ObjectState is not eObjectState.Active)
-                    return _onCompletion();
+                    return 0;
+
+                bool notifyGroup = NotifyGroupOnTick;
+                NotifyGroupOnTick = false;
+                Owner.UpdatePlayerStatus(notifyGroup);
+                return 0;
+            }
+        }
+
+        public class StatsSenderOnEquipmentChange : ECSGameTimerWrapperBase
+        {
+            private new GamePlayer Owner { get; }
+
+            public bool BroadcastEquipment { get; set; }
+
+            public StatsSenderOnEquipmentChange(GameObject owner) : base(owner)
+            {
+                Owner = owner as GamePlayer;
+            }
+
+            protected override int OnTick(ECSGameTimer timer)
+            {
+                if (Owner.ObjectState is not eObjectState.Active)
+                    return 0;
 
                 Owner.Out.SendCharStatsUpdate();
                 Owner.Out.SendCharResistsUpdate();
@@ -9220,13 +9203,12 @@ namespace DOL.GS
                 Owner.Out.SendUpdateMaxSpeed();
                 Owner.Out.SendUpdatePlayerSkills(false);
                 Owner.UpdateEncumbrance(); // Currently also sent by GamePlayerInventory.UpdateChangedSlots, but too early.
-                Owner.UpdatePlayerStatus();
 
                 if (BroadcastEquipment)
                     Owner.BroadcastEquipmentUpdate();
 
                 if (!IsAlive)
-                    return _onCompletion();
+                    return 0;
 
                 int maxHealth = Owner.MaxHealth;
 
@@ -9249,7 +9231,7 @@ namespace DOL.GS
                 else if (Owner.Endurance > maxEndurance)
                     Owner.Endurance = maxEndurance;
 
-                return _onCompletion();
+                return 0;
             }
         }
 
@@ -9390,7 +9372,6 @@ namespace DOL.GS
                 Out.SendUpdateMaxSpeed();
                 Out.SendEncumbrance();
                 // Out.SendUpdatePlayerSkills();
-                UpdatePlayerStatus();
 
                 if (IsAlive)
                 {
@@ -11164,7 +11145,7 @@ namespace DOL.GS
             }
         }
 
-        internal bool TryGetQuestIndex(AbstractQuest quest, out byte index)
+        public bool TryGetQuestIndex(AbstractQuest quest, out byte index)
         {
             lock (_questListLock)
             {
@@ -11186,7 +11167,7 @@ namespace DOL.GS
             return null;
         }
 
-        internal bool NeedsQuestListRefreshAfterRemove(byte visibleQuestCount)
+        public bool NeedsQuestListRefreshAfterRemove(byte visibleQuestCount)
         {
             lock (_questListLock)
             {
@@ -11284,7 +11265,7 @@ namespace DOL.GS
             return handled;
         }
 
-        internal void SendQuestListUpdate(byte indexOffset, int visibleQuestCount, Action<AbstractQuest, byte> sendQuestPacket)
+        public void SendQuestListUpdate(byte indexOffset, int visibleQuestCount, Action<AbstractQuest, byte> sendQuestPacket)
         {
             lock (_questListLock)
             {
@@ -12165,6 +12146,7 @@ namespace DOL.GS
             try
             {
                 CharacterClass.SetControlledBrain(controlledBrain);
+                RefreshCachedHealthPercentGroupWindowAndNotifyGroup();
                 return true;
             }
             catch (Exception e)
@@ -13370,7 +13352,6 @@ namespace DOL.GS
             Out.SendUpdatePlayer();
             Out.SendUpdatePoints();
             Out.SendUpdatePlayerSkills(true);
-            UpdatePlayerStatus();
         }
 
         /// <summary>
@@ -13404,7 +13385,9 @@ namespace DOL.GS
             Out.SendMessage("You have gained one champion level!", eChatType.CT_Important, eChatLoc.CL_SystemWindow);
             Out.SendUpdatePlayer();
             Out.SendUpdatePoints();
-            UpdatePlayerStatus();
+            _ = MaxHealth;
+            _ = MaxMana;
+            _ = MaxEndurance;
         }
 
         #endregion
@@ -13717,20 +13700,22 @@ namespace DOL.GS
 
             CreateStatistics();
 
-            m_combatTimer = new ECSGameTimer(this, new ECSGameTimer.ECSTimerCallback(_ =>
+            m_combatTimer = new(this, _ =>
             {
                 Out.SendUpdateMaxSpeed();
                 return 0;
-            }));
+            });
 
-            m_holdBreathTimer = new ECSGameTimer(this, new ECSGameTimer.ECSTimerCallback(_ =>
+            m_holdBreathTimer = new(this, _ =>
             {
                 UpdateWaterBreathState(eWaterBreath.Drowning);
                 return 0;
-            }));
+            });
 
-            m_drowningTimer = new ECSGameTimer(this, new ECSGameTimer.ECSTimerCallback(DrowningTimerCallback));
-            InitializeRandomDecks();
+            m_drowningTimer = new(this, DrowningTimerCallback);
+
+            _statsSenderOnEquipmentChange = new(this);
+            _statusSenderOnResourceChange = new(this);
         }
 
         /// <summary>
@@ -13785,7 +13770,6 @@ namespace DOL.GS
         {
             return false;
         }
-
 
         ///// <summary>
         ///// Delve a weapon style for this player

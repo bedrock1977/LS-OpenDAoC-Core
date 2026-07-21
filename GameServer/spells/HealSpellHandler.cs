@@ -10,8 +10,8 @@ namespace DOL.GS.Spells
     {
         public override string ShortDescription =>
             Spell.Value > 0 ?
-            $"Heals the target for {Spell.Value} hit points." :
-            $"Heals the target for {Math.Abs(Spell.Value)}% hit points.";
+            $"Heals the target for {Spell.Value} hit points{GetFrequencyAndDurationSuffix()}." :
+            $"Heals the target for {Math.Abs(Spell.Value)}% hit points{GetFrequencyAndDurationSuffix()}.";
 
         public HealSpellHandler(GameLiving caster, Spell spell, SpellLine line) : base(caster, spell, line) { }
 
@@ -40,7 +40,7 @@ namespace DOL.GS.Spells
 
             foreach (GameLiving healTarget in targets)
             {
-                double variance = min + Caster.GetPseudoDoubleIncl(RandomDeckEvent.DamageVariance) * (max - min);
+                double variance = min + Caster.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.MagicVariance()) * (max - min);
                 healed |= HealTarget(healTarget, spellValue * variance, true);
             }
 
@@ -146,11 +146,11 @@ namespace DOL.GS.Spells
             double preCriticalAmount = amount;
             int criticalChance = Caster.GetModified(eProperty.CriticalHealHitChance);
 
-            if (Caster.Chance(RandomDeckEvent.CriticalChance, criticalChance))
+            if (Caster.RandomProvider.Chance(RandomContextFactory.MagicCriticalChance(), criticalChance))
             {
                 double min = 0.1;
                 double max = 1.0;
-                double criticalMod = min + Caster.GetPseudoDoubleIncl(RandomDeckEvent.CriticalVariance) * (max - min);
+                double criticalMod = min + Caster.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.MagicCriticalVariance()) * (max - min);
                 criticalAmount = amount * criticalMod;
                 amount += criticalAmount;
             }

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using DOL.AI.Brain;
 using DOL.Database;
-using DOL.Events;
 using DOL.GS.Effects;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
@@ -54,8 +53,6 @@ namespace DOL.GS
         /// </summary>
         public NecromancerPet(INpcTemplate npcTemplate) : base(npcTemplate)
         {
-            // Update max health on summon.
-            GetModified(eProperty.MaxHealth);
             // Set immunities/load equipment/etc.
             switch (Name.ToLower())
             {
@@ -99,8 +96,7 @@ namespace DOL.GS
                 if (oldPercent != HealthPercent)
                 {
                     // Update pet health in group window.
-                    GamePlayer owner = (Brain as IControlledBrain).Owner as GamePlayer;
-                    owner.Group?.UpdateMember(owner, false, false);
+                    (Brain as IControlledBrain).GetPlayerOwner()?.RefreshCachedHealthPercentGroupWindowAndNotifyGroup();
                 }
             }
         }
@@ -187,7 +183,7 @@ namespace DOL.GS
         #region Melee
 
         // Necromancer pets queue spells and cast them when their current action ends instead of using the self-interrupt logic.
-        public override int SelfInterruptDurationOnMeleeAttack => 0;
+        public override bool SelfInterruptsOnMeleeAttack => false;
 
         private void ToggleTauntMode()
         {
@@ -291,12 +287,6 @@ namespace DOL.GS
 
             if (tauntSpell != null && GetSkillDisabledDuration(tauntSpell) == 0)
                 CastSpell(tauntSpell, chantsLine);
-        }
-
-        public override void OnCastSpellLosCheckFail(GameObject target)
-        {
-            base.OnCastSpellLosCheckFail(target);
-            Notify(GameLivingEvent.CastFailed, this, new CastFailedEventArgs(null, CastFailedEventArgs.Reasons.TargetNotInView));
         }
 
         // Necromancer pets shouldn't delay their instant spells.
@@ -512,26 +502,14 @@ namespace DOL.GS
             Die(null);
         }
 
-        // Delegate RNG methods to owner.
-
-        public override bool Chance(RandomDeckEvent deckEvent, int chancePercent)
+        // Delegate RNG provider to owner.
+        public override IRandomProvider RandomProvider
         {
-            return Owner != null ? Owner.Chance(deckEvent, chancePercent) : base.Chance(deckEvent, chancePercent);
-        }
-
-        public override bool Chance(RandomDeckEvent deckEvent, double chancePercent)
-        {
-            return Owner != null ? Owner.Chance(deckEvent, chancePercent) : base.Chance(deckEvent, chancePercent);
-        }
-
-        public override double GetPseudoDouble(RandomDeckEvent deckEvent)
-        {
-            return Owner != null ? Owner.GetPseudoDouble(deckEvent) : base.GetPseudoDouble(deckEvent);
-        }
-
-        public override double GetPseudoDoubleIncl(RandomDeckEvent deckEvent)
-        {
-            return Owner != null ? Owner.GetPseudoDoubleIncl(deckEvent) : base.GetPseudoDoubleIncl(deckEvent);
+            get
+            {
+                GameLiving owner = Owner;
+                return owner != null ? owner.RandomProvider : base.RandomProvider;
+            }
         }
     }
 }

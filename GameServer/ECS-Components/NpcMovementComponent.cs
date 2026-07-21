@@ -5,6 +5,7 @@ using DOL.Database;
 using DOL.GS.Movement;
 using DOL.GS.ServerProperties;
 using DOL.Logging;
+using OpenDAoC.Pathing;
 using static DOL.GS.GameObject;
 using static DOL.GS.Pathfinder;
 
@@ -41,15 +42,14 @@ namespace DOL.GS
         public ref Vector3 Velocity => ref _velocity;
         public ref Vector3 Destination => ref _destination;
         public GameLiving FollowTarget { get; private set; }
-        public int MinFollowDistance { get; private set; }
-        public int MaxFollowDistance { get; private set; }
+        public long MinFollowDistance { get; private set; }
+        public long MaxFollowDistance { get; private set; }
         public int RoamingRange { get; set; }
         public long MovementStartTick { get; set; }
         public long MovementElapsedTicks => IsMoving ? GameLoop.GameLoopTime - MovementStartTick : 0;
         public bool FixedSpeed { get; set; }
         public override short MaxSpeed => FixedSpeed ? MaxSpeedBase : base.MaxSpeed;
         public bool IsMovingOnPath => IsFlagSet(MovementState.OnPath);
-        public bool IsNearSpawn => Owner.IsWithinRadius(Owner.SpawnPoint, 25);
         public bool IsDestinationValid { get; private set; }
         public bool IsAtDestination => !IsDestinationValid || (_destination - _ownerPosition).LengthSquared() < 1.0f;
         public bool CanRoam => Properties.ALLOW_ROAM && RoamingRange > 0 && !CanMoveOnPath;
@@ -183,9 +183,9 @@ namespace DOL.GS
                 UpdateMovement(0);
         }
 
-        public void Follow(GameLiving target, int minDistance, int maxDistance)
+        public void Follow(GameLiving target, long minDistance, long maxDistance)
         {
-            if (target == null || target.ObjectState is not eObjectState.Active || !Owner.castingComponent.IsAllowedToFollow(target))
+            if (target == null || target.ObjectState is not eObjectState.Active || !Owner.IsAllowedToFollow(target))
                 return;
 
             if (target != FollowTarget)
@@ -613,7 +613,7 @@ namespace DOL.GS
         private int FollowTick()
         {
             // Stop moving if the NPC is casting or using ranged weapons.
-            if (Owner.IsCasting || (Owner.IsAttacking && Owner.ActiveWeaponSlot is eActiveWeaponSlot.Distance))
+            if (Owner.IsCasting || Owner.rangeAttackComponent.RangedAttackState is not eRangedAttackState.None)
             {
                 StopMoving();
                 return Properties.GAMENPC_FOLLOWCHECK_TIME;

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
+using DOL.AI.Brain;
 using DOL.Events;
 using DOL.GS;
 using DOL.GS.Movement;
@@ -60,12 +62,58 @@ namespace DOL.AI
                 return false; // Prevents overrides from doing any redundant work. Maybe counter intuitive.
 
             // Without `IsActive` check, charming a NPC that's returning to spawn would teleport it.
-            if (!Body.IsNearSpawn && !IsActive)
+            if (!Body.IsAtSpawn && !IsActive)
                 Body.MoveTo(Body.CurrentRegionID, Body.SpawnPoint.X, Body.SpawnPoint.Y, Body.SpawnPoint.Z, Body.SpawnHeading);
 
             Body.ClearObjectsInRadiusCache();
             FSM?.SetCurrentState(eFSMStateType.WAKING_UP);
             return ServiceObjectStore.Remove(this);
+        }
+
+        public GamePlayer GetLosChecker(GameObject target)
+        {
+            // Returns the GamePlayer that should perform LoS checks on behalf of this entity.
+
+            if (target == null || target == Body)
+                return null;
+
+            GamePlayer losChecker = target as GamePlayer;
+
+            if (CanReplyToLosCheckRequests(losChecker))
+                return losChecker;
+
+            if (this is IControlledBrain controlledBrain)
+            {
+                losChecker = controlledBrain.GetPlayerOwner();
+
+                if (CanReplyToLosCheckRequests(losChecker))
+                    return losChecker;
+            }
+
+            List<GamePlayer> playersInRadius = Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE);
+
+            if (playersInRadius.Count == 0)
+                return null;
+
+            int start = Util.Random(playersInRadius.Count - 1);
+
+            for (int i = 0; i < playersInRadius.Count; i++)
+            {
+                GamePlayer player = playersInRadius[(start + i) % playersInRadius.Count];
+
+                if (CanReplyToLosCheckRequests(player))
+                    return player;
+            }
+
+            return null;
+
+            static bool CanReplyToLosCheckRequests(GamePlayer player)
+            {
+                // Currently allows players with a soft linkdeath timer running.
+                return player != null &&
+                    player.ObjectState is GameObject.eObjectState.Active &&
+                    player.Client.ClientState is GameClient.eClientState.Playing;
+            }
         }
 
         public virtual bool OnPathPointReached(PathPoint pathPoint)

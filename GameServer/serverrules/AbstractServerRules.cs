@@ -298,11 +298,10 @@ namespace DOL.GS.ServerRules
             if (player.ObjectState != GameObject.eObjectState.Active) return;
             if (player.Client.IsPlaying == false) return;
 
-            player.Out.SendMessage("Your temporary invulnerability timer has expired.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+            player.Out.SendMessage("Your temporary PvP invulnerability timer has expired.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
 
             return;
         }
-
 
         public abstract bool IsSameRealm(GameLiving source, GameLiving target, bool quiet);
         public abstract bool IsAllowedCharsInAllRealms(GameClient client);
@@ -334,62 +333,55 @@ namespace DOL.GS.ServerRules
             if (attacker == null || defender == null)
                 return false;
 
-            //dead things can't attack
             if (!defender.IsAlive || !attacker.IsAlive)
                 return false;
 
             GamePlayer playerAttacker = attacker as GamePlayer;
             GamePlayer playerDefender = defender as GamePlayer;
+            GameNPC npcAttacker = attacker as GameNPC;
+            GameNPC npcDefender = defender as GameNPC;
 
-            // if Pet, let's define the controller once
-            if (defender is GameNPC)
-                if ((defender as GameNPC).Brain is IControlledBrain)
-                    playerDefender = ((defender as GameNPC).Brain as IControlledBrain).GetPlayerOwner();
+            if (npcDefender != null && npcDefender.Brain is IControlledBrain defenderBrain)
+                playerDefender = defenderBrain.GetPlayerOwner();
 
-            if (attacker is GameNPC)
-                if ((attacker as GameNPC).Brain is IControlledBrain)
-                    playerAttacker = ((attacker as GameNPC).Brain as IControlledBrain).GetPlayerOwner();
+            if (npcAttacker != null && npcAttacker.Brain is IControlledBrain attackerBrain)
+                playerAttacker = attackerBrain.GetPlayerOwner();
 
-            if (playerDefender != null && (playerDefender.Client.ClientState == GameClient.eClientState.WorldEnter || playerDefender.IsInvulnerableToAttack))
+            // Loading screen protection. Invulnerable to everything.
+            if (playerDefender != null && playerDefender.Client?.ClientState is GameClient.eClientState.WorldEnter)
             {
                 if (!quiet)
-                    MessageToLiving(attacker, defender.Name + " is entering the game and is temporarily immune to PvP attacks!");
+                    MessageToLiving(attacker, $"{defender.Name} is entering the game and cannot be attacked!");
+
                 return false;
             }
 
+            // PvP timer protection.
             if (playerAttacker != null && playerDefender != null)
             {
-                // Attacker immunity
                 if (playerAttacker.IsInvulnerableToAttack)
                 {
-                    if (quiet == false) MessageToLiving(attacker, "You can't attack players until your PvP invulnerability timer wears off!");
+                    if (!quiet)
+                        MessageToLiving(attacker, "You can't attack players until your PvP invulnerability timer wears off!");
+
                     return false;
                 }
 
-                // Defender immunity
                 if (playerDefender.IsInvulnerableToAttack)
                 {
-                    if (quiet == false) MessageToLiving(attacker, defender.Name + " is temporarily immune to PvP attacks!");
+                    if (!quiet)
+                        MessageToLiving(attacker, $"{defender.Name} is temporarily immune to PvP attacks!");
+
                     return false;
                 }
             }
 
-            // PEACE NPCs can't be attacked/attack
-            if (attacker is GameNPC)
-                if ((((GameNPC)attacker).Flags & GameNPC.eFlags.PEACE) != 0)
-                    return false;
-            if (defender is GameNPC)
-                if ((((GameNPC)defender).Flags & GameNPC.eFlags.PEACE) != 0)
-                    return false;
-            // Players can't attack mobs while they have immunity
-            if (playerAttacker != null && defender != null)
-            {
-                if ((defender is GameNPC) && (playerAttacker.IsInvulnerableToAttack))
-                {
-                    if (quiet == false) MessageToLiving(attacker, "You can't attack until your PvP invulnerability timer wears off!");
-                    return false;
-                }
-            }
+            // Peace flag.
+            if (npcAttacker != null && (npcAttacker.Flags & GameNPC.eFlags.PEACE) != 0)
+                return false;
+
+            if (npcDefender != null && (npcDefender.Flags & GameNPC.eFlags.PEACE) != 0)
+                return false;
 
             // GMs can't be attacked
             if (playerDefender != null && playerDefender.Client.Account.PrivLevel > 1)
@@ -431,7 +423,7 @@ namespace DOL.GS.ServerRules
             // 	}
             // }
 
-            if (attacker is GameNPC npcAttacker && defender is GameNPC npcDefender)
+            if (npcAttacker != null && npcDefender != null)
             {
                 // Mobs can't attack keep guards or training dummies.
                 if (npcAttacker.Realm is eRealm.None && npcDefender is GameKeepGuard or GameTrainingDummy)
@@ -570,9 +562,6 @@ namespace DOL.GS.ServerRules
         public virtual bool CanTakeFallDamage(GamePlayer player)
         {
             if (player.Client.Account.PrivLevel > 1)
-                return false;
-
-            if (player.IsInvulnerableToAttack)
                 return false;
 
             if (player.CurrentRegion.IsHousing)

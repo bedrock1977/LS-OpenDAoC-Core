@@ -2,6 +2,8 @@
 using System.Threading;
 using DOL.AI.Brain;
 using DOL.GS.Keeps;
+using DOL.GS.PacketHandler;
+using DOL.Language;
 
 namespace DOL.GS
 {
@@ -44,23 +46,7 @@ namespace DOL.GS
 
         protected override GamePlayer GetLosChecker(GameLiving target)
         {
-            if (target == Owner || target == null)
-                return null;
-
-            GamePlayer losChecker = target as GamePlayer;
-
-            if (losChecker == null && _npcOwner.Brain is IControlledBrain controlledBrain)
-                losChecker = controlledBrain.GetPlayerOwner();
-
-            if (losChecker == null && _npcOwner.Brain is StandardMobBrain)
-            {
-                List<GamePlayer> playersInRadius = _npcOwner.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE);
-
-                if (playersInRadius.Count > 0)
-                    losChecker = playersInRadius[Util.Random(playersInRadius.Count - 1)];
-            }
-
-            return losChecker;
+            return _npcOwner.Brain.GetLosChecker(target);
         }
 
         public override void OnSpellCast(Spell spell)
@@ -86,15 +72,16 @@ namespace DOL.GS
             base.ClearSpellHandlers();
         }
 
-        public bool IsAllowedToFollow(GameObject target)
+        public override void OnOutOfRangeOrNoLos(GameObject target)
         {
-            if (!IsCasterGuardOrImmobile)
-                return true;
+            if (QueuedSpellHandler?.Target == target)
+                ClearUpQueuedSpellHandler();
 
-            if (target is not GameLiving livingTarget)
-                return false;
-
-            return livingTarget.ActiveWeaponSlot is not eActiveWeaponSlot.Distance && livingTarget.IsWithinRadius(_npcOwner, livingTarget.attackComponent.AttackRange);
+            // Immobile NPCs and caster guards forget about the target, other NPCs will try to move into range and line of sight.
+            if (IsCasterGuardOrImmobile)
+                (_npcOwner.Brain as StandardMobBrain)?.RemoveFromAggroList(target as GameLiving);
+            else if (_npcOwner.TargetObject == target)
+                _npcOwner.Follow(target, _npcOwner.StickMinimumRange, _npcOwner.StickMaximumRange);
         }
 
         public void HandleLosCheckResponse(GamePlayer losChecker, LosCheckResponse response, ushort targetId)
@@ -109,17 +96,26 @@ namespace DOL.GS
                 if (!_spellsWaitingForLosCheck.TryGetValue(target, out var list))
                     return;
 
-                bool success = response is LosCheckResponse.True;
-
-                foreach (SpellWaitingForLosCheck spellWaitingForLosCheck in list)
+                if (response is LosCheckResponse.True)
                 {
-                    Spell spell = spellWaitingForLosCheck.Spell;
-                    SpellLine spellLine = spellWaitingForLosCheck.SpellLine;
+                    foreach (SpellWaitingForLosCheck spellWaitingForLosCheck in list)
+                    {
+                        Spell spell = spellWaitingForLosCheck.Spell;
+                        SpellLine spellLine = spellWaitingForLosCheck.SpellLine;
 
-                    if (success && spellLine != null && spell != null)
-                        base.RequestCastSpellInternal(spell, spellLine, null, target as GameLiving, losChecker);
-                    else
-                        _npcOwner.OnCastSpellLosCheckFail(target);
+                        if (spellLine != null && spell != null)
+                            base.RequestCastSpellInternal(spell, spellLine, null, target as GameLiving, losChecker);
+                    }
+                }
+                else
+                {
+                    OnOutOfRangeOrNoLos(target);
+
+                    if (_npcOwner is NecromancerPet necromancerPet && necromancerPet.Owner is GamePlayer playerOwner)
+                    {
+                        string message = LanguageMgr.GetTranslation(playerOwner.Client.Account.Language, "AI.Brain.Necromancer.PetCantSeeTarget", _npcOwner.Name);
+                        NecromancerPetBrain.MessageToOwner(message, eChatType.CT_SpellResisted, playerOwner);
+                    }
                 }
 
                 list.Clear();

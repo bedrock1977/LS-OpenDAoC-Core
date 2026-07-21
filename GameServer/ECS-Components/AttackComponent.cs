@@ -280,19 +280,15 @@ namespace DOL.GS
                     eObjectType.Crossbow or
                     eObjectType.RecurvedBow or
                     eObjectType.CompositeBow;
-                int quickness = Math.Min(250, player.Quickness); //250 soft cap on quickness
+
+                int quickness = Math.Min(250, player.Quickness); // 250 soft cap on quickness.
+                double quicknessMultiplier = GetQuicknessMultiplier(quickness);
 
                 if (bowWeapon)
                 {
                     if (Properties.ALLOW_OLD_ARCHERY)
                     {
-                        //Draw Time formulas, there are very many ...
-                        //Formula 2: y = iBowDelay * ((100 - ((iQuickness - 50) / 5 + iMasteryofArcheryLevel * 3)) / 100)
-                        //Formula 1: x = (1 - ((iQuickness - 60) / 500 + (iMasteryofArcheryLevel * 3) / 100)) * iBowDelay
-                        //Table a: Formula used: drawspeed = bowspeed * (1-(quickness - 50)*0.002) * ((1-MoA*0.03) - (archeryspeedbonus/100))
-                        //Table b: Formula used: drawspeed = bowspeed * (1-(quickness - 50)*0.002) * (1-MoA*0.03) - ((archeryspeedbonus/100 * basebowspeed))
-
-                        speed *= 1.0 - (quickness - 60) * 0.002;
+                        speed *= quicknessMultiplier;
                         double percent;
                         percent = speed * 0.01 * player.GetModified(eProperty.ArcherySpeed);
                         speed -= percent;
@@ -306,17 +302,17 @@ namespace DOL.GS
                         }
                     }
                     else
-                        speed *= 1.0 - (quickness - 60) * 0.002;
+                        speed *= quicknessMultiplier;
                 }
                 else
-                    speed *= (1.0 - (quickness - 60) * 0.002) * 0.01 * player.GetModified(eProperty.MeleeSpeed);
+                    speed *= quicknessMultiplier * 0.01 * player.GetModified(eProperty.MeleeSpeed);
 
                 return (int) Math.Max(minimum, speed * 100);
             }
             else
             {
                 minimum = 500;
-                double speed = NpcWeaponSpeed(mainWeapon) * 100 * (1.0 - (owner.GetModified(eProperty.Quickness) - 60) / 500.0);
+                double speed = NpcWeaponSpeed(mainWeapon) * 100 * GetQuicknessMultiplier(owner.GetModified(eProperty.Quickness));
 
                 if (owner is GameSummonedPet pet)
                 {
@@ -365,6 +361,11 @@ namespace DOL.GS
                 }
 
                 return (int) Math.Max(minimum, speed);
+            }
+
+            static double GetQuicknessMultiplier(int quickness)
+            {
+                return 1.0 - (quickness - 50) * 0.002;
             }
         }
 
@@ -702,12 +703,7 @@ namespace DOL.GS
                 owner.CancelEngageEffect();
 
             if (owner.ActiveWeaponSlot is eActiveWeaponSlot.Distance)
-            {
-                if (owner.rangeAttackComponent.RangedAttackState is not eRangedAttackState.Aim && attackAction.CheckInterruptTimer())
-                    return false;
-
                 owner.rangeAttackComponent.AttackStartTime = GameLoop.GameLoopTime;
-            }
 
             AttackState = true;
             return true;
@@ -718,41 +714,19 @@ namespace DOL.GS
             GameNPC npc = owner as GameNPC;
             npc.FireAmbientSentence(GameNPC.eAmbientTrigger.fighting, _startAttackTarget);
 
-            // NPCs aren't allowed to prepare their ranged attack while moving or out of range.
-            // If we have a running `AttackAction`, let it decide what to do. Not every NPC should start following their target and this allows us to react faster.
-            if (npc.ActiveWeaponSlot is eActiveWeaponSlot.Distance)
+            if (!LivingStartAttack())
+                return;
+
+            npc.TargetObject = _startAttackTarget;
+            npc.TurnTo(_startAttackTarget);
+
+            if (_startAttackTarget != npc.FollowTarget)
             {
-                if (!npc.IsWithinRadius(_startAttackTarget, AttackRange - 30))
-                {
-                    if (attackAction == null || !attackAction.OnOutOfRangeOrNoLosRangedAttack())
-                    {
-                        // Default behavior. If `AttackAction` doesn't handle it, tell the NPC to get closer to its target.
-                        StopAttack();
-                        npc.Follow(_startAttackTarget, npc.StickMinimumRange, npc.StickMaximumRange);
-                    }
-
-                    return;
-                }
-
                 if (npc.IsMoving)
                     npc.StopMoving();
+
+                npc.Follow(_startAttackTarget, npc.StickMinimumRange, npc.StickMaximumRange);
             }
-
-            if (LivingStartAttack())
-            {
-                npc.TargetObject = _startAttackTarget;
-
-                if (_startAttackTarget != npc.FollowTarget)
-                {
-                    if (npc.IsMoving)
-                        npc.StopMoving();
-
-                    npc.TurnTo(_startAttackTarget);
-                    npc.Follow(_startAttackTarget, npc.StickMinimumRange, npc.StickMaximumRange);
-                }
-            }
-            else if (npc.ActiveWeaponSlot is eActiveWeaponSlot.Distance)
-                npc.TurnTo(_startAttackTarget);
         }
 
         public void StopAttack()
@@ -805,7 +779,7 @@ namespace DOL.GS
         /// <summary>
         /// Called whenever a single attack strike is made
         /// </summary>
-        public AttackData MakeAttack(WeaponAction action, GameObject target, DbInventoryItem weapon, Style style, double effectiveness, int interval)
+        public void MakeAttack(WeaponAction action, AttackData ad, GameObject target, DbInventoryItem weapon, Style style, double effectiveness, int interval)
         {
             if (owner is GamePlayer playerOwner)
             {
@@ -825,7 +799,7 @@ namespace DOL.GS
                     playerOwner.Out.SendCloseTimerWindow();
                 }
 
-                AttackData ad = LivingMakeAttack(action, target, weapon, style, effectiveness, interval);
+                LivingMakeAttack(action, ad, target, weapon, style, effectiveness, interval);
 
                 switch (ad.AttackResult)
                 {
@@ -942,7 +916,7 @@ namespace DOL.GS
 
                             foreach (GameObject extraTarget in extraTargets)
                             {
-                                weaponAction = new WeaponAction(playerOwner, extraTarget, attackWeapon, leftWeapon, effectiveness, AttackSpeed(attackWeapon), null);
+                                weaponAction = new(playerOwner, extraTarget, attackWeapon, leftWeapon, effectiveness, AttackSpeed(attackWeapon), null, 0);
                                 weaponAction.Execute();
                             }
                         }
@@ -950,8 +924,6 @@ namespace DOL.GS
                         break;
                     }
                 }
-
-                return ad;
             }
             else
             {
@@ -960,118 +932,14 @@ namespace DOL.GS
                 else
                     effectiveness = 1;
 
-                return LivingMakeAttack(action, target, weapon, style, effectiveness, interval);
+                LivingMakeAttack(action, ad, target, weapon, style, effectiveness, interval);
             }
         }
 
-        /// <summary>
-        /// This method is called to make an attack, it is called from the
-        /// attacktimer and should not be called manually
-        /// </summary>
-        /// <returns>the object where we collect and modifiy all parameters about the attack</returns>
-        public AttackData LivingMakeAttack(WeaponAction action, GameObject target, DbInventoryItem weapon, Style style, double effectiveness, int interval, bool ignoreLOS = false)
+        public void LivingMakeAttack(WeaponAction action, AttackData ad, GameObject target, DbInventoryItem weapon, Style style, double effectiveness, int interval, bool ignoreLos = false)
         {
-            AttackData ad = new()
-            {
-                Attacker = owner,
-                Target = target as GameLiving,
-                Style = style,
-                DamageType = AttackDamageType(weapon, action),
-                Weapon = weapon,
-                Interval = interval,
-                IsOffHand = weapon != null && weapon.SlotPosition is Slot.LEFTHAND
-            };
-
-            int attackRange = AttackRange;
-
-            if (style != null)
-            {
-                StyleProcInfo styleProcInfo = style?.Procs.FirstOrDefault(x => x.Spell.SpellType is eSpellType.StyleRange);
-
-                if (styleProcInfo != null)
-                    attackRange = (int) styleProcInfo.Spell.Value; // Fixed range for some reason, don't add to attack range.
-            }
-
-            ad.AttackType = AttackData.GetAttackType(weapon, action, ad.Attacker);
-
-            // No target.
             if (ad.Target == null)
-            {
-                ad.AttackResult = (target == null) ? eAttackResult.NoTarget : eAttackResult.NoValidTarget;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
-
-            // Region / state check.
-            if (ad.Target.CurrentRegionID != owner.CurrentRegionID || ad.Target.ObjectState is not eObjectState.Active)
-            {
-                ad.AttackResult = eAttackResult.NoValidTarget;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
-
-            // LoS / in front check.
-            if (!ignoreLOS && ad.AttackType is not AttackData.eAttackType.Ranged && owner is GamePlayer &&
-                ad.Target is not GameKeepComponent &&
-                !(owner.IsObjectInFront(ad.Target, 120) && owner.TargetInView))
-            {
-                ad.AttackResult = eAttackResult.TargetNotVisible;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
-
-            // Target is already dead.
-            if (!ad.Target.IsAlive)
-            {
-                ad.AttackResult = eAttackResult.TargetDead;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
-
-            // Melee range check (ranged is already done at this point).
-            if (ad.AttackType is not AttackData.eAttackType.Ranged)
-            {
-                if (!owner.IsWithinRadius(ad.Target, attackRange))
-                {
-                    ad.AttackResult = eAttackResult.OutOfRange;
-                    SendAttackingCombatMessages(action, ad);
-                    return ad;
-                }
-            }
-
-            if (!GameServer.ServerRules.IsAllowedToAttack(ad.Attacker, ad.Target, GameLoop.GameLoopTime - attackAction.RoundWithNoAttackTime <= 1500))
-            {
-                ad.AttackResult = eAttackResult.NotAllowed_ServerRules;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
-
-            // Apply Mentalist RA5L.
-            SelectiveBlindnessEffect SelectiveBlindness = owner.EffectList.GetOfType<SelectiveBlindnessEffect>();
-            if (SelectiveBlindness != null)
-            {
-                GameLiving EffectOwner = SelectiveBlindness.EffectSource;
-                if (EffectOwner == ad.Target)
-                {
-                    if (owner is GamePlayer)
-                        ((GamePlayer) owner).Out.SendMessage(
-                            string.Format(
-                                LanguageMgr.GetTranslation(((GamePlayer) owner).Client.Account.Language,
-                                    "GameLiving.AttackData.InvisibleToYou"), ad.Target.GetName(0, true)),
-                            eChatType.CT_Action, eChatLoc.CL_SystemWindow);
-                    ad.AttackResult = eAttackResult.NoValidTarget;
-                    SendAttackingCombatMessages(action, ad);
-                    return ad;
-                }
-            }
-
-            // DamageImmunity Ability.
-            if (ad.Target.HasAbility(Abilities.DamageImmunity))
-            {
-                ad.AttackResult = eAttackResult.NoValidTarget;
-                SendAttackingCombatMessages(action, ad);
-                return ad;
-            }
+                return;
 
             // Add ourselves to the target's attackers list before going further.
             ad.Target.attackComponent.AddAttacker(ad);
@@ -1102,7 +970,9 @@ namespace DOL.GS
                     if (ad.Target.Inventory != null)
                         armor = ad.Target.Inventory.GetItem((eInventorySlot) ad.ArmorHitLocation);
 
-                    double weaponSkill = CalculateWeaponSkill(weapon, ad.Target, out int spec, out (double, double) varianceRange, out double specModifier, out double baseWeaponSkill);
+                    int spec = CalculateSpec(weapon);
+                    double specModifier = CalculateSpecModifier(action, ad.Target, spec, out (double, double) varianceRange);
+                    double weaponSkill = CalculateWeaponSkill(weapon, specModifier, out double baseWeaponSkill);
                     double armorMod = CalculateTargetArmor(ad.Target, ad.ArmorHitLocation, out double armorFactor, out double absorb);
 
                     double damageMod = weaponSkill / armorMod;
@@ -1201,7 +1071,7 @@ namespace DOL.GS
                     ad.Damage = (int) damage;
                     ad.Modifier = (int) Math.Floor(resistModifier);
                     ad.CriticalChance = CalculateCriticalChance(action);
-                    ad.CriticalDamage = CalculateCriticalDamage(ad);
+                    ad.CriticalDamage = CalculateCriticalDamage(action, ad);
 
                     if (playerOwner != null && playerOwner.UseDetailedCombatLog)
                         PrintDetailedCombatLog(playerOwner, armorFactor, absorb, armorMod, baseWeaponSkill, varianceRange, specModifier, weaponSkill, damageMod, baseDamageCap, styleDamageCap);
@@ -1240,20 +1110,19 @@ namespace DOL.GS
             // Attacked living may modify the attack data. Primarily used for keep doors and components.
             ad.Target.ModifyAttack(ad);
 
-            SendAttackingCombatMessages(action, ad);
+            SendValidAttackMessage(action, ad);
             SendDefendingCombatMessages(ad);
             BroadcastObserverMessage(ad);
 
             // Interrupt the target of the attack.
-            ad.Target.StartInterruptTimer(interval, ad.AttackType, ad.Attacker);
+            ad.Target.StartInterruptTimer(interval, ad.AttackType, owner);
 
             // If we're attacking via melee, start an interrupt timer on ourselves so we cannot swing + immediately cast.
-            if (ad.IsMeleeAttack)
-                owner.StartInterruptTimer(owner.SelfInterruptDurationOnMeleeAttack, ad.AttackType, ad.Attacker);
+            if (ad.IsMeleeAttack && owner.SelfInterruptsOnMeleeAttack)
+                owner.StartInterruptTimer(interval, ad.AttackType, owner);
 
             // Handles CC breaks, ablatives...
             owner.OnAttackEnemy(ad);
-            return ad;
         }
 
         public double CalculateDamageTypeModifier(DbInventoryItem weapon)
@@ -1265,13 +1134,6 @@ namespace DOL.GS
                 return 1 + owner.GetModified(eProperty.RangedDamage) * 0.01;
 
             return 1.0;
-        }
-
-        public double CalculateWeaponSkill(DbInventoryItem weapon, GameLiving target, out int spec, out (double, double) varianceRange, out double specModifier, out double baseWeaponSkill)
-        {
-            spec = CalculateSpec(weapon);
-            specModifier = CalculateSpecModifier(target, spec, out varianceRange);
-            return CalculateWeaponSkill(weapon, specModifier, out baseWeaponSkill);
         }
 
         public double CalculateWeaponSkill(DbInventoryItem weapon, double specModifier, out double baseWeaponSkill)
@@ -1330,11 +1192,11 @@ namespace DOL.GS
             return varianceRange;
         }
 
-        public double CalculateSpecModifier(GameLiving target, int spec, out (double lowerLimit, double upperLimit) varianceRange)
+        public double CalculateSpecModifier(WeaponAction action, GameLiving target, int spec, out (double lowerLimit, double upperLimit) varianceRange)
         {
             varianceRange = CalculateVarianceRange(target, spec);
             double difference = varianceRange.upperLimit - varianceRange.lowerLimit;
-            return varianceRange.lowerLimit + owner.GetPseudoDoubleIncl(RandomDeckEvent.DamageVariance) * difference;
+            return varianceRange.lowerLimit + owner.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.PhysicalVariance(action.SwingsExecuted)) * difference;
         }
 
         public static double CalculateTargetArmor(GameLiving target, eArmorSlot armorSlot, out double armorFactor, out double absorb)
@@ -1407,12 +1269,15 @@ namespace DOL.GS
 
         public bool CheckBlock(WeaponAction action, AttackData ad)
         {
+            // 'action' is null if the attack is a bolt.
+
             double blockChance = owner.TryBlock(ad, false, out int shieldSize);
             ad.BlockChance = blockChance * 100;
 
             if (blockChance > 0)
             {
-                double blockRoll = owner.GetPseudoDouble(RandomDeckEvent.Block);
+                RandomContext randomContext = action == null ? RandomContextFactory.Block(0, 0) : RandomContextFactory.Block(action.SwingsExecuted, action.StyleChainStage);
+                double blockRoll = owner.RandomProvider.GetPseudoDouble(randomContext);
                 bool blockSucceeded = blockChance > blockRoll;
                 string message = $"block%: {blockChance * 100:0.##} rand: {blockRoll * 100:0.##}";
 
@@ -1457,8 +1322,10 @@ namespace DOL.GS
             return false;
         }
 
-        public bool CheckGuard(AttackData ad, bool stealthStyle)
+        public bool CheckGuard(WeaponAction action, AttackData ad, bool stealthStyle)
         {
+            // 'action' is null if the attack is a bolt.
+
             foreach (GuardECSGameEffect guard in owner.effectListComponent.GetAbilityEffects(eEffect.Guard))
             {
                 if (guard.Target != owner)
@@ -1478,7 +1345,8 @@ namespace DOL.GS
                 if (guardChance <= 0)
                     continue;
 
-                double guardRoll = owner.GetPseudoDouble(RandomDeckEvent.Block);
+                RandomContext randomContext = action == null ? RandomContextFactory.Block(0, 0) : RandomContextFactory.Block(action.SwingsExecuted, action.StyleChainStage);
+                double guardRoll = owner.RandomProvider.GetPseudoDouble(randomContext);
 
                 if (source is GamePlayer guardSource && guardSource.UseDetailedCombatLog)
                     guardSource.Out.SendMessage($"chance to guard: {guardChance * 100:0.##} rand: {guardRoll * 100:0.##}", eChatType.CT_ResistsChanged, eChatLoc.CL_SystemWindow);
@@ -1540,7 +1408,7 @@ namespace DOL.GS
             {
                 if (inter.Target == owner && !inter.Source.IsIncapacitated && !inter.Source.IsSitting && owner.IsWithinRadius(inter.Source, InterceptAbilityHandler.INTERCEPT_DISTANCE))
                 {
-                    double interceptRoll = owner.GetPseudoDouble(RandomDeckEvent.Intercept);
+                    double interceptRoll = owner.RandomProvider.GetPseudoDouble(RandomContextFactory.Intercept());
                     interceptRoll *= 100;
 
                     if (inter.InterceptChance > interceptRoll)
@@ -1639,10 +1507,11 @@ namespace DOL.GS
 
                 double evadeChance = owner.TryEvade(ad, lastAttackData, attackerCount);
                 ad.EvadeChance = evadeChance * 100;
-                double evadeRoll = owner.GetPseudoDouble(RandomDeckEvent.Evade);
 
                 if (evadeChance > 0)
                 {
+                    double evadeRoll = owner.RandomProvider.GetPseudoDouble(RandomContextFactory.Evade(action.SwingsExecuted, action.StyleChainStage));
+
                     if (ad.Attacker is GamePlayer evadeAtk && evadeAtk.UseDetailedCombatLog)
                         evadeAtk.Out.SendMessage($"target evade%: {evadeChance * 100:0.##} rand: {evadeRoll * 100:0.##}", eChatType.CT_ResistsChanged, eChatLoc.CL_SystemWindow);
 
@@ -1657,10 +1526,11 @@ namespace DOL.GS
                 {
                     double parryChance = owner.TryParry(ad, lastAttackData, attackerCount);
                     ad.ParryChance = parryChance * 100;
-                    double parryRoll = owner.GetPseudoDouble(RandomDeckEvent.Parry);
 
                     if (parryChance > 0)
                     {
+                        double parryRoll = owner.RandomProvider.GetPseudoDouble(RandomContextFactory.Parry(action.SwingsExecuted, action.StyleChainStage));
+
                         if (ad.Attacker is GamePlayer parryAtk && parryAtk.UseDetailedCombatLog)
                             parryAtk.Out.SendMessage($"target parry%: {parryChance * 100:0.##} rand: {parryRoll * 100:0.##}", eChatType.CT_ResistsChanged, eChatLoc.CL_SystemWindow);
 
@@ -1676,7 +1546,7 @@ namespace DOL.GS
                     return eAttackResult.Blocked;
             }
 
-            if (CheckGuard(ad, stealthStyle))
+            if (CheckGuard(action, ad, stealthStyle))
                 return eAttackResult.Blocked;
 
             // Not implemented.
@@ -1705,7 +1575,7 @@ namespace DOL.GS
 
             if (missChance > 0)
             {
-                double missRoll = ad.Attacker.GetPseudoDouble(RandomDeckEvent.Miss);
+                double missRoll = ad.Attacker.RandomProvider.GetPseudoDouble(RandomContextFactory.Miss(action.SwingsExecuted, action.StyleChainStage));
 
                 if (playerAttacker != null && playerAttacker.UseDetailedCombatLog)
                 {
@@ -1828,18 +1698,30 @@ namespace DOL.GS
             [eAttackResult.NoValidTarget] = "GamePlayer.Attack.CantBeAttacked",
         };
 
-        private void SendAttackingCombatMessages(WeaponAction action, AttackData ad)
+        public void SendInvalidAttackMessage(GameObject target, eAttackResult attackResult)
         {
             if (owner is not GamePlayer player)
                 return;
 
-            if (ShouldSuppressSpamMessage(ad.AttackResult))
+            if (ShouldSuppressSpamMessage(attackResult))
             {
                 if (GameLoop.GameLoopTime - attackAction.RoundWithNoAttackTime <= 1500)
                     return;
 
                 attackAction.RoundWithNoAttackTime = 0;
             }
+
+            if (!_simpleAttackMessageKeys.TryGetValue(attackResult, out var messageKey))
+                return;
+
+            string targetName = target?.GetName(0, true, player.Client.Account.Language, target as GameNPC);
+            SendLocalizedMessage(player, messageKey, targetName);
+        }
+
+        private void SendValidAttackMessage(WeaponAction action, AttackData ad)
+        {
+            if (owner is not GamePlayer player)
+                return;
 
             if (_simpleAttackMessageKeys.TryGetValue(ad.AttackResult, out var messageKey))
             {
@@ -1866,16 +1748,6 @@ namespace DOL.GS
                     SendHitMessages(player, action, ad);
                     break;
                 }
-            }
-
-            static bool ShouldSuppressSpamMessage(eAttackResult result)
-            {
-                return result is not eAttackResult.Missed
-                    and not eAttackResult.HitUnstyled
-                    and not eAttackResult.HitStyle
-                    and not eAttackResult.Evaded
-                    and not eAttackResult.Blocked
-                    and not eAttackResult.Parried;
             }
 
             static void SendMissMessage(GamePlayer player, AttackData ad)
@@ -1955,12 +1827,22 @@ namespace DOL.GS
                     return LanguageMgr.GetTranslation(player.Client.Account.Language, key);
                 }
             }
+        }
 
-            static void SendLocalizedMessage(GamePlayer player, string key, params ReadOnlySpan<object> args)
-            {
-                string message = LanguageMgr.GetTranslation(player.Client.Account.Language, key, args);
-                player.Out.SendMessage(message, eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
-            }
+        private static bool ShouldSuppressSpamMessage(eAttackResult result)
+        {
+            return result is not eAttackResult.Missed
+                and not eAttackResult.HitUnstyled
+                and not eAttackResult.HitStyle
+                and not eAttackResult.Evaded
+                and not eAttackResult.Blocked
+                and not eAttackResult.Parried;
+        }
+
+        private static void SendLocalizedMessage(GamePlayer player, string key, params ReadOnlySpan<object> args)
+        {
+            string message = LanguageMgr.GetTranslation(player.Client.Account.Language, key, args);
+            player.Out.SendMessage(message, eChatType.CT_YouHit, eChatLoc.CL_SystemWindow);
         }
 
         private static void SendDefendingCombatMessages(AttackData ad)
@@ -2086,9 +1968,13 @@ namespace DOL.GS
             }
         }
 
-        public int CalculateCriticalDamage(AttackData ad)
+        public int CalculateCriticalDamage(WeaponAction action, AttackData ad)
         {
-            if (!owner.Chance(RandomDeckEvent.CriticalChance, ad.CriticalChance))
+            // 'action' is null when called from Battlemaster.CalculateDamageToTarget.
+
+            RandomContext randomComtext = action == null ? RandomContextFactory.PhysicalCriticalChance(0) : RandomContextFactory.PhysicalCriticalChance(action.SwingsExecuted);
+
+            if (!owner.RandomProvider.Chance(randomComtext, ad.CriticalChance))
                 return 0;
 
             double min = 0.1;
@@ -2120,7 +2006,7 @@ namespace DOL.GS
             else
                 max = ad.Target is GamePlayer ? 0.5 : 1.0;
 
-            double criticalMod = min + owner.GetPseudoDoubleIncl(RandomDeckEvent.CriticalVariance) * (max - min);
+            double criticalMod = min + owner.RandomProvider.GetPseudoDoubleIncl(RandomContextFactory.PhysicalCriticalVariance(action.SwingsExecuted)) * (max - min);
             return (int) (ad.Damage * criticalMod);
         }
 
@@ -2260,8 +2146,9 @@ namespace DOL.GS
 
             if (specLevel > 0)
             {
-                int bonus = owner.GetModified(eProperty.OffhandDamageAndChance);
-                return 0.25 + specLevel * 0.0068 + bonus * 0.01;
+                double modifier = 0.25 + specLevel * 0.0068;
+                double bonus = owner.GetModified(eProperty.OffhandDamageAndChance) * 0.01;
+                return modifier + bonus;
             }
 
             return 0;
@@ -2351,11 +2238,8 @@ namespace DOL.GS
                 return 1.0;
 
             double modifier = 0.625 + 0.0034 * leftAxeSpec;
-
-            if (owner.GetModified(eProperty.OffhandDamageAndChance) > 0)
-                return modifier + owner.GetModified(eProperty.OffhandDamageAndChance) * 0.01;
-
-            return modifier;
+            double bonus = owner.GetModified(eProperty.OffhandDamageAndChance) * 0.01;
+            return modifier + bonus;
         }
 
         public class BlockRoundHandler
