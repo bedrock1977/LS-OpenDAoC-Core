@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Threading;
 using DOL.Database;
@@ -328,15 +327,6 @@ namespace DOL.GS
 			m_DBguild.Bank = newBank;
 		}
 
-		// Used by the hack to make pets untargetable with tab on a PvP server. Effectively creates a dummy guild to get a unique ID.
-		public static readonly Guild DummyGuild;
-
-		static Guild()
-		{
-			if (GameServer.Instance.Configuration.ServerType is EGameServerType.GST_PvP)
-				DummyGuild = GuildMgr.CreateGuild(0, "DummyGuildToMakePetsUntargetable") ?? GuildMgr.GetGuildByName("DummyGuildToMakePetsUntargetable");
-		}
-
 		/// <summary>
 		/// Creates an empty Guild. Don't use this, use
 		/// GuildMgr.CreateGuild() to create a guild
@@ -584,13 +574,13 @@ namespace DOL.GS
 				if (!m_onlineGuildPlayers.Remove(player.InternalID))
 					return false;
 
-				// now update the all member list to display lastonline time instead of zone
-				Dictionary<string, GuildMgr.GuildMemberView> memberList = GuildMgr.GetGuildMemberViews(player.Guild);
+				// Update the all member list to display lastonline time instead of zone.
+				Dictionary<string, GuildMgr.GuildMemberView> memberList = GuildMgr.GetGuildMemberViews(this);
 
 				if (memberList != null && memberList.TryGetValue(player.InternalID, out GuildMgr.GuildMemberView guildMemberDisplay))
 					guildMemberDisplay.ZoneOrOnline = DateTime.Now.ToShortDateString();
 
-				GuildMgr.RefreshPersonalHouseEmblem(player, null);
+				GuildMgr.RefreshPersonalHouseEmblem(player);
 			}
 
 			return true;

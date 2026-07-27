@@ -52,7 +52,12 @@ namespace DOL.AI.Brain
 
         public override void Enter()
         {
-            _brain.Body.StopMoving();
+            GameNPC npc = _brain.Body;
+            npc.StopMoving();
+
+            if (npc.IsAtSpawn && npc.Heading != npc.SpawnHeading)
+                npc.TurnTo(npc.SpawnHeading);
+
             base.Enter();
         }
 
@@ -65,7 +70,7 @@ namespace DOL.AI.Brain
 
             if (npc.CanMoveOnPath)
                 _brain.FSM.SetCurrentState(eFSMStateType.PATROLLING);
-            else if (!npc.IsAtSpawn || npc.Heading != npc.SpawnHeading)
+            else if (!npc.IsAtSpawn)
                 _brain.FSM.SetCurrentState(eFSMStateType.RETURN_TO_SPAWN);
             else if (_brain.CheckProximityAggro())
                 _brain.FSM.SetCurrentState(eFSMStateType.AGGRO);
@@ -94,6 +99,8 @@ namespace DOL.AI.Brain
 
         public override void Exit()
         {
+            _brain.ClearAggroList();
+
             if (_brain.Body.attackComponent.AttackState)
                 _brain.Body.StopAttack();
 
@@ -181,12 +188,6 @@ namespace DOL.AI.Brain
 
         public StandardMobState_RETURN_TO_SPAWN(StandardMobBrain brain) : base(brain) { }
 
-        public override void Enter()
-        {
-            _brain.ClearAggroList();
-            base.Enter();
-        }
-
         public override void Think()
         {
             if (_brain.Body.IsAtSpawn)
@@ -210,7 +211,6 @@ namespace DOL.AI.Brain
         public override void Enter()
         {
             _brain.Body.MoveOnPath(_brain.Body.MaxSpeed);
-            _brain.ClearAggroList();
             base.Enter();
         }
 

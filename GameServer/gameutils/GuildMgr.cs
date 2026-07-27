@@ -21,6 +21,9 @@ namespace DOL.GS
         private static readonly Dictionary<Guild, Dictionary<string, GuildMemberView>> _guildMemberViews = new();
         private static int _lastID;
 
+        // Used by the hack to make pets untargetable with tab on a PvP server. Effectively creates a dummy guild to get a unique ID.
+        public static Guild DummyGuild { get; private set; }
+
         public static void AddPlayerToGuildMemberViews(GamePlayer player)
         {
             if (player?.Guild == null)
@@ -225,13 +228,7 @@ namespace DOL.GS
                 if (guild.GuildOwnsHouse && guild.GuildHouseNumber > 0)
                 {
                     House guildHouse = HouseMgr.GetHouse(guild.GuildHouseNumber);
-
-                    if (guildHouse != null)
-                    {
-                        guildHouse.Emblem = guild.Emblem;
-                        guildHouse.SaveIntoDatabase();
-                        guildHouse.SendUpdate();
-                    }
+                    guildHouse?.SetEmblem(guild.Emblem);
                 }
 
                 // Update the guild emblem of every personal house.
@@ -263,9 +260,7 @@ namespace DOL.GS
             if (personalHouse == null || personalHouse.Emblem == newEmblem)
                 return;
 
-            personalHouse.Emblem = newEmblem;
-            personalHouse.SaveIntoDatabase();
-            personalHouse.SendUpdate();
+            personalHouse.SetEmblem(newEmblem);
         }
 
         public static Guild GetGuildByName(string guildName)
@@ -354,8 +349,7 @@ namespace DOL.GS
                                     $"(Previous: {houseEmblem}) (New: {guildEmblem}) (House: {guildHouse.HouseNumber})");
                             }
 
-                            guildHouse.Emblem = guild.Emblem;
-                            guildHouse.SaveIntoDatabase();
+                            guildHouse.SetEmblem(houseEmblem);
                         }
                     }
 
@@ -391,6 +385,9 @@ namespace DOL.GS
                         }
                     }
                 }
+
+                if (GameServer.Instance.Configuration.ServerType is EGameServerType.GST_PvP)
+                    DummyGuild = GetGuildByName("DummyGuildToMakePetsUntargetable") ?? CreateGuild(0, "DummyGuildToMakePetsUntargetable");
             }
 
             static void LoadAlliances()

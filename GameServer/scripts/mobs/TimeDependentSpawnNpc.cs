@@ -1,6 +1,4 @@
-﻿using System;
-using DOL.AI;
-using DOL.AI.Brain;
+﻿using DOL.AI.Brain;
 using DOL.GS;
 
 namespace DOL.GS
@@ -13,32 +11,24 @@ namespace DOL.GS
         public override eFlags Flags => TimeDependentBrain == null || TimeDependentBrain.IsVisible ? base.Flags : base.Flags | INACTIVE_FLAGS;
         public override ushort Model => TimeDependentBrain == null || TimeDependentBrain.IsVisible ? base.Model : (ushort) 1;
 
-        public override bool AddToWorld()
-        {
-            SetOwnBrain(CreateBrain());
-            return base.AddToWorld();
-        }
+        public TimeDependentSpawnNpc(TimeDependentSpawnBrain brain) : base(brain) { }
 
-        protected virtual ABrain CreateBrain()
+        protected override int RespawnTimerCallback(ECSGameTimer respawnTimer)
         {
-            throw new NotImplementedException();
+            // Ideally this should be done in AddToWorld, but WorldMgr isn't initialized when NPCs are created during server start up.
+            TimeDependentBrain?.CheckVisibility();
+            return base.RespawnTimerCallback(respawnTimer);
         }
     }
 
     public class DaySpawn : TimeDependentSpawnNpc
     {
-        protected override ABrain CreateBrain()
-        {
-            return new DaySpawnBrain();
-        }
+        public DaySpawn() : base(new DaySpawnBrain()) { }
     }
 
     public class NightSpawn : TimeDependentSpawnNpc
     {
-        protected override ABrain CreateBrain()
-        {
-            return new NightSpawnBrain();
-        }
+        public NightSpawn() : base(new NightSpawnBrain()) { }
     }
 }
 
@@ -51,15 +41,18 @@ namespace DOL.AI.Brain
         public override void Think()
         {
             if (!Body.InCombat)
-            {
-                bool previousVisibility = IsVisible;
-                IsVisible = ShouldBeVisible();
-
-                if (previousVisibility != IsVisible)
-                    ClientService.CreateObjectForPlayers(Body);
-            }
+                CheckVisibility();
 
             base.Think();
+        }
+
+        public void CheckVisibility()
+        {
+            bool previousVisibility = IsVisible;
+            IsVisible = ShouldBeVisible();
+
+            if (previousVisibility != IsVisible)
+                ClientService.CreateObjectForPlayers(Body);
         }
 
         protected abstract bool ShouldBeVisible();

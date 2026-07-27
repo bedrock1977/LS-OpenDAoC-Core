@@ -5,9 +5,12 @@ namespace OpenDAoC.Pathing
 {
     internal static class DetourNativeLibrary
     {
-        public const string LibraryName = "lib/Detour";
+        public const string LIBRARY_NAME = "lib/Detour";
 
         private static int _resolverRegistered;
+        private readonly static string[] _candidateFileNames = OperatingSystem.IsWindows() ?
+            ["Detour.dll"] :
+            ["libDetour.so", "Detour.so"];
 
         internal static void EnsureResolverRegistered()
         {
@@ -19,7 +22,7 @@ namespace OpenDAoC.Pathing
 
         private static IntPtr Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {
-            if (!IsDetourLibraryName(libraryName))
+            if (!string.Equals(libraryName, LIBRARY_NAME, StringComparison.OrdinalIgnoreCase))
                 return IntPtr.Zero;
 
             foreach (string candidate in EnumerateCandidatePaths())
@@ -35,45 +38,42 @@ namespace OpenDAoC.Pathing
             return IntPtr.Zero;
         }
 
-        private static bool IsDetourLibraryName(string libraryName)
-        {
-            if (string.IsNullOrEmpty(libraryName))
-                return false;
-
-            // LibraryImport name, bare name, or platform-suffixed variants.
-            string name = libraryName.Replace('\\', '/');
-            return name.Equals(LibraryName, StringComparison.OrdinalIgnoreCase) ||
-                name.Equals("Detour", StringComparison.OrdinalIgnoreCase) ||
-                name.Equals("lib/Detour.dll", StringComparison.OrdinalIgnoreCase) ||
-                name.EndsWith("/Detour", StringComparison.OrdinalIgnoreCase) ||
-                name.EndsWith("/Detour.dll", StringComparison.OrdinalIgnoreCase);
-        }
-
         internal static IEnumerable<string> EnumerateCandidatePaths()
         {
-            string fileName = OperatingSystem.IsWindows() ? "Detour.dll" : "libDetour.so";
-
             string? cwd = TryGetFullPath(Environment.CurrentDirectory);
             string? baseDir = TryGetFullPath(AppContext.BaseDirectory);
 
             // cwd/lib: GameServer root and BuildNav when cwd is already base/.
             if (cwd != null)
-                yield return Path.Combine(cwd, "lib", fileName);
+            {
+                foreach (string fileName in _candidateFileNames)
+                    yield return Path.Combine(cwd, "lib", fileName);
+            }
 
             // App base/lib: default for many hosts.
             if (baseDir != null)
-                yield return Path.Combine(baseDir, "lib", fileName);
+            {
+                foreach (string fileName in _candidateFileNames)
+                    yield return Path.Combine(baseDir, "lib", fileName);
+            }
 
             // App base/base/lib: BuildNav layout (exe next to base/, cwd often set to base/).
             if (baseDir != null)
-                yield return Path.Combine(baseDir, "base", "lib", fileName);
+            {
+                foreach (string fileName in _candidateFileNames)
+                    yield return Path.Combine(baseDir, "base", "lib", fileName);
+            }
 
             // Parent of cwd/lib: if someone runs from a nested folder.
             if (cwd != null)
             {
                 string? parent = Directory.GetParent(cwd)?.FullName;
+
                 if (parent != null)
-                    yield return Path.Combine(parent, "lib", fileName);
+                {
+                    foreach (string fileName in _candidateFileNames)
+                        yield return Path.Combine(parent, "lib", fileName);
+                }
             }
 
             // Optional override for packaging / CI.
