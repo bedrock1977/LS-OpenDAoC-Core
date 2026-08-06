@@ -637,8 +637,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer) //slash resist
         {
-            Aroon.Aroon_slash = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_slash = true;
+            base.ProcessDeath(killer);
         }
 
         public override bool AddToWorld()
@@ -698,18 +703,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -802,8 +803,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_thrust = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_thrust = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -885,18 +891,15 @@ namespace DOL.AI.Brain
         public List<GamePlayer> PlayersToAttack = new List<GamePlayer>();
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
+
             return 0;
         }
         public static bool Message2 = false;
@@ -985,8 +988,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_crush = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_crush = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -1071,18 +1079,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -1174,8 +1178,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_body = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_body = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -1260,18 +1269,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -1363,8 +1368,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_cold = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_cold = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -1450,18 +1460,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -1554,8 +1560,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_energy = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_energy = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -1641,18 +1652,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -1745,8 +1752,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_heat = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_heat = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -1832,18 +1844,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -1936,8 +1944,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_matter = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_matter = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -2024,18 +2037,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }
@@ -2128,8 +2137,13 @@ namespace DOL.GS
 
         public override void Die(GameObject killer)
         {
-            Aroon.Aroon_spirit = true;
             base.Die(null); // null to not gain experience
+        }
+
+        public override void ProcessDeath(GameObject killer)
+        {
+            Aroon.Aroon_spirit = true;
+            base.ProcessDeath(killer);
         }
 
         public override void TakeDamage(GameObject source, eDamageType damageType, int damageAmount, int criticalAmount)
@@ -2216,18 +2230,14 @@ namespace DOL.AI.Brain
 
         public int RandomAttackTarget(ECSGameTimer timer)
         {
-            //IList enemies = new ArrayList(AggroTable.Keys);
-            if (PlayersToAttack.Count == 0)
-            {
-                //do nothing
-            }
-            else
+            if (PlayersToAttack.Count > 0)
             {
                 RandomTarget = PlayersToAttack[Util.Random(0, PlayersToAttack.Count - 1)];
-                AggroList.Clear();
-                AggroList.TryAdd(RandomTarget, new(500));
+                ClearAggroList();
+                AddToAggroList(RandomTarget);
                 switch_target = false;
             }
+
 
             return 0;
         }

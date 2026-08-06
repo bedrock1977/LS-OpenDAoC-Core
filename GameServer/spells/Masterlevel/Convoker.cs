@@ -745,9 +745,6 @@ namespace DOL.AI.Brain
 
 		public override void FollowOwner()
 		{
-			if (Body.IsAttacking)
-				Disengage();
-
 			Body.Follow(Owner, MIN_OWNER_FOLLOW_DIST, MAX_OWNER_FOLLOW_DIST);
 		}
 	}
@@ -858,7 +855,7 @@ public class MLBrain : GuardBrain
 
 		foreach (var npc in BuildNpcAggroCandidateLoop())
 		{
-			if (AggroList.ContainsKey(npc))
+			if (IsInAggroList(npc))
 				continue; // add only new npcs
 			if ((npc.Flags & GameNPC.eFlags.FLYING) != 0)
 				continue; // let's not try to attack flying mobs

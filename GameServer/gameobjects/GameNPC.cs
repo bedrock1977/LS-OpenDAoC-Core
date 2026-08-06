@@ -782,8 +782,6 @@ namespace DOL.GS
 		public virtual int StickMinimumRange => (int) (MeleeAttackRange * 0.375);
 		public virtual int StickMaximumRange => 5000;
 
-		public long LastVisibleToPlayersTickCount => m_lastVisibleToPlayerTick;
-
 		public ref Vector3 Destination => ref movementComponent.Destination;
 		public GameObject FollowTarget => movementComponent.FollowTarget;
 		public string PathID
@@ -1155,7 +1153,7 @@ namespace DOL.GS
 			mob.Speed = MaxSpeedBase;
 			mob.Region = CurrentRegionID;
 			mob.Realm = (byte)Realm;
-			mob.Model = Model;
+			mob.Model = m_model;
 			mob.Size = Size;
 			mob.Level = Level;
 
@@ -1170,7 +1168,7 @@ namespace DOL.GS
 			mob.Charisma = Charisma;
 
 			mob.ClassType = GetType().ToString();
-			mob.Flags = (uint) Flags;
+			mob.Flags = (uint) m_flags;
 			mob.Speed = MaxSpeedBase;
 			mob.RespawnInterval = m_respawnInterval / 1000;
 			mob.HouseNumber = HouseNumber;
@@ -1538,7 +1536,7 @@ namespace DOL.GS
 
 				try
 				{
-					newQuest = _abstractQuestConstructorCache.GetOrAdd(questType, (key) => CompiledConstructorFactory.CompileConstructor(key, []) as Func<AbstractQuest>)();
+					newQuest = _abstractQuestConstructorCache.GetOrAdd(questType, key => CompiledConstructorFactory.CompileConstructor(key, []) as Func<AbstractQuest>)();
 				}
 				catch (Exception e)
 				{

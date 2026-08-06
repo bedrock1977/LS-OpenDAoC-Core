@@ -82,7 +82,7 @@ namespace DOL.GS
             }
             base.OnAttackEnemy(ad);
         }
-        public override void Die(GameObject killer)
+        public override void ProcessDeath(GameObject killer)
         {
 			foreach (GameNPC npc in WorldMgr.GetNPCsFromRegion(this.CurrentRegionID))
 			{
@@ -92,7 +92,7 @@ namespace DOL.GS
 						npc.RemoveFromWorld();
 				}
 			}
-			base.Die(killer);
+			base.ProcessDeath(killer);
         }
         public override bool AddToWorld()
 		{
@@ -458,7 +458,7 @@ namespace DOL.AI.Brain
 			Point3D point1 = new Point3D(32063, 40896, 15468);
 			if(!Body.IsWithinRadius(point1,40))
             {
-				Body.WalkTo(point1, 35);
+				Body.PathTo(point1, 35);
             }
 			else
             {
@@ -543,7 +543,7 @@ namespace DOL.AI.Brain
 			Point3D point1 = new Point3D(32063, 40896, 15468);
 			if (!Body.IsWithinRadius(point1, 40))
 			{
-				Body.WalkTo(point1, 35);
+				Body.PathTo(point1, 35);
 			}
 			else
 			{
@@ -585,10 +585,10 @@ namespace DOL.GS
 			}
 		}
 		public static int ShadeOfAelfgarCount = 0;
-		public override void Die(GameObject killer)
+		public override void ProcessDeath(GameObject killer)
 		{
 			++ShadeOfAelfgarCount;
-			base.Die(killer);
+			base.ProcessDeath(killer);
 		}
 		public override bool AddToWorld()
 		{

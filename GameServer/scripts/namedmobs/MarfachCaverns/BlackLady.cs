@@ -128,9 +128,9 @@ namespace DOL.GS
                 Add1.Heading = 2053;
                 Add1.AddToWorld();
         }
-        public override void Die(GameObject killer)
+        public override void ProcessDeath(GameObject killer)
         {
-            base.Die(killer);
+            base.ProcessDeath(killer);
             foreach (GameNPC npc in WorldMgr.GetNPCsFromRegion(CurrentRegionID))
             {
                 if (npc.Brain is OgressBrain)
@@ -296,10 +296,10 @@ namespace DOL.GS
             get { return 2500; }
         }
         public static int OgressCount = 0;
-        public override void Die(GameObject killer)
+        public override void ProcessDeath(GameObject killer)
         {
             --OgressCount;
-            base.Die(killer);
+            base.ProcessDeath(killer);
         }
         public override bool AddToWorld()
         {
@@ -334,28 +334,7 @@ namespace DOL.AI.Brain
             : base()
         {
             AggroLevel = 100;
-            AggroRange = 1200;
-        }
-        public override void Think()
-        {
-            foreach(GamePlayer player in Body.GetPlayersInRadius(2000))
-            {
-                if(player != null)
-                {
-                    if(player.IsAlive && player.IsVisibleTo(Body) && player.Client.Account.PrivLevel == 1 && (player.CharacterClass.ID == 6 || player.CharacterClass.ID == 10 || player.CharacterClass.ID == 48
-                    || player.CharacterClass.ID == 46 || player.CharacterClass.ID == 47 || player.CharacterClass.ID == 42 || player.CharacterClass.ID == 28 || player.CharacterClass.ID == 26))
-                    {
-                        if (AggroList.TryAdd(player, new(150)))
-                            Body.StartAttack(player);
-                    }
-                    else
-                    {
-                        if (AggroList.TryAdd(player, new(10)))
-                            Body.StartAttack(player);
-                    }
-                }
-            }
-            base.Think();
+            AggroRange = 2000;
         }
     }
 }

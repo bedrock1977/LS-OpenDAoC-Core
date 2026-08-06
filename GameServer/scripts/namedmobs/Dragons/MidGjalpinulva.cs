@@ -114,7 +114,7 @@ namespace DOL.GS
 			}
 			return count;
 		}
-		public override void Die(GameObject killer)
+		public override void ProcessDeath(GameObject killer)
 		{
 				// debug
 				if (killer == null)
@@ -141,7 +141,7 @@ namespace DOL.GS
 				}
 
 				AwardDragonKillPoint();
-				base.Die(killer);
+				base.ProcessDeath(killer);
 				foreach (String message in m_deathAnnounce)
 				{
 					BroadcastMessage(String.Format(message, Name));
@@ -658,7 +658,7 @@ namespace DOL.AI.Brain
 						if (!GlareRoam_Enemys.Contains(player))
 							GlareRoam_Enemys.Add(player);
 
-						AggroList.TryAdd(player, new(100));
+						AddToAggroList(player);
 					}
 				}
 				if (GlareRoam_Enemys.Count > 0)

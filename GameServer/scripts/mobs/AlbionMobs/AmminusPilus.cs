@@ -1,5 +1,4 @@
-﻿using System;
-using DOL.AI.Brain;
+﻿using DOL.AI.Brain;
 using DOL.GS;
 using DOL.GS.PacketHandler;
 
@@ -40,7 +39,7 @@ namespace DOL.GS
 			return 0;
 		}
 
-		public override void Die(GameObject killer)
+		public override void ProcessDeath(GameObject killer)
         {
 			foreach(GameNPC npc in GetNPCsInRadius(5000))
             {
@@ -52,7 +51,7 @@ namespace DOL.GS
 				if (npc.IsAlive && npc != null && npc.Brain is PilusAddBrain)
 					npc.RemoveFromWorld();
 			}
-			base.Die(killer);
+			base.ProcessDeath(killer);
         }
 		private void SpawnPilusFury()
         {
@@ -84,13 +83,6 @@ namespace DOL.AI.Brain
 		}
 		private bool SpawnAdds = false;
 		private bool RemoveAdds = false;
-		public void BroadcastMessage(String message)
-		{
-			foreach (GamePlayer player in Body.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
-			{
-				player.Out.SendMessage(message, eChatType.CT_Say, eChatLoc.CL_ChatWindow);
-			}
-		}
 		public override void Think()
 		{
 			if(!CheckProximityAggro())
@@ -111,7 +103,7 @@ namespace DOL.AI.Brain
 				RemoveAdds = false;
 				if (!SpawnAdds)
 				{
-					BroadcastMessage("The Amminus pilus says, \"I require assistance!\"");
+					Message.MessageToArea(Body, "The Amminus pilus says, \"I require assistance!\"", eChatType.CT_Say, eChatLoc.CL_ChatWindow, WorldMgr.VISIBILITY_DISTANCE);
 					SpawnPilusAdds();
 					SpawnAdds = true;
 				}
