@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using DOL.AI.Brain;
@@ -20,15 +21,14 @@ namespace DOL.GS
     public class AttackComponent : IServiceObject
     {
         public GameLiving owner;
-        public WeaponAction weaponAction; // This represents the current weapon action, which may become outdated when resolving ranged attacks.
         public AttackAction attackAction;
+        public WeaponAction weaponAction; // This represents the current weapon action, which will be stale when resolving ranged attacks.
         public ServiceObjectId ServiceObjectId { get; } = new(ServiceObjectType.AttackComponent);
         public AttackerTracker AttackerTracker { get; private set; }
 
         private BlockRoundHandler _blockRoundHandler;
         private GameObject _startAttackTarget;
         private bool _startAttackRequested;
-        private GameLiving[] _broadcastExcludes = new GameLiving[3];
 
         public AttackComponent(GameLiving owner)
         {
@@ -42,8 +42,7 @@ namespace DOL.GS
         {
             if (owner.ObjectState is not eObjectState.Active)
             {
-                attackAction.CleanUp();
-                ServiceObjectStore.Remove(this);
+                Stop();
                 return;
             }
 
@@ -54,7 +53,16 @@ namespace DOL.GS
             }
 
             if (!attackAction.Tick())
-                ServiceObjectStore.Remove(this);
+                Stop();
+        }
+
+        private void Stop()
+        {
+            attackAction.CleanUp();
+            weaponAction = null;
+            _startAttackTarget = null;
+            _startAttackRequested = false;
+            ServiceObjectStore.Remove(this);
         }
 
         public void AddAttacker(AttackData attackData)
@@ -779,7 +787,7 @@ namespace DOL.GS
         /// <summary>
         /// Called whenever a single attack strike is made
         /// </summary>
-        public void MakeAttack(WeaponAction action, AttackData ad, GameObject target, DbInventoryItem weapon, Style style, double effectiveness, int interval)
+        public void MakeAttack(WeaponAction action, AttackData ad, GameLiving target, DbInventoryItem weapon, Style style, double effectiveness, int interval)
         {
             if (owner is GamePlayer playerOwner)
             {
@@ -855,11 +863,6 @@ namespace DOL.GS
                         // Multiple Hit check.
                         if (ad.AttackResult is eAttackResult.HitStyle)
                         {
-                            List<GameObject> extraTargets = new();
-                            List<GameObject> listAvailableTargets = new();
-                            DbInventoryItem attackWeapon = owner.ActiveWeapon;
-                            DbInventoryItem leftWeapon = owner.ActiveLeftWeapon;
-
                             bool IsShieldSwipe = style.ID == 600;
                             int numTargetsCanHit;
 
@@ -879,6 +882,8 @@ namespace DOL.GS
                             if (numTargetsCanHit <= 0)
                                 break;
 
+                            List<GameLiving> listAvailableTargets = new();
+
                             // This implementation of Shield Swipe doesn't affect players.
                             if (!IsShieldSwipe)
                             {
@@ -897,13 +902,14 @@ namespace DOL.GS
 
                             // Remove primary target.
                             listAvailableTargets.Remove(target);
+                            List<GameLiving> extraTargets = GameLoop.GetListForTick<GameLiving>();
 
                             if (numTargetsCanHit >= listAvailableTargets.Count)
                                 extraTargets = listAvailableTargets;
                             else
                             {
                                 int index;
-                                GameObject availableTarget;
+                                GameLiving availableTarget;
 
                                 for (int i = numTargetsCanHit; i > 0; i--)
                                 {
@@ -914,9 +920,13 @@ namespace DOL.GS
                                 }
                             }
 
-                            foreach (GameObject extraTarget in extraTargets)
+                            DbInventoryItem attackWeapon = owner.ActiveWeapon;
+                            DbInventoryItem leftWeapon = owner.ActiveLeftWeapon;
+                            int attackSpeed = AttackSpeed(attackWeapon);
+
+                            foreach (GameLiving extraTarget in extraTargets)
                             {
-                                weaponAction = new(playerOwner, extraTarget, attackWeapon, leftWeapon, effectiveness, AttackSpeed(attackWeapon), null, 0);
+                                weaponAction = new(playerOwner, extraTarget, attackWeapon, leftWeapon, effectiveness, attackSpeed, null, 0);
                                 weaponAction.Execute();
                             }
                         }
@@ -1901,12 +1911,13 @@ namespace DOL.GS
             }
         }
 
-        private void BroadcastObserverMessage(AttackData ad)
+        private static void BroadcastObserverMessage(AttackData ad)
         {
-            Array.Clear(_broadcastExcludes);
-            AddParticipantToExcludes(ad.Attacker, _broadcastExcludes, 0);
-            AddParticipantToExcludes(ad.Target, _broadcastExcludes, 1);
-            AddParticipantToExcludes(ad.OriginalTarget, _broadcastExcludes, 2);
+            var broadcastExcludes = GameLoop.GetListForTick<GameLiving>();
+
+            AddParticipantToExcludes(ad.Attacker, broadcastExcludes);
+            AddParticipantToExcludes(ad.Target, broadcastExcludes);
+            AddParticipantToExcludes(ad.OriginalTarget, broadcastExcludes);
 
             string message = ad.AttackResult switch
             {
@@ -1920,24 +1931,23 @@ namespace DOL.GS
             };
 
             if (!string.IsNullOrEmpty(message))
-                Message.SystemToArea(ad.Attacker, message, eChatType.CT_OthersCombat, _broadcastExcludes);
+                Message.SystemToArea(ad.Attacker, message, eChatType.CT_OthersCombat, CollectionsMarshal.AsSpan(broadcastExcludes));
 
             ad.BroadcastMessage = message;
 
-            static void AddParticipantToExcludes(GameLiving entity, GameLiving[] excludes, int index)
+            static void AddParticipantToExcludes(GameLiving entity, List<GameLiving> excludes)
             {
                 if (entity == null)
                     return;
 
                 if (entity is GamePlayer)
-                    excludes[index] = entity;
-
-                if (entity is GameNPC npc && npc.Brain is IControlledBrain brain)
+                    excludes.Add(entity);
+                else if (entity is GameNPC npc && npc.Brain is IControlledBrain brain)
                 {
                     GamePlayer owner = brain.GetPlayerOwner();
 
                     if (owner != null)
-                        excludes[index] = owner;
+                        excludes.Add(owner);
                 }
             }
 
