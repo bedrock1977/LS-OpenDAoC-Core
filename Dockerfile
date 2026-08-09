@@ -13,7 +13,7 @@ COPY . .
 RUN apt-get update && \
     apt-get install -y unzip git sed && \
     git config --global http.sslVerify false && \
-    git clone https://github.com/OpenDAoC/OpenDAoC-Database.git /tmp/opendaoc-db && \
+    git clone https://github.com/bedrock1977/OpenDAoC-Database.git /tmp/opendaoc-db && \
     rm -rf /var/lib/apt/lists/*
 
 # Combine the SQL files
