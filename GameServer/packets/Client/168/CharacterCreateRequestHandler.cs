@@ -441,7 +441,7 @@ namespace DOL.GS.PacketHandler.Client.v168
             ch.Endurance = 100;
             ch.MaxEndurance = 100;
             ch.Concentration = 100;
-            ch.MaxSpeed = GamePlayer.PLAYER_BASE_SPEED;
+            ch.MaxSpeed = GamePlayer.PlayerBaseSpeed;
 
             if (log.IsDebugEnabled)
                 log.Debug($"Creation {client.Version} character, class:{ch.Class}, realm:{ch.Realm}");

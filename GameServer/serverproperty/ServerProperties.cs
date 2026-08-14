@@ -588,6 +588,12 @@ namespace DOL.GS.ServerProperties
 		public static bool ENABLE_ENCUMBERANCE_SPEED_LOSS;
 
 		/// <summary>
+		/// Default player run speed (stored on character creation; live-like = 191).
+		/// </summary>
+		[ServerProperty("server", "player_base_speed", "Default run speed for players (live-like = 191).", (short)232)]
+		public static short PLAYER_BASE_SPEED;
+
+		/// <summary>
 		/// Property to enable "forced" Tooltip send when Update are made to player skills, or player effects.
 		/// </summary>
 		[ServerProperty("server", "use_new_tooltip_forcedupdate", "Set to true if you wish to enable the new 1.110+ Tooltip Forced update each time the server send a skill to a new client.", true)]

@@ -26,7 +26,7 @@ namespace DOL.GS
         private bool _isEncumberedMessageSent;
 
         public new GamePlayer Owner { get; }
-        public int MaxSpeedPercent => MaxSpeed * 100 / GamePlayer.PLAYER_BASE_SPEED;
+        public int MaxSpeedPercent => MaxSpeed * 100 / GamePlayer.PlayerBaseSpeed;
         public long LastPositionUpdatePacketReceivedTime { get; set; }
         public bool UseSafePosition { get; set; }
 
