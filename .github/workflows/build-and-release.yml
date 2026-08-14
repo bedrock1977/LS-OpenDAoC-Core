@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - master
+
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build-and-push:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
@@ -26,61 +31,28 @@ jobs:
         run: |
           page=1
           release_count=0
-            
+
           while :; do
             response=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${{ steps.repo_name.outputs.lowercase }}/releases?per_page=100&page=$page")
             count=$(echo "$response" | jq -r "[.[] | select(.tag_name | startswith(\"${{ steps.date.outputs.date }}\"))] | length")
-             
-            # Check if count is an integer before adding to release_count
+
             if ! [[ "$count" =~ ^[0-9]+$ ]]; then
               echo "Error: count is not a valid integer"
               exit 1
             fi
 
             release_count=$((release_count + count))
-            
+
             [ "$count" -lt 100 ] && break
             page=$((page + 1))
           done
-            
+
           echo "count=$((release_count + 1))" >> $GITHUB_OUTPUT
 
       - name: 🏷️ Set version
         id: set_version
         run: |
           echo "version=${{ steps.date.outputs.date }}.${{ steps.get_release_count.outputs.count }}" >> $GITHUB_OUTPUT
-
-      - name: 🛠️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: 🏗️ Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          tags: '${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.repo_name.outputs.lowercase }}:temp'
-          push: false
-          load: true
-
-      - name: 🏷️ Tag image for Docker Hub
-        run: |
-          docker tag "${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.repo_name.outputs.lowercase }}:temp" "${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:${{ steps.set_version.outputs.version }}"
-          docker tag "${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.repo_name.outputs.lowercase }}:temp" "${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:latest"
-
-      - name: 🏷️ Tag image for GitHub Container Registry
-        run: |
-          docker tag "${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.repo_name.outputs.lowercase }}:temp" "ghcr.io/${{ steps.repo_name.outputs.lowercase }}:${{ steps.set_version.outputs.version }}"
-          docker tag "${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.repo_name.outputs.lowercase }}:temp" "ghcr.io/${{ steps.repo_name.outputs.lowercase }}:latest"
-
-      - name: 🔑 Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: '${{ secrets.DOCKERHUB_USERNAME }}'
-          password: '${{ secrets.DOCKERHUB_TOKEN }}'
-
-      - name: 📤 Push to Docker Hub
-        run: |
-          docker push "${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:${{ steps.set_version.outputs.version }}"
-          docker push "${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:latest"
 
       - name: 🔑 Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -89,28 +61,29 @@ jobs:
           username: '${{ github.actor }}'
           password: '${{ secrets.GITHUB_TOKEN }}'
 
-      - name: 📤 Push to GitHub Container Registry
-        run: |
-          docker push "ghcr.io/${{ steps.repo_name.outputs.lowercase }}:${{ steps.set_version.outputs.version }}"
-          docker push "ghcr.io/${{ steps.repo_name.outputs.lowercase }}:latest"
+      - name: 🛠️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build and push Docker image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo_name.outputs.lowercase }}:${{ steps.set_version.outputs.version }}
+            ghcr.io/${{ steps.repo_name.outputs.lowercase }}:latest
 
       - name: 📝 Generate release notes
         id: release_notes
         run: |
-          PREVIOUS_VERSION=$(git tag --sort=-committerdate | head -1)
-          CHANGES=$(git log --pretty="%h - %s" $PREVIOUS_VERSION...HEAD | sed -n '1,20p')
-          echo "# 🎁 Release Notes for $VERSION" > release_notes.txt
+          VERSION="${{ steps.set_version.outputs.version }}"
+          echo "# 🎁 Release Notes for ${VERSION}" > release_notes.txt
           echo "" >> release_notes.txt
-          echo "## 🐳 Docker" > release_notes.txt
-          echo "This release is also available as Docker image on [ghcr](https://ghcr.io/${{ steps.repo_name.outputs.lowercase }}) and [DockerHub](https://hub.docker.com/repository/docker/${{ secrets.DOCKERHUB_USERNAME }}/opendaoc/) using one of the following commands:" >> release_notes.txt
+          echo "## 🐳 Docker" >> release_notes.txt
+          echo "This release is available as a Docker image on [GHCR](https://ghcr.io/${{ steps.repo_name.outputs.lowercase }}):" >> release_notes.txt
           echo "" >> release_notes.txt
-          echo "- \`docker pull ghcr.io/${{ steps.repo_name.outputs.lowercase }}/${{ steps.set_version.outputs.version }}\`" >> release_notes.txt
+          echo "- \`docker pull ghcr.io/${{ steps.repo_name.outputs.lowercase }}:${VERSION}\`" >> release_notes.txt
           echo "- \`docker pull ghcr.io/${{ steps.repo_name.outputs.lowercase }}:latest\`" >> release_notes.txt
-          echo "- \`docker pull ${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:${{ steps.set_version.outputs.version }}\`" >> release_notes.txt
-          echo "- \`docker pull ${{ secrets.DOCKERHUB_USERNAME }}/opendaoc:latest\`" >> release_notes.txt
-#          echo "" >> release_notes.txt
-#          echo "## 🛠 Changes" >> release_notes.txt
-#          echo "$CHANGES" >> release_notes.txt
         working-directory: ${{ github.workspace }}
 
       - name: 🚀 Publish Release
