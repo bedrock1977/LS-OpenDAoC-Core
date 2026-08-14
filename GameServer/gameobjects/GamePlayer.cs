@@ -8111,9 +8111,9 @@ namespace DOL.GS
         public const string MAX_LAST_Z = "max_last_z";
 
         /// <summary>
-        /// The base speed of the player
+        /// The base speed of the player (from server property player_base_speed).
         /// </summary>
-        public const int PLAYER_BASE_SPEED = 191;
+        public static short PlayerBaseSpeed => ServerProperties.Properties.PLAYER_BASE_SPEED;
 
         private long _nextAreaUpdateTick;
 
@@ -10464,7 +10464,7 @@ namespace DOL.GS
                 m_charStat[eStat.CHR - eStat._First] = (short) DBCharacter.Charisma;
 
                 if (MaxSpeedBase == 0)
-                    MaxSpeedBase = PLAYER_BASE_SPEED;
+                    MaxSpeedBase = PlayerBaseSpeed;
 
                 if (DBCharacter.PlayedTime < 1)
                 {
