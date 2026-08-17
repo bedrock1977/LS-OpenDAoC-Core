@@ -8,6 +8,14 @@
 - Supported max in this fork’s testing: **1129**; **1130** rejected.
 - Target client type: **Catacombs-era** (SI + Catacombs content), not 1.65-only.
 
+## Optional client enhancement — daochook
+
+[daochook](https://github.com/daochook/daochook) injects into the DAoC client and allows **Lua addons** with **ImGui** overlays (achievements, bag helpers, quest trackers). It is the practical path to in-game UI beyond what the server packets allow.
+
+**Compatibility:** daochook currently documents support for **`1.127e [1409]`** only. You must test against your Catacombs client before recommending it to players. See [`player-ui-and-daochook.md`](player-ui-and-daochook.md).
+
+**Shard policy:** treat daochook as **opt-in** unless testing proves stable on your client build.
+
 ## Known client mismatches
 
 - **1127 + LoTM/NF client type** can cause character-screen issues for expansion races (models/UI).

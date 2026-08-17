@@ -22,6 +22,7 @@ Project docs for the **bedrock1977** private shard (SI + Catacombs + TOA target)
 
 - **What's done:** [`complete/`](complete/)
 - **What's next:** [`Todo/backlog.md`](Todo/backlog.md)
+- **QoL / UI / daochook:** [`documentation/player-ui-and-daochook.md`](documentation/player-ui-and-daochook.md) · [`Todo/qol-ui-roadmap.md`](Todo/qol-ui-roadmap.md)
 - **Why OpenDAoC (not Python):** [`documentation/opendaoc-restore-strategy.md`](documentation/opendaoc-restore-strategy.md)
 - **Expansion class deployment:** [`complete/expansion-classes.md`](complete/expansion-classes.md)
 

@@ -39,6 +39,14 @@ Priority-ordered work remaining for the LS OpenDAoC shard.
 - [ ] Contribution-based PQ rewards and multi-stage events
 - [ ] Shard scope tuning (PvE vs RvR, population targets)
 
+## P5 — QoL and UI (daochook + server)
+
+See [`qol-ui-roadmap.md`](qol-ui-roadmap.md) for full phased plan.
+
+- [ ] Phase 0: test [daochook](https://github.com/daochook/daochook) against Catacombs client
+- [ ] Phase 1: `/bags`, `/quests`, bulk-sell NPC, achievement DB
+- [ ] Phase 2–4: Atlas API, Lua addons, launcher integration
+
 ## Completed (see [`../complete/`](../complete/))
 
 Fork setup, SI classes (Heretic/Warlock/Vampiir), TOA Maulers code+DB patches, player base speed, dynamic event pilot script, runtime fixes (`start_as_base_class`, startup locations).
