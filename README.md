@@ -15,6 +15,10 @@ The easiest way to get started with OpenDAoC is to use Docker. Check out the `do
 
 For detailed instructions and additional setup options, refer to the full [OpenDAoC Documentation](https://www.opendaoc.com/docs/).
 
+### LS shard docs (this fork)
+
+Project-specific notes for the bedrock1977 private shard live under [`docs/`](docs/README.md) — discussions, backlog, and completed milestones.
+
 ## Releases
 
 Releases for OpenDAoC are available at [OpenDAoC Releases](https://github.com/OpenDAoC/OpenDAoC-Core/releases).

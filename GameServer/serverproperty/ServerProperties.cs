@@ -594,6 +594,39 @@ namespace DOL.GS.ServerProperties
 		public static short PLAYER_BASE_SPEED;
 
 		/// <summary>
+		/// Enable the one-area / one-wave dynamic event pilot (WAR-style PQ sketch).
+		/// </summary>
+		[ServerProperty("server", "dynamic_event_pilot_enabled", "Enable the dynamic event pilot script.", false)]
+		public static bool DYNAMIC_EVENT_PILOT_ENABLED;
+
+		[ServerProperty("server", "dynamic_event_pilot_region", "Region ID for the dynamic event pilot area.", (ushort)1)]
+		public static ushort DYNAMIC_EVENT_PILOT_REGION;
+
+		[ServerProperty("server", "dynamic_event_pilot_x", "Center X for the dynamic event pilot area.", 560000)]
+		public static int DYNAMIC_EVENT_PILOT_X;
+
+		[ServerProperty("server", "dynamic_event_pilot_y", "Center Y for the dynamic event pilot area.", 512000)]
+		public static int DYNAMIC_EVENT_PILOT_Y;
+
+		[ServerProperty("server", "dynamic_event_pilot_z", "Center Z for the dynamic event pilot area.", 2500)]
+		public static int DYNAMIC_EVENT_PILOT_Z;
+
+		[ServerProperty("server", "dynamic_event_pilot_radius", "Radius of the dynamic event pilot trigger area.", 2500)]
+		public static int DYNAMIC_EVENT_PILOT_RADIUS;
+
+		[ServerProperty("server", "dynamic_event_pilot_mob_count", "Number of mobs spawned per wave.", 5)]
+		public static int DYNAMIC_EVENT_PILOT_MOB_COUNT;
+
+		[ServerProperty("server", "dynamic_event_pilot_mob_level", "Level of spawned event mobs.", 35)]
+		public static int DYNAMIC_EVENT_PILOT_MOB_LEVEL;
+
+		[ServerProperty("server", "dynamic_event_pilot_xp_reward", "Flat XP granted to each participant when the wave is cleared.", 50000L)]
+		public static long DYNAMIC_EVENT_PILOT_XP_REWARD;
+
+		[ServerProperty("server", "dynamic_event_pilot_cooldown_seconds", "Seconds before the event can trigger again after completion.", 300)]
+		public static int DYNAMIC_EVENT_PILOT_COOLDOWN_SECONDS;
+
+		/// <summary>
 		/// Property to enable "forced" Tooltip send when Update are made to player skills, or player effects.
 		/// </summary>
 		[ServerProperty("server", "use_new_tooltip_forcedupdate", "Set to true if you wish to enable the new 1.110+ Tooltip Forced update each time the server send a skill to a new client.", true)]

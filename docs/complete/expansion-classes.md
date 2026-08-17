@@ -1,5 +1,7 @@
 # Expansion classes (Heretic, Warlock, Vampiir, Mauler)
 
+**Completed:** code + DB patches. Live deployment may still need SQL apply — see [`../Todo/deployment-checklist.md`](../Todo/deployment-checklist.md).
+
 Catacombs / Shrouded Isles / TOA client target.
 
 ## Code changes (Tier 1)
@@ -30,6 +32,8 @@ Ensure these `ServerProperty` values are set after first boot:
 - `disabled_races` — empty (must not include Frostalf, Shar, HalfOgre, or Minotaur races)
 - `start_as_base_class` — **False** (otherwise advanced classes are saved as base classes on creation)
 
+See also [`runtime-fixes.md`](runtime-fixes.md).
+
 ## Docker
 
 Rebuild from this fork or mount a local build to pick up expansion-class code changes. The fork `docker-compose.yml` uses `ghcr.io/bedrock1977/ls-opendaoc-core:latest`.
@@ -42,3 +46,11 @@ Rebuild from this fork or mount a local build to pick up expansion-class code ch
 4. Vampiir: STR-based power pool, power gain on hit.
 5. Warlock: chamber charge, primer, curse release.
 6. Mauler: fist wraps, aura manipulation, magnetism specs; Minotaur models load on char screen.
+
+## Per-class notes
+
+| Class | Order | Status |
+|-------|-------|--------|
+| Heretic | Pilot | Config + DB + combat validated |
+| Vampiir | Second | STR power pool validated |
+| Warlock | Third | Chambers fixed; Talsrossta spawn fix confirmed |
