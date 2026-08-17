@@ -89,7 +89,7 @@ namespace DOL.GS.GameEvents
 				return;
 
 			GamePlayer player = areaArgs.GameObject as GamePlayer;
-			if (player == null || player.ObjectState != eObjectState.Active)
+			if (player == null || player.ObjectState != GameObject.eObjectState.Active)
 				return;
 
 			lock (Sync)
@@ -213,7 +213,7 @@ namespace DOL.GS.GameEvents
 
 			foreach (GamePlayer player in Participants)
 			{
-				if (player == null || player.ObjectState != eObjectState.Active)
+				if (player == null || player.ObjectState != GameObject.eObjectState.Active)
 					continue;
 
 				if (xp > 0)
@@ -247,7 +247,7 @@ namespace DOL.GS.GameEvents
 			foreach (GameNPC mob in mobs)
 			{
 				GameEventMgr.RemoveHandler(mob, GameLivingEvent.Dying, OnWaveMobDied);
-				if (mob.ObjectState == eObjectState.Active)
+				if (mob.ObjectState == GameObject.eObjectState.Active)
 					mob.RemoveFromWorld();
 			}
 		}

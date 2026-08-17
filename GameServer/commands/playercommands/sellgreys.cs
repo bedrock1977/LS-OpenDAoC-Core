@@ -21,7 +21,11 @@ namespace DOL.GS.Commands
 			if (player?.Inventory == null)
 				return;
 
-			if (player.TargetObject is not GameMerchant merchant && player.TargetObject is not GameGuardMerchant guardMerchant)
+			GameObject target = player.TargetObject;
+			GameMerchant merchant = target as GameMerchant;
+			GameGuardMerchant guardMerchant = target as GameGuardMerchant;
+
+			if (merchant == null && guardMerchant == null)
 			{
 				player.Out.SendMessage("You must target a merchant.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
 				return;
