@@ -19,6 +19,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using DOL.GS.PacketHandler;
 using DOL.GS.Quests;
 
 namespace DOL.GS.Commands
@@ -35,56 +36,43 @@ namespace DOL.GS.Commands
             if (IsSpammingCommand(client.Player, "quest"))
                 return;
 
-            string message = string.Empty;
-            List<AbstractQuest> activeQuests = client.Player.GetActiveQuests();
-            List<AbstractQuest> finishedQuests = client.Player.GetFinishedQuests();
+            GamePlayer player = client.Player;
+            List<AbstractQuest> activeQuests = player.GetActiveQuests();
+            List<AbstractQuest> finishedQuests = player.GetFinishedQuests();
+            var lines = new List<string>();
 
             if (activeQuests.Count == 0)
-                message += "You have no pending quests currently.";
+                lines.Add("You have no active quests.");
             else
             {
-                if (activeQuests.Count < 10)
+                lines.Add($"Active quests ({activeQuests.Count}):");
+                foreach (AbstractQuest quest in activeQuests)
                 {
-                    message += $"You are currently working on {activeQuests.Count} quest(s), including:";
-
-                    foreach (AbstractQuest quest in activeQuests)
-                    {
-                        // Need to protect from too long a list
-                        // We'll do an easy sloppy chop at 1500 characters (packet limit is 2048)
-                        if (message.Length < 1500)
-                            message += $"\n{quest.Name}";
-                        else
-                            message += string.Empty;
-                    }
+                    lines.Add(string.Empty);
+                    lines.Add($"* {quest.Name} (step {quest.Step})");
+                    string description = quest.Description;
+                    if (!string.IsNullOrWhiteSpace(description))
+                        lines.Add($"  {description.Replace("\n", " ")}");
                 }
-                else
-                    message += $"You are currently working on {activeQuests.Count} quests.";
             }
+
+            lines.Add(string.Empty);
 
             if (finishedQuests.Count == 0)
-                message += "\nYou have not yet completed any quests.";
-            else
+                lines.Add("You have not completed any quests yet.");
+            else if (finishedQuests.Count <= 15)
             {
-                if (finishedQuests.Count < 10)
-                {
-                    message += "\nYou have completed the following quest(s):";
-
-                    foreach (AbstractQuest quest in finishedQuests)
-                    {
-                        // Need to protect from too long a list
-                        // We'll do an easy sloppy chop at 1500 characters (packet limit is 2048)
-                        if (message.Length < 1500)
-                            message += string.Format("\n{0}", quest.Name);
-                        else
-                            message += string.Empty;
-                    }
-                }
-                else
-                    message += $"\nYou have completed {finishedQuests.Count} quests.";
+                lines.Add($"Completed quests ({finishedQuests.Count}):");
+                foreach (AbstractQuest quest in finishedQuests)
+                    lines.Add($"  - {quest.Name}");
             }
+            else
+                lines.Add($"Completed quests: {finishedQuests.Count} total.");
 
-            message += "\nUse the '/journal' command to view your full ongoing and completed quests.";
-            DisplayMessage(client, message);
+            lines.Add(string.Empty);
+            lines.Add("Use /journal for the full in-game quest journal.");
+
+            player.Out.SendCustomTextWindow("Quest Log", lines);
         }
     }
 }

@@ -21,6 +21,7 @@ mysql -u root -p opendaoc < opendaoc-db-core/patches/expansion-serverproperties.
 mysql -u root -p opendaoc < opendaoc-db-core/patches/expansion-startup-locations.sql
 mysql -u root -p opendaoc < opendaoc-db-core/patches/toa-mauler-import.sql
 mysql -u root -p opendaoc < opendaoc-db-core/patches/toa-startup-locations.sql
+mysql -u root -p opendaoc < opendaoc-db-core/patches/achievements.sql
 ```
 
 Skip any patch already applied (check `serverproperty`, `startuplocation`, spell counts).

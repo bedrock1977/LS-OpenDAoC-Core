@@ -19,23 +19,25 @@ Design reference: [`../documentation/player-ui-and-daochook.md`](../documentatio
 
 ## Phase 1 — Server-only (all players, no client mod)
 
+**Status:** implemented — see [`../complete/qol-phase1-server-commands.md`](../complete/qol-phase1-server-commands.md). Apply `achievements.sql` on live DB.
+
 ### Commands
 
-- [ ] `/bags` — inventory summary via `SendCustomTextWindow`
-- [ ] `/quests` — active quest list and steps
-- [ ] `/achievements` — list unlocked + in-progress (after Phase 2 DB exists, stub OK first)
+- [x] `/bags` — inventory summary via `SendCustomTextWindow`
+- [x] `/quests` — active quest list and steps (text window)
+- [x] `/achievements` — list unlocked + progress
+- [x] `/sellgreys` — bulk sell low-quality items to targeted merchant
 
 ### NPCs
 
-- [ ] Bulk sell NPC (greys/trash, confirm dialog)
-- [ ] Optional hub merchant (buffs / supplies / vault keywords)
+- [ ] Bulk sell NPC (optional; `/sellgreys` covers the workflow)
 
 ### Achievements — server foundation
 
-- [ ] DB patch: `achievement`, `character_achievement` tables
-- [ ] C# `AchievementService` + hooks (level up, kill, quest complete, dynamic event)
-- [ ] Unlock notification chat message
-- [ ] Structured token for addons: `[LSACH] unlock|key|Title|points`
+- [x] DB patch: `achievement`, `character_achievement` tables
+- [x] C# `AchievementMgr` + level-up / login hooks
+- [x] Unlock notification chat message
+- [x] Structured token for addons: `[LSACH] unlock|key|Title|points`
 
 ---
 

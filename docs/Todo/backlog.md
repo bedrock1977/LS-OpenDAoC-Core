@@ -41,12 +41,13 @@ Priority-ordered work remaining for the LS OpenDAoC shard.
 
 ## P5 — QoL and UI (daochook + server)
 
-See [`qol-ui-roadmap.md`](qol-ui-roadmap.md) for full phased plan.
+See [`qol-ui-roadmap.md`](qol-ui-roadmap.md). Phase 1 server commands **done in code** — apply [`achievements.sql`](https://github.com/bedrock1977/LS-OpenDAoC-Database/blob/feature/expansion-classes/opendaoc-db-core/patches/achievements.sql) on live DB.
 
+- [ ] Apply `achievements.sql` on production database
+- [ ] Rebuild/deploy gameserver with Phase 1 commands
 - [ ] Phase 0: test [daochook](https://github.com/daochook/daochook) against Catacombs client
-- [ ] Phase 1: `/bags`, `/quests`, bulk-sell NPC, achievement DB
 - [ ] Phase 2–4: Atlas API, Lua addons, launcher integration
 
 ## Completed (see [`../complete/`](../complete/))
 
-Fork setup, SI classes (Heretic/Warlock/Vampiir), TOA Maulers code+DB patches, player base speed, dynamic event pilot script, runtime fixes (`start_as_base_class`, startup locations).
+Fork setup, SI classes (Heretic/Warlock/Vampiir), TOA Maulers code+DB patches, player base speed, dynamic event pilot script, runtime fixes (`start_as_base_class`, startup locations), QoL Phase 1 (`/bags`, `/achievements`, `/sellgreys`).

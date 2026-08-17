@@ -25,6 +25,7 @@ Project docs for the **bedrock1977** private shard (SI + Catacombs + TOA target)
 - **QoL / UI / daochook:** [`documentation/player-ui-and-daochook.md`](documentation/player-ui-and-daochook.md) · [`Todo/qol-ui-roadmap.md`](Todo/qol-ui-roadmap.md)
 - **Why OpenDAoC (not Python):** [`documentation/opendaoc-restore-strategy.md`](documentation/opendaoc-restore-strategy.md)
 - **Expansion class deployment:** [`complete/expansion-classes.md`](complete/expansion-classes.md)
+- **QoL commands (Phase 1):** [`complete/qol-phase1-server-commands.md`](complete/qol-phase1-server-commands.md)
 
 ## For agents
 

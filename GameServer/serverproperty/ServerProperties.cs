@@ -626,6 +626,12 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("server", "dynamic_event_pilot_cooldown_seconds", "Seconds before the event can trigger again after completion.", 300)]
 		public static int DYNAMIC_EVENT_PILOT_COOLDOWN_SECONDS;
 
+		[ServerProperty("server", "achievements_enabled", "Enable the LS shard achievement system.", true)]
+		public static bool ACHIEVEMENTS_ENABLED;
+
+		[ServerProperty("server", "bulk_sell_max_quality", "Max item quality sold by /sellgreys (lower = worse items).", 94)]
+		public static int BULK_SELL_MAX_QUALITY;
+
 		/// <summary>
 		/// Property to enable "forced" Tooltip send when Update are made to player skills, or player effects.
 		/// </summary>
