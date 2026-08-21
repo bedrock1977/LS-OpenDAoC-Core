@@ -75,7 +75,19 @@ namespace DOL.GS
 				UnlockedAt = DateTime.UtcNow
 			};
 
-			GameServer.Database.AddObject(record);
+			try
+			{
+				if (!GameServer.Database.AddObject(record))
+					return false;
+			}
+			catch (Exception ex) when (IsDuplicateUnlock(ex))
+			{
+				if (Log.IsWarnEnabled)
+					Log.Warn($"Duplicate achievement unlock ignored for {player.Name}: {achievementKey}", ex);
+
+				return false;
+			}
+
 			NotifyUnlock(player, definition);
 			return true;
 		}
@@ -139,6 +151,17 @@ namespace DOL.GS
 
 			lines.Add($"Total achievement points: {totalPoints}");
 			return lines;
+		}
+
+		private static bool IsDuplicateUnlock(Exception ex)
+		{
+			for (Exception current = ex; current != null; current = current.InnerException)
+			{
+				if (current.Message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase))
+					return true;
+			}
+
+			return false;
 		}
 
 		private static void NotifyUnlock(GamePlayer player, DbAchievement definition)
