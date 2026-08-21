@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.Spells;
 
@@ -233,7 +234,7 @@ namespace DOL.GS.Scripts
 			Spell spell = SkillBase.GetSpellByID(5999);
 			if (spell != null)
 			{
-				DOL.Database.DbTeleport teleport = new()
+				DbTeleport teleport = new()
 				{
 					TeleportID = destination.Keyword,
 					Realm = (int)player.Realm,
@@ -251,7 +252,7 @@ namespace DOL.GS.Scripts
 
 			GameLocation currentLocation =
 				new GameLocation("TeleportStart", player.CurrentRegionID, player.X, player.Y, player.Z);
-			DOL.Database.DbTeleport fallback = new()
+			DbTeleport fallback = new()
 			{
 				TeleportID = destination.Keyword,
 				Realm = (int)player.Realm,
