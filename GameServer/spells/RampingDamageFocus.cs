@@ -10,7 +10,8 @@ namespace DOL.GS.Spells
 	[SpellHandler(eSpellType.RampingDamageFocus)]
 	public class RampingDamageFocus : SpellHandler
 	{
-		private int pulseCount = 0;
+		private int pulseCount;
+		private bool _isFirstPulse = true;
 		private ISpellHandler snareSubSpell;
 
 		public RampingDamageFocus(GameLiving caster, Spell spell, SpellLine spellLine) : base(caster, new FocusSpell(spell), spellLine) 
@@ -21,33 +22,47 @@ namespace DOL.GS.Spells
 		public override void FinishSpellCast(GameLiving target)
 		{
 			Target = target;
-			Caster.Mana -= (PowerCost(target) + Spell.PulsePower);
+			pulseCount = 0;
+			_isFirstPulse = true;
+			Caster.Mana -= PowerCost(target) + Spell.PulsePower;
 			base.FinishSpellCast(target);
-			OnDirectEffect(target);
 		}
 
-		public override void OnSpellPulse(PulsingSpellEffect effect)
+		public override bool StartSpell(GameLiving target)
 		{
-			if (Caster.ObjectState != GameObject.eObjectState.Active)
-				return;
-			if (Caster.IsCrowdControlled)
-				return;
-
-			//(Caster as GamePlayer).Out.SendCheckLOS(Caster, m_spellTarget, CheckLOSPlayerToTarget);
-
-			if (Caster.Mana >= Spell.PulsePower)
+			if (Spell.IsFocus)
 			{
-				Caster.Mana -= Spell.PulsePower;
-				SendEffectAnimation(Caster, 0, true, 1); // pulsing auras or songs
-				pulseCount += 1;
-				OnDirectEffect(Target);
+				if (target != null)
+					Target = target;
+				else if (Target == null)
+					Target = Caster.TargetObject as GameLiving;
+
+				if (Target != null && (!Target.IsAlive || !Caster.IsWithinRadius(Target, Spell.CalculateEffectiveRange(Caster))))
+				{
+					CancelFocusSpells();
+					PulseEffect?.End();
+					return false;
+				}
 			}
-			else
+
+			return base.StartSpell(target);
+		}
+
+		public override void ApplyEffectOnTarget(GameLiving target)
+		{
+			// ECS pulsing focus spells call StartSpell on each tick instead of the legacy OnSpellPulse path.
+			if (!Spell.IsFocus)
 			{
-				MessageToCaster("You do not have enough power and your spell was canceled.", eChatType.CT_SpellExpires);
-				CancelFocusSpells();
-				effect.Cancel(false);
+				base.ApplyEffectOnTarget(target);
+				return;
 			}
+
+			if (!_isFirstPulse)
+				pulseCount++;
+
+			_isFirstPulse = false;
+			SendEffectAnimation(Caster, 0, true, 1);
+			OnDirectEffect(target);
 		}
 
 		protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
