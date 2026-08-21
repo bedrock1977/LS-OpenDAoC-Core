@@ -948,7 +948,7 @@ namespace DOL.GS.PacketHandler.Client.v168
 
                 ICharacterClass charClass = ScriptMgr.FindCharacterClass(ch.Class);
 
-                if(!charClass.EligibleRaces.Exists(s => (int)s.ID == ch.Race))
+                if (!CharacterClassRaceRules.IsRaceEligible(charClass, (eRace)ch.Race, (eRealm)ch.Realm))
                 {
                     if (log.IsWarnEnabled)
                         log.WarnFormat("Wrong race: {0}, class:{1} on character creation from Account: {2}", ch.Race, ch.Class, ch.AccountName);

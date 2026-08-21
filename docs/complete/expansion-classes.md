@@ -31,6 +31,7 @@ Ensure these `ServerProperty` values are set after first boot:
 - `disabled_expansions` — empty
 - `disabled_races` — empty (must not include Frostalf, Shar, HalfOgre, or Minotaur races)
 - `start_as_base_class` — **False** (otherwise advanced classes are saved as base classes on creation)
+- `allow_all_realm_races_for_classes` — **True** (any race in a realm can be any class in that realm)
 
 See also [`runtime-fixes.md`](runtime-fixes.md).
 

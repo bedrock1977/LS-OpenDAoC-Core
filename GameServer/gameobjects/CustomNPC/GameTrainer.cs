@@ -309,7 +309,7 @@ namespace DOL.GS
 			if (player.Level < 5 || player.CharacterClass.ID != baseClass.ID)
 				return false;
 
-			if (!pickedClass.EligibleRaces.Exists(s => s.ID == (eRace) player.Race))
+			if (!CharacterClassRaceRules.IsRaceEligible(pickedClass, (eRace)player.Race, player.Realm))
 				return false;
 
 			if (GlobalConstants.CLASS_GENDER_CONSTRAINTS_DICT.TryGetValue(TrainedClass, out eGender gender) && gender != player.Gender)

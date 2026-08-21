@@ -27,3 +27,17 @@ Reload: `/refresh startuplocations` or gameserver restart.
 ## Warlock chamber null reference
 
 **Fix:** `ChamberSpellHandler.cs` — null-safe chamber release via `StartSpell`.
+
+## Unrestricted realm races per class
+
+**Goal:** Any race in a realm can be any class in that realm (e.g. Half Ogre Wizard, Minotaur Bard).
+
+**Fix:**
+
+- Server property: `allow_all_realm_races_for_classes = True` (default in code)
+- DB: `expansion-serverproperties.sql`
+- Logic: `CharacterClassRaceRules.cs` — used on character create and trainer promotion
+
+**Still enforced:** `disabled_races`, race gender locks (Minotaur male-only), class gender locks (Valkyrie/Bainshee female-only).
+
+**Note:** The character creation **client UI** may still grey out some race/class pairs. The server accepts any valid realm race + realm class combo the client sends. If a combo is blocked in UI only, a client patch or daochook addon may be needed for visibility.

@@ -82,6 +82,23 @@ namespace DOL.GS.Realm
 			}
 		}
 
+		public static bool TryGetRace(eRace race, out PlayerRace playerRace)
+		{
+			return races.TryGetValue(race, out playerRace);
+		}
+
+		public static List<PlayerRace> GetRacesForRealm(eRealm realm)
+		{
+			var realmRaces = new List<PlayerRace>();
+			foreach (KeyValuePair<eRace, PlayerRace> race in races)
+			{
+				if (race.Value.Realm == realm)
+					realmRaces.Add(race.Value);
+			}
+
+			return realmRaces;
+		}
+
 		public static PlayerRace Briton => races[eRace.Briton];
 		public static PlayerRace Highlander => races[eRace.Highlander];
 		public static PlayerRace Saracen => races[eRace.Saracen];

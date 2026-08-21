@@ -2169,6 +2169,9 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("classes", "disabled_races", "Serialized list of disabled races, separated by semi-colon or a range with a dash (ie 1-5;7;9)", "")]
 		public static string DISABLED_RACES;
 
+		[ServerProperty("classes", "allow_all_realm_races_for_classes", "Allow any race of a realm to be created as any class of that realm.", true)]
+		public static bool ALLOW_ALL_REALM_RACES_FOR_CLASSES;
+
 		/// <summary>
 		/// Days before your eligible for a free level in Albion
 		/// </summary>
