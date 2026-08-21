@@ -30,7 +30,7 @@ namespace DOL.GS.Scripts
 			return true;
 		}
 
-		private static string BuildFlatMenu(GamePlayer player)
+		private string BuildFlatMenu(GamePlayer player)
 		{
 			switch (Realm)
 			{
