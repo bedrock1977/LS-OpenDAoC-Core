@@ -61,8 +61,17 @@ namespace DOL.GS.Spells
 				pulseCount++;
 
 			_isFirstPulse = false;
-			SendEffectAnimation(Caster, 0, true, 1);
 			OnDirectEffect(target);
+		}
+
+		protected override bool CheckSpellResist(GameLiving target)
+		{
+			// Focus DD applies damage in OnDirectEffect (legacy FinishSpellCast path). Resist rolls there,
+			// not in StartSpell, so a resist on the duration effect does not suppress damage pulses.
+			if (Spell.IsFocus)
+				return false;
+
+			return base.CheckSpellResist(target);
 		}
 
 		protected override GameSpellEffect CreateSpellEffect(GameLiving target, double effectiveness)
@@ -100,10 +109,10 @@ namespace DOL.GS.Spells
 			{
 				if (Util.Chance(CalculateSpellResistChance(t)))
 				{
-					OnSpellNegated(target, SpellNegatedReason.Resisted);
+					OnSpellNegated(t, SpellNegatedReason.Resisted);
 					continue;
 				}
-				
+
 				DealDamage(t);
 
 				if (Spell.Value > 0)
