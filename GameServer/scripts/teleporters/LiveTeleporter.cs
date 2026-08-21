@@ -96,12 +96,27 @@ namespace DOL.GS.Scripts
 
         public override bool Interact(GamePlayer player) // What to do when a player clicks on me
         {
-            if (!base.Interact(player) || GameRelic.IsPlayerCarryingRelic(player)) return false;
+            if (!PrepareInteract(player))
+                return false;
 
-            if (player.Realm != this.Realm && player.Client.Account.PrivLevel == 1) return false;
+            SayTo(player, GetInteractMessage(player));
+            return true;
+        }
+
+        protected virtual bool PrepareInteract(GamePlayer player)
+        {
+            if (!base.Interact(player) || GameRelic.IsPlayerCarryingRelic(player))
+                return false;
+
+            if (player.Realm != Realm && player.Client.Account.PrivLevel == 1)
+                return false;
 
             TurnTo(player, 10000);
-            
+            return true;
+        }
+
+        protected virtual string GetInteractMessage(GamePlayer player)
+        {
             var message = string.Empty;
 
             switch (Realm)
@@ -116,7 +131,6 @@ namespace DOL.GS.Scripts
                               "[Camelot] our glorious capital,\n" +
                               "[Entrance] to the areas of [Housing]\n\n" +
                               "or one of the many [towns] throughout Albion.";
-                              //"For this event duration, I can send you to [Darkness Falls]";
                     break;
 
                 case eRealm.Midgard:
@@ -144,16 +158,11 @@ namespace DOL.GS.Scripts
                     break;
 
                 default:
-                    SayTo(player, "I have no Realm set, so don't know what locations to offer..");
-                    break;
+                    return "I have no Realm set, so don't know what locations to offer..";
             }
             
-            message += "\n\n" +
-                       "Perhaps you would like the challenge of the [Epic Dungeon]?";
-
-            SayTo(player, message);
-
-            return true;
+            return message + "\n\n" +
+                   "Perhaps you would like the challenge of the [Epic Dungeon]?";
         }
 
         public override bool WhisperReceive(GameLiving source, string str) // What to do when a player whispers me
@@ -167,8 +176,12 @@ namespace DOL.GS.Scripts
             if (GameRelic.IsPlayerCarryingRelic(player))
                 return false;
 
-            return GetTeleportLocation(player, str);
+            return OnWhisperTeleport(player, str);
+        }
 
+        protected virtual bool OnWhisperTeleport(GamePlayer player, string text)
+        {
+            return GetTeleportLocation(player, text);
         }
 
         protected virtual bool GetTeleportLocation(GamePlayer player, string text)

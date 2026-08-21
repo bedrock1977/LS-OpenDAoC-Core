@@ -1,6 +1,6 @@
 # Shard backlog
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-08-17 (QoL Phase 1 live smoke test)
 
 Priority-ordered work remaining for the LS OpenDAoC shard.
 
@@ -10,7 +10,7 @@ Priority-ordered work remaining for the LS OpenDAoC shard.
   - `toa-mauler-import.sql`
   - `toa-startup-locations.sql`
   - `expansion-serverproperties.sql` (confirm `start_as_base_class = False`, `player_base_speed = 232`)
-- [ ] Rebuild and deploy `ghcr.io/bedrock1977/ls-opendaoc-core:latest` with latest `master`
+- [x] Rebuild and deploy `ghcr.io/bedrock1977/ls-opendaoc-core:latest` with latest `master` (build `b454edc87+`, deployed 2026-08-17)
 - [ ] `UPDATE dolcharacters SET MaxSpeed = 232` for existing characters (if using new default speed)
 
 ## P1 — Verification
@@ -43,11 +43,15 @@ Priority-ordered work remaining for the LS OpenDAoC shard.
 
 See [`qol-ui-roadmap.md`](qol-ui-roadmap.md). Phase 1 server commands **done in code** — apply [`achievements.sql`](https://github.com/bedrock1977/LS-OpenDAoC-Database/blob/feature/expansion-classes/opendaoc-db-core/patches/achievements.sql) on live DB.
 
-- [ ] Apply `achievements.sql` on production database
-- [ ] Rebuild/deploy gameserver with Phase 1 commands
+- [x] Apply `achievements.sql` on production database (achievements working in-game)
+- [x] Rebuild/deploy gameserver with Phase 1 commands
+- [x] Live smoke: `/bags`, `/achievements` verified; `/quests`, `/selljunk` initial OK
+- [x] Achievement unlock at level 2 — chat shows `[LSACH] unlock|first_steps|...` token
+- [ ] Full `/sellgreys` edge cases (empty bag, no merchant target, protected items)
+- [ ] **PvE capital teleporters** — code done; rebuild/deploy and smoke-test in Camelot / Jordheim / Tir na Nog ([`../complete/pve-teleporters.md`](../complete/pve-teleporters.md))
 - [ ] Phase 0: test [daochook](https://github.com/daochook/daochook) against Catacombs client
 - [ ] Phase 2–4: Atlas API, Lua addons, launcher integration
 
 ## Completed (see [`../complete/`](../complete/))
 
-Fork setup, SI classes (Heretic/Warlock/Vampiir), TOA Maulers code+DB patches, player base speed, dynamic event pilot script, runtime fixes (`start_as_base_class`, startup locations), QoL Phase 1 (`/bags`, `/achievements`, `/sellgreys`).
+Fork setup, SI classes (Heretic/Warlock/Vampiir), TOA Maulers code+DB patches, player base speed, dynamic event pilot script, runtime fixes (`start_as_base_class`, startup locations), QoL Phase 1 (`/bags`, `/achievements`, `/sellgreys`), PvE capital teleporters (World Teleporter + Dungeon Master).

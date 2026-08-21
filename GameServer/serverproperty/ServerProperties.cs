@@ -626,6 +626,9 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("server", "dynamic_event_pilot_cooldown_seconds", "Seconds before the event can trigger again after completion.", 300)]
 		public static int DYNAMIC_EVENT_PILOT_COOLDOWN_SECONDS;
 
+		[ServerProperty("server", "pve_teleporters_enabled", "Spawn World Teleporter and Dungeon Master NPCs in each realm capital.", true)]
+		public static bool PVE_TELEPORTERS_ENABLED;
+
 		[ServerProperty("server", "achievements_enabled", "Enable the LS shard achievement system.", true)]
 		public static bool ACHIEVEMENTS_ENABLED;
 
