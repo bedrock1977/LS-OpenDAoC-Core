@@ -61,6 +61,8 @@ namespace DOL.GS.Spells
 				pulseCount++;
 
 			_isFirstPulse = false;
+			// Keep the target linked to the caster's pulse effect (legacy StartSpell path).
+			OnDurationEffectApply(target);
 			OnDirectEffect(target);
 		}
 

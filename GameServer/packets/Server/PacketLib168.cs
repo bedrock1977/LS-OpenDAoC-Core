@@ -2264,8 +2264,9 @@ namespace DOL.GS.PacketHandler
 						else
 							reqLevel = sp.Level;
 
+						ushort icon = sp is Spell spell && spell.InternalIconID > 0 ? spell.InternalIconID : sp.Icon;
 						pak.WriteByte((byte)reqLevel);
-						pak.WriteShort(sp.Icon);
+						pak.WriteShort(icon);
 						pak.WritePascalString(sp.Name);
 					}
 
