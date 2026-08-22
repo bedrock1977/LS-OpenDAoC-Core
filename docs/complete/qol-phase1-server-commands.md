@@ -2,6 +2,8 @@
 
 **Completed:** code on `master` (Core) and `feature/expansion-classes` (Database patch).
 
+**Live verified:** 2026-08-17 — `/bags`, `/achievements` confirmed on production container. `/quests` and `/selljunk` (`/sellgreys`) initial testing OK; full edge-case pass pending. Level 2 unlock fires **First Steps** with `[LSACH] unlock|...` in system chat (daochook-ready).
+
 ## Player commands
 
 | Command | Description |
